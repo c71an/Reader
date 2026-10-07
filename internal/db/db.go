@@ -67,20 +67,32 @@ func InitDB(dbPath, defaultUser, defaultPass string) (*DB, error) {
 		return nil, fmt.Errorf("failed to create db directory: %w", err)
 	}
 
-	dsn := fmt.Sprintf("%s?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)", dbPath)
+	// 针对 Docker 挂载卷 (特别是 Windows 宿主机挂载 ./data:/data 的 VirtioFS/9p/CIFS)，
+	// WAL 模式需要创建共享内存文件 (-shm)，宿主机文件系统可能拒绝并报 4618 (SQLITE_IOERR_SHMOPEN)。
+	// 此处先尝试 WAL，若遇到共享内存不可用则无缝降级为 TRUNCATE/DELETE 模式，兼具性能与跨平台最强兼容性。
+	dsn := fmt.Sprintf("%s?_pragma=busy_timeout(5000)&_pragma=synchronous(NORMAL)", dbPath)
 	database, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite database: %w", err)
 	}
 
-	// 限制单个写锁连接池体验最佳
-	database.SetMaxOpenConns(25)
-	database.SetMaxIdleConns(5)
+	// 尝试启用 WAL 模式，若失败则使用 TRUNCATE 模式
+	var journalMode string
+	if err := database.QueryRow("PRAGMA journal_mode = WAL;").Scan(&journalMode); err != nil || journalMode != "wal" {
+		_ = database.QueryRow("PRAGMA journal_mode = TRUNCATE;").Scan(&journalMode)
+	}
+
+	database.SetMaxOpenConns(1) // SQLite 在单文件模式下单连接保障绝对并发安全
+	database.SetMaxIdleConns(1)
 	database.SetConnMaxLifetime(time.Hour)
 
 	d := &DB{database}
 	if err := d.migrate(); err != nil {
-		return nil, fmt.Errorf("migration failed: %w", err)
+		// 如果 migrate 因 4618 失败，再次降级为 DELETE 模式重试
+		_, _ = database.Exec("PRAGMA journal_mode = DELETE;")
+		if errRetry := d.migrate(); errRetry != nil {
+			return nil, fmt.Errorf("migration failed: %w", errRetry)
+		}
 	}
 
 	if err := d.ensureDefaultUser(defaultUser, defaultPass); err != nil {
