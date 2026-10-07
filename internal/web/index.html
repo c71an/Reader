@@ -74,8 +74,7 @@
 
   <!-- 登录页面 -->
   <div x-show="!isLoggedIn" class="max-w-md mx-auto mt-20 p-6 bg-white rounded-xl shadow-md border border-slate-200">
-    <h2 class="text-xl font-bold text-slate-900 mb-2">登录管理控制台</h2>
-    <p class="text-sm text-slate-500 mb-6">默认账号 admin / 密码 admin123</p>
+    <h2 class="text-xl font-bold text-slate-900 mb-6">登录管理控制台</h2>
     <form @submit.prevent="login">
       <div class="mb-4">
         <label class="block text-sm font-medium text-slate-700 mb-1">用户名</label>
@@ -783,7 +782,7 @@
         collapsedGroups: {},
         selectedCategory: 'all',
         profile: { username: '', auth_token: '' },
-        loginForm: { username: 'admin', password: 'admin123' },
+        loginForm: { username: 'admin', password: '' },
         
         // 1. 状态收纳 (统一集中管理弹窗和异步加载状态)
         modals: {
