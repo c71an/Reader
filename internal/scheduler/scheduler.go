@@ -14,21 +14,26 @@ import (
 )
 
 type Scheduler struct {
-	db        *db.DB
-	fetcher   *fetcher.Fetcher
-	stopChan  chan struct{}
-	mu        sync.Mutex
-	isBusy    map[int64]bool
-	lastFired map[int64]time.Time
+	db           *db.DB
+	fetcher      *fetcher.Fetcher
+	fetchTimeout time.Duration
+	stopChan     chan struct{}
+	mu           sync.Mutex
+	isBusy       map[int64]bool
+	lastFired    map[int64]time.Time
 }
 
-func NewScheduler(database *db.DB, f *fetcher.Fetcher) *Scheduler {
+func NewScheduler(database *db.DB, f *fetcher.Fetcher, timeoutSeconds int) *Scheduler {
+	if timeoutSeconds <= 0 {
+		timeoutSeconds = 45
+	}
 	return &Scheduler{
-		db:        database,
-		fetcher:   f,
-		stopChan:  make(chan struct{}),
-		isBusy:    make(map[int64]bool),
-		lastFired: make(map[int64]time.Time),
+		db:           database,
+		fetcher:      f,
+		fetchTimeout: time.Duration(timeoutSeconds+15) * time.Second,
+		stopChan:     make(chan struct{}),
+		isBusy:       make(map[int64]bool),
+		lastFired:    make(map[int64]time.Time),
 	}
 }
 
@@ -95,7 +100,7 @@ func (s *Scheduler) FetchNow(feedID int64) (int, error) {
 		return 0, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), s.fetchTimeout)
 	defer cancel()
 
 	log.Printf("[Fetcher] Fetching feed [%d] %s (%s)...\n", feed.ID, feed.Title, feed.FeedURL)

@@ -3,15 +3,17 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 )
 
 type Config struct {
-	Port         string
-	DataDir      string
-	DBPath       string
-	AdminUser    string
-	AdminPass    string
+	Port          string
+	DataDir       string
+	DBPath        string
+	AdminUser     string
+	AdminPass     string
 	SessionSecret string
+	FetchTimeout  int // 抓取超时秒数，默认 45s
 }
 
 func Load() *Config {
@@ -40,6 +42,13 @@ func Load() *Config {
 		sessionSecret = "reader-secret-key-change-me"
 	}
 
+	fetchTimeout := 45
+	if timeoutStr := os.Getenv("FETCH_TIMEOUT"); timeoutStr != "" {
+		if t, err := strconv.Atoi(timeoutStr); err == nil && t > 0 {
+			fetchTimeout = t
+		}
+	}
+
 	return &Config{
 		Port:          port,
 		DataDir:       dataDir,
@@ -47,6 +56,7 @@ func Load() *Config {
 		AdminUser:     adminUser,
 		AdminPass:     adminPass,
 		SessionSecret: sessionSecret,
+		FetchTimeout:  fetchTimeout,
 	}
 }
 

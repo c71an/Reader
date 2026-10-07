@@ -71,5 +71,6 @@ go run ./cmd/server
 | `DATA_DIR` | `./data` | 数据持久化存储路径 (包含 reader.db) |
 | `ADMIN_USER` | `admin` | 默认管理员账号 (用于 Web 与 Reeder 登录) |
 | `ADMIN_PASSWORD` | `admin123` | 默认管理员密码 |
+| `FETCH_TIMEOUT` | `45` | 单个 Feed 抓取超时时间 (单位：秒，推荐 30~60s) |
 | `TZ` | `Asia/Shanghai` | 时区设置 (确保每日固定时间拉取准确匹配本地时间) |
 

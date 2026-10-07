@@ -35,11 +35,12 @@ func main() {
 	defer database.Close()
 	log.Printf("[DB] SQLite database initialized at %s with WAL mode", cfg.DBPath)
 
-	// 2. 初始化 RSS 抓取器与定时调度引擎
-	f := fetcher.NewFetcher(database)
-	sched := scheduler.NewScheduler(database, f)
+	// 2. 初始化 RSS 抓取器与定时调度引擎 (拉取超时默认为 45s，可经 FETCH_TIMEOUT 配置)
+	f := fetcher.NewFetcher(database, cfg.FetchTimeout)
+	sched := scheduler.NewScheduler(database, f, cfg.FetchTimeout)
 	sched.Start()
 	defer sched.Stop()
+	log.Printf("[Scheduler] Feed fetch timeout set to %ds", cfg.FetchTimeout)
 
 	// 3. 构建 HTTP 路由
 	r := chi.NewRouter()

@@ -64,14 +64,18 @@
   <!-- 主内容区 -->
   <main x-show="isLoggedIn" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <!-- 统计卡片与提示 -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">
       <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-        <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">已订阅源</div>
+        <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">全部订阅源</div>
         <div class="text-3xl font-extrabold text-slate-900" x-text="feeds.length">0</div>
       </div>
       <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">分类文件夹数</div>
+        <div class="text-3xl font-extrabold text-indigo-600" x-text="categoryList.length">0</div>
+      </div>
+      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
         <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">每日固定拉取订阅数</div>
-        <div class="text-3xl font-extrabold text-indigo-600" x-text="feeds.filter(f => f.schedule_type === 'daily_fixed').length">0</div>
+        <div class="text-3xl font-extrabold text-emerald-600" x-text="feeds.filter(f => f.schedule_type === 'daily_fixed').length">0</div>
       </div>
       <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
         <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">未读文章累计</div>
@@ -79,75 +83,143 @@
       </div>
     </div>
 
-    <!-- 订阅列表管理表格 -->
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-      <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-        <h3 class="font-bold text-slate-900">订阅源列表</h3>
-        <button @click="loadFeeds()" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center">
-          <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-          刷新状态
+    <!-- 顶栏与分类快速筛选器 -->
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+      <div class="flex items-center space-x-2 overflow-x-auto py-1">
+        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider mr-1">文件夹:</span>
+        <button @click="selectedCategory = 'all'" 
+                :class="selectedCategory === 'all' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'"
+                class="px-3 py-1 rounded-full text-xs font-medium transition flex items-center">
+          全部
+          <span class="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px]" :class="selectedCategory === 'all' ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-600'" x-text="feeds.length"></span>
         </button>
+        <template x-for="cat in categoryList" :key="cat.name">
+          <button @click="selectedCategory = cat.name" 
+                  :class="selectedCategory === cat.name ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'"
+                  class="px-3 py-1 rounded-full text-xs font-medium transition flex items-center">
+            <span class="mr-1">📁</span>
+            <span x-text="cat.name"></span>
+            <span class="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px]" :class="selectedCategory === cat.name ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-600'" x-text="cat.count"></span>
+          </button>
+        </template>
       </div>
 
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-slate-200 text-sm">
-          <thead class="bg-slate-50 text-slate-500 font-semibold text-xs">
-            <tr>
-              <th class="px-6 py-3 text-left">源信息 / 链接</th>
-              <th class="px-4 py-3 text-left">分类</th>
-              <th class="px-4 py-3 text-left">调度策略 (定时 / 每日固定)</th>
-              <th class="px-4 py-3 text-left">上次拉取状态</th>
-              <th class="px-6 py-3 text-right">操作</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-200">
-            <template x-for="feed in feeds" :key="feed.id">
-              <tr class="hover:bg-slate-50/70 transition">
-                <td class="px-6 py-4">
-                  <div class="font-semibold text-slate-900" x-text="feed.title"></div>
-                  <div class="text-xs text-slate-500 font-mono truncate max-w-xs" x-text="feed.feed_url"></div>
-                </td>
-                <td class="px-4 py-4">
-                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700" x-text="feed.category_name || '未分类'"></span>
-                </td>
-                <td class="px-4 py-4">
-                  <template x-if="feed.schedule_type === 'daily_fixed'">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      每天固定: <span class="font-mono ml-1" x-text="feed.schedule_value"></span>
-                    </span>
-                  </template>
-                  <template x-if="feed.schedule_type === 'interval'">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                      间隔: <span class="font-mono ml-1" x-text="feed.schedule_value"></span>
-                    </span>
-                  </template>
-                </td>
-                <td class="px-4 py-4">
-                  <div class="text-xs text-slate-600" x-text="formatTime(feed.last_fetched_at)"></div>
-                  <template x-if="feed.last_error">
-                    <div class="text-xs text-red-500 truncate max-w-xs" :title="feed.last_error" x-text="'⚠️ ' + feed.last_error"></div>
-                  </template>
-                </td>
-                <td class="px-6 py-4 text-right space-x-2">
-                  <button @click="fetchNow(feed)" class="text-xs px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded transition">
-                    立即抓取
-                  </button>
-                  <button @click="openEditModal(feed)" class="text-xs px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium rounded transition">
-                    设置
-                  </button>
-                  <button @click="deleteFeed(feed)" class="text-xs px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 font-medium rounded transition">
-                    删除
-                  </button>
-                </td>
-              </tr>
-            </template>
-            <tr x-show="feeds.length === 0">
-              <td colspan="5" class="px-6 py-8 text-center text-slate-400 text-sm">
-                暂无订阅，点击右上角 “添加订阅” 开始使用（支持 RSSHub 链接）
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="flex items-center space-x-3">
+        <button @click="toggleAllFolders()" class="text-xs text-slate-600 hover:text-indigo-600 font-medium px-2 py-1 bg-white border border-slate-200 rounded-md transition shadow-2xs">
+          <span x-text="areAllFoldersCollapsed() ? '展开所有文件夹' : '折叠所有文件夹'"></span>
+        </button>
+        <button @click="loadFeeds()" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center px-2 py-1 bg-white border border-slate-200 rounded-md transition shadow-2xs">
+          <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+          刷新数据
+        </button>
+      </div>
+    </div>
+
+    <!-- 订阅源文件夹分组列表 -->
+    <div class="space-y-6">
+      <template x-for="group in filteredGroups" :key="group.categoryName">
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden transition">
+          <!-- 文件夹卡片头部 -->
+          <div class="px-6 py-3.5 bg-slate-50/80 border-b border-slate-200 flex justify-between items-center cursor-pointer select-none hover:bg-slate-100/80 transition"
+               @click="toggleGroup(group.categoryName)">
+            <div class="flex items-center space-x-2.5">
+              <svg class="w-4 h-4 text-slate-400 transition-transform duration-200" 
+                   :class="isGroupCollapsed(group.categoryName) ? '-rotate-90' : 'rotate-0'"
+                   fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+              <div class="flex items-center space-x-2">
+                <span class="text-base">📁</span>
+                <span class="font-bold text-slate-900" x-text="group.categoryName"></span>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100" 
+                      x-text="group.feeds.length + ' 个源'"></span>
+                <template x-if="group.unreadTotal > 0">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200" 
+                        x-text="group.unreadTotal + ' 未读'"></span>
+                </template>
+              </div>
+            </div>
+
+            <div class="flex items-center space-x-2" @click.stop>
+              <button @click="batchFetch(group.feeds)" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium px-2 py-1 rounded hover:bg-indigo-50 transition">
+                ⚡ 拉取本文件夹
+              </button>
+            </div>
+          </div>
+
+          <!-- 文件夹下属订阅源列表 -->
+          <div x-show="!isGroupCollapsed(group.categoryName)" class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-100 text-sm">
+              <thead class="bg-white text-slate-400 font-semibold text-xs border-b border-slate-100">
+                <tr>
+                  <th class="px-6 py-2.5 text-left">订阅源标题 / 链接</th>
+                  <th class="px-4 py-2.5 text-left">调度策略 (定时 / 每日固定)</th>
+                  <th class="px-4 py-2.5 text-left">未读数</th>
+                  <th class="px-4 py-2.5 text-left">上次抓取情况</th>
+                  <th class="px-6 py-2.5 text-right">操作</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <template x-for="feed in group.feeds" :key="feed.id">
+                  <tr class="hover:bg-slate-50/70 transition">
+                    <td class="px-6 py-3.5">
+                      <div class="font-semibold text-slate-900 flex items-center space-x-2">
+                        <span x-text="feed.title"></span>
+                        <template x-if="feed.site_url">
+                          <a :href="feed.site_url" target="_blank" class="text-slate-400 hover:text-indigo-600">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                          </a>
+                        </template>
+                      </div>
+                      <div class="text-xs text-slate-400 font-mono truncate max-w-sm mt-0.5" x-text="feed.feed_url"></div>
+                    </td>
+                    <td class="px-4 py-3.5">
+                      <template x-if="feed.schedule_type === 'daily_fixed'">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          每天固定: <span class="font-mono ml-1" x-text="feed.schedule_value"></span>
+                        </span>
+                      </template>
+                      <template x-if="feed.schedule_type === 'interval'">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                          定时间隔: <span class="font-mono ml-1" x-text="feed.schedule_value"></span>
+                        </span>
+                      </template>
+                    </td>
+                    <td class="px-4 py-3.5">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                            :class="feed.unread_count > 0 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-500'"
+                            x-text="feed.unread_count || 0">
+                      </span>
+                    </td>
+                    <td class="px-4 py-3.5">
+                      <div class="text-xs text-slate-600" x-text="formatTime(feed.last_fetched_at)"></div>
+                      <template x-if="feed.last_error">
+                        <div class="text-xs text-red-500 truncate max-w-xs mt-0.5" :title="feed.last_error" x-text="'⚠️ ' + feed.last_error"></div>
+                      </template>
+                    </td>
+                    <td class="px-6 py-3.5 text-right space-x-2">
+                      <button @click="fetchNow(feed)" class="text-xs px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded transition">
+                        抓取
+                      </button>
+                      <button @click="openEditModal(feed)" class="text-xs px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium rounded transition">
+                        编辑
+                      </button>
+                      <button @click="deleteFeed(feed)" class="text-xs px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 font-medium rounded transition">
+                        删除
+                      </button>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </template>
+
+      <!-- 空订阅源提示 -->
+      <div x-show="feeds.length === 0" class="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-400 text-sm shadow-sm">
+        <div class="text-3xl mb-2">📭</div>
+        暂无订阅，点击右上角 “添加订阅” 开始配置（支持输入分类文件夹与每日固定抓取）
       </div>
     </div>
   </main>
@@ -169,8 +241,15 @@
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">分类 / 文件夹</label>
-          <input type="text" x-model="modalForm.category_name" placeholder="如：科技 / 资讯" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">所属分类文件夹 (输入新名字自动新建)</label>
+          <div class="relative">
+            <input type="text" list="categoryOptions" x-model="modalForm.category_name" placeholder="如：科技 / 资讯 / 日常（留空为未分类）" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
+            <datalist id="categoryOptions">
+              <template x-for="cat in categoryList" :key="cat.name">
+                <option :value="cat.name"></option>
+              </template>
+            </datalist>
+          </div>
         </div>
 
         <div class="border-t border-slate-100 pt-3">
@@ -225,14 +304,14 @@
       <p class="text-xs text-slate-500 mb-4">Reeder 完美原生支持 Google Reader API 规范，请在 Reeder 中直接添加账号：</p>
       
       <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 text-xs font-mono space-y-2 mb-4">
-        <div><span class="text-slate-400">账号类型:</span> <span class="font-bold text-indigo-600">Google Reader</span> 或 <span class="font-bold text-indigo-600">FreshRSS / Inoreader 兼容</span></div>
+        <div><span class="text-slate-400">账号类型:</span> <span class="font-bold text-indigo-600">Google Reader</span></div>
         <div><span class="text-slate-400">Server (服务器地址):</span> <span class="text-slate-800" x-text="window.location.origin"></span></div>
         <div><span class="text-slate-400">Username (用户名):</span> <span class="text-slate-800" x-text="profile.username"></span></div>
         <div><span class="text-slate-400">Password (密码):</span> <span class="text-slate-800">您的控制台登录密码 (默认 admin123)</span></div>
       </div>
 
       <div class="text-xs text-slate-600 leading-relaxed bg-amber-50 border border-amber-200 p-3 rounded-lg mb-6">
-        ℹ️ Reeder 会自动通过 <code>/accounts/ClientLogin</code> 完成认证并请求 <code>/reader/api/0/*</code> 接口，拉取所有订阅源、未读状态与自定义文件夹。
+        ℹ️ Reeder 会自动通过 <code>/accounts/ClientLogin</code> 完成认证并请求 <code>/reader/api/0/*</code> 接口，拉取所有分类文件夹、订阅源以及文章正文。
       </div>
 
       <div class="flex justify-end">
@@ -246,6 +325,8 @@
       return {
         isLoggedIn: false,
         feeds: [],
+        collapsedGroups: {},
+        selectedCategory: 'all',
         profile: { username: '', auth_token: '' },
         loginForm: { username: 'admin', password: 'admin123' },
         showAddModal: false,
@@ -303,6 +384,79 @@
           } catch (e) {
             console.error(e);
           }
+        },
+
+        // 获取分类统计列表
+        get categoryList() {
+          const map = {};
+          this.feeds.forEach(f => {
+            const name = f.category_name || '未分类';
+            map[name] = (map[name] || 0) + 1;
+          });
+          return Object.keys(map).map(k => ({ name: k, count: map[k] }));
+        },
+
+        // 按照分类文件夹组织分组列表
+        get filteredGroups() {
+          const map = {};
+          this.feeds.forEach(f => {
+            const name = f.category_name || '未分类';
+            if (this.selectedCategory !== 'all' && this.selectedCategory !== name) {
+              return;
+            }
+            if (!map[name]) {
+              map[name] = {
+                categoryName: name,
+                feeds: [],
+                unreadTotal: 0
+              };
+            }
+            map[name].feeds.push(f);
+            map[name].unreadTotal += (f.unread_count || 0);
+          });
+          // 未分类排最后，其余按首字母排序
+          return Object.values(map).sort((a, b) => {
+            if (a.categoryName === '未分类') return 1;
+            if (b.categoryName === '未分类') return -1;
+            return a.categoryName.localeCompare(b.categoryName);
+          });
+        },
+
+        toggleGroup(catName) {
+          this.collapsedGroups[catName] = !this.collapsedGroups[catName];
+        },
+
+        isGroupCollapsed(catName) {
+          return !!this.collapsedGroups[catName];
+        },
+
+        areAllFoldersCollapsed() {
+          return this.categoryList.length > 0 && this.categoryList.every(c => this.collapsedGroups[c.name]);
+        },
+
+        toggleAllFolders() {
+          const collapse = !this.areAllFoldersCollapsed();
+          this.categoryList.forEach(c => {
+            this.collapsedGroups[c.name] = collapse;
+          });
+        },
+
+        async batchFetch(feedList) {
+          if (!feedList || feedList.length === 0) return;
+          let count = 0;
+          for (const f of feedList) {
+            try {
+              const res = await fetch(`/api/admin/feeds/${f.id}/fetch`, { method: 'POST' });
+              if (res.ok) {
+                const data = await res.json();
+                count += (data.new_articles || 0);
+              }
+            } catch (e) {
+              console.error(e);
+            }
+          }
+          alert(`本文件夹抓取完成，共新增 ${count} 篇文章`);
+          await this.loadFeeds();
         },
 
         openEditModal(feed) {
@@ -392,4 +546,3 @@
   </script>
 </body>
 </html>
-

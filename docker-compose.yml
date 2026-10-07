@@ -10,6 +10,7 @@ services:
       - DATA_DIR=/data
       - ADMIN_USER=admin
       - ADMIN_PASSWORD=admin123
+      - FETCH_TIMEOUT=45 # 拉取超时秒数 (适合 RSSHub 及各类源)
       - TZ=Asia/Shanghai
     volumes:
       - ./data:/data

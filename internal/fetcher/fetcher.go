@@ -20,17 +20,23 @@ type Fetcher struct {
 	userAgent  string
 }
 
-func NewFetcher(database *db.DB) *Fetcher {
+func NewFetcher(database *db.DB, timeoutSeconds int) *Fetcher {
+	if timeoutSeconds <= 0 {
+		timeoutSeconds = 45
+	}
+	timeout := time.Duration(timeoutSeconds) * time.Second
+
 	// 针对 RSSHub 和常规 Feed 优化 HTTP Client 配置
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: false},
-		MaxIdleConns:    20,
-		IdleConnTimeout: 30 * time.Second,
+		TLSClientConfig:       &tls.Config{InsecureSkipVerify: false},
+		MaxIdleConns:          50,
+		IdleConnTimeout:       60 * time.Second,
+		ResponseHeaderTimeout: timeout,
 	}
 
 	client := &http.Client{
 		Transport: tr,
-		Timeout:   25 * time.Second,
+		Timeout:   timeout,
 	}
 
 	fp := gofeed.NewParser()

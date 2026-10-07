@@ -29,6 +29,7 @@ VOLUME ["/data"]
 ENV PORT=8080
 ENV DATA_DIR=/data
 ENV ADMIN_USER=admin
+ENV FETCH_TIMEOUT=45
 ENV TZ=Asia/Shanghai
 
 COPY --from=builder /app/reader /app/reader
