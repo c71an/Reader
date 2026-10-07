@@ -30,7 +30,6 @@ VOLUME ["/data"]
 ENV PORT=8080
 ENV DATA_DIR=/data
 ENV ADMIN_USER=admin
-ENV ADMIN_PASSWORD=admin123
 ENV TZ=Asia/Shanghai
 
 COPY --from=builder /app/reader /app/reader
