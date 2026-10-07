@@ -7,13 +7,12 @@ import (
 )
 
 type Config struct {
-	Port          string
-	DataDir       string
-	DBPath        string
-	AdminUser     string
-	AdminPass     string
-	SessionSecret string
-	FetchTimeout  int // 抓取超时秒数，默认 45s
+	Port         string
+	DataDir      string
+	DBPath       string
+	AdminUser    string
+	AdminPass    string
+	FetchTimeout int // 抓取超时秒数，默认 45s
 }
 
 func Load() *Config {
@@ -37,11 +36,6 @@ func Load() *Config {
 		adminPass = "admin123"
 	}
 
-	sessionSecret := os.Getenv("SESSION_SECRET")
-	if sessionSecret == "" {
-		sessionSecret = "reader-secret-key-change-me"
-	}
-
 	fetchTimeout := 45
 	if timeoutStr := os.Getenv("FETCH_TIMEOUT"); timeoutStr != "" {
 		if t, err := strconv.Atoi(timeoutStr); err == nil && t > 0 {
@@ -50,13 +44,13 @@ func Load() *Config {
 	}
 
 	return &Config{
-		Port:          port,
-		DataDir:       dataDir,
-		DBPath:        filepath.Join(dataDir, "reader.db"),
-		AdminUser:     adminUser,
-		AdminPass:     adminPass,
-		SessionSecret: sessionSecret,
-		FetchTimeout:  fetchTimeout,
+		Port:         port,
+		DataDir:      dataDir,
+		DBPath:       filepath.Join(dataDir, "reader.db"),
+		AdminUser:    adminUser,
+		AdminPass:    adminPass,
+		FetchTimeout: fetchTimeout,
 	}
 }
+
 

@@ -68,6 +68,10 @@ type ItemRef struct {
 // StreamContentsHandler 处理 GET /reader/api/0/stream/contents/*
 func (h *Handler) StreamContentsHandler(w http.ResponseWriter, r *http.Request) {
 	user := GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 	
 	// 从 URL 路径截取 streamID
 	// 如 /reader/api/0/stream/contents/user/-/state/com.google/reading-list
@@ -115,54 +119,11 @@ func (h *Handler) StreamContentsHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	now := time.Now()
-	var outItems []StreamItemOutput
 	var lastID int64
-	for _, it := range items {
-		lastID = it.ID
-		cats := []string{
-			"user/-/state/com.google/reading-list",
-		}
-		if it.IsRead {
-			cats = append(cats, "user/-/state/com.google/read")
-		} else {
-			cats = append(cats, "user/-/state/com.google/fresh")
-		}
-		if it.IsStarred {
-			cats = append(cats, "user/-/state/com.google/starred")
-		}
-
-		pubUnix := it.PublishedAt.Unix()
-		pubUsec := fmt.Sprintf("%d", it.PublishedAt.UnixNano()/1000)
-		crawlMsec := fmt.Sprintf("%d", it.PublishedAt.UnixMilli())
-
-		tagItemHex := fmt.Sprintf("tag:google.com,2005:reader/item/%016x", it.ID)
-
-		contentBody := StreamContentBody{
-			Direction: "ltr",
-			Content:   it.Content,
-		}
-
-		outItems = append(outItems, StreamItemOutput{
-			ID:            tagItemHex,
-			CrawlTimeMsec: crawlMsec,
-			TimestampUsec: pubUsec,
-			Published:     pubUnix,
-			Updated:       pubUnix,
-			Title:         it.Title,
-			PublishedUsec: pubUsec,
-			Alternate:     []StreamLink{{Href: it.URL}},
-			Canonical:     []StreamLink{{Href: it.URL}},
-			Categories:    cats,
-			Origin: StreamOrigin{
-				StreamID: fmt.Sprintf("feed/%d", it.FeedID),
-				Title:    it.FeedTitle,
-				HTMLURL:  it.URL,
-			},
-			Summary: contentBody,
-			Content: contentBody,
-			Author:  it.Author,
-		})
+	if len(items) > 0 {
+		lastID = items[len(items)-1].ID
 	}
+	outItems := formatStreamItems(items)
 
 	resp := StreamContentsResponse{
 		Direction:   "ltr",
@@ -184,6 +145,11 @@ func (h *Handler) StreamContentsHandler(w http.ResponseWriter, r *http.Request) 
 // StreamItemIDsHandler 处理 GET /reader/api/0/stream/items/ids
 func (h *Handler) StreamItemIDsHandler(w http.ResponseWriter, r *http.Request) {
 	user := GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	streamID := r.URL.Query().Get("s")
 	if streamID == "" {
 		streamID = "user/-/state/com.google/reading-list"
@@ -220,6 +186,11 @@ func (h *Handler) StreamItemIDsHandler(w http.ResponseWriter, r *http.Request) {
 // Reeder 专属关键接口：客户端拿到 IDs 列表后，通过 POST 或 GET 批量请求 ?i=id1&i=id2 拉取具体文章正文！
 func (h *Handler) StreamItemsContentsHandler(w http.ResponseWriter, r *http.Request) {
 	user := GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	_ = r.ParseForm()
 
 	rawIDs := r.Form["i"]
@@ -257,7 +228,23 @@ func (h *Handler) StreamItemsContentsHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	now := time.Now()
-	var outItems []StreamItemOutput
+	outItems := formatStreamItems(items)
+
+	resp := StreamContentsResponse{
+		Direction:   "ltr",
+		ID:          "user/-/state/com.google/reading-list",
+		Title:       "Articles",
+		Updated:     now.Unix(),
+		UpdatedUsec: now.UnixNano() / 1000,
+		Items:       outItems,
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	_ = json.NewEncoder(w).Encode(resp)
+}
+
+func formatStreamItems(items []*db.StreamItem) []StreamItemOutput {
+	out := make([]StreamItemOutput, 0, len(items))
 	for _, it := range items {
 		cats := []string{"user/-/state/com.google/reading-list"}
 		if it.IsRead {
@@ -279,7 +266,7 @@ func (h *Handler) StreamItemsContentsHandler(w http.ResponseWriter, r *http.Requ
 			Content:   it.Content,
 		}
 
-		outItems = append(outItems, StreamItemOutput{
+		out = append(out, StreamItemOutput{
 			ID:            tagItemHex,
 			CrawlTimeMsec: crawlMsec,
 			TimestampUsec: pubUsec,
@@ -300,17 +287,6 @@ func (h *Handler) StreamItemsContentsHandler(w http.ResponseWriter, r *http.Requ
 			Author:  it.Author,
 		})
 	}
-
-	resp := StreamContentsResponse{
-		Direction:   "ltr",
-		ID:          "user/-/state/com.google/reading-list",
-		Title:       "Articles",
-		Updated:     now.Unix(),
-		UpdatedUsec: now.UnixNano() / 1000,
-		Items:       outItems,
-	}
-
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	_ = json.NewEncoder(w).Encode(resp)
+	return out
 }
 

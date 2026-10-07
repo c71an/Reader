@@ -1,0 +1,294 @@
+package greader
+
+import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"reader/internal/db"
+)
+
+func setupTestDB(t *testing.T) (*db.DB, *Handler) {
+	dbPath := filepath.Join(t.TempDir(), "test.db")
+	database, err := db.InitDB(dbPath, "testuser", "testpass")
+	if err != nil {
+		t.Fatalf("InitDB failed: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = database.Close()
+	})
+	handler := NewHandler(database, nil)
+	return database, handler
+}
+
+func TestQuickAddHandler(t *testing.T) {
+	_, handler := setupTestDB(t)
+
+	// 1. 测试添加新订阅
+	formData := url.Values{
+		"quickadd": {"https://example.com/rss.xml"},
+		"a":        {"user/-/label/Tech"},
+	}
+	req := httptest.NewRequest(http.MethodPost, "/reader/api/0/subscription/quickadd", strings.NewReader(formData.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+
+	handler.QuickAddHandler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("QuickAddHandler returned status %d; want 200", rec.Code)
+	}
+
+	var resp QuickAddResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if resp.NumResults != 1 {
+		t.Errorf("resp.NumResults = %d; want 1", resp.NumResults)
+	}
+	if !strings.HasPrefix(resp.StreamID, "feed/") {
+		t.Errorf("resp.StreamID = %q; want prefix feed/", resp.StreamID)
+	}
+
+	// 2. 测试重复添加（幂等且不报错）
+	rec2 := httptest.NewRecorder()
+	req2 := httptest.NewRequest(http.MethodPost, "/reader/api/0/subscription/quickadd", strings.NewReader(formData.Encode()))
+	req2.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	handler.QuickAddHandler(rec2, req2)
+
+	var resp2 QuickAddResponse
+	if err := json.Unmarshal(rec2.Body.Bytes(), &resp2); err != nil {
+		t.Fatalf("failed to decode response 2: %v", err)
+	}
+	if resp2.NumResults != 1 || resp2.StreamID != resp.StreamID {
+		t.Errorf("duplicate quickadd mismatch: %+v vs %+v", resp2, resp)
+	}
+}
+
+func TestSubscriptionEditHandler(t *testing.T) {
+	_, handler := setupTestDB(t)
+
+	// 1. Subscribe
+	formSub := url.Values{
+		"ac": {"subscribe"},
+		"s":  {"feed/https://testnews.org/feed"},
+		"t":  {"Test News"},
+		"a":  {"user/-/label/News"},
+	}
+	reqSub := httptest.NewRequest(http.MethodPost, "/reader/api/0/subscription/edit", strings.NewReader(formSub.Encode()))
+	reqSub.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recSub := httptest.NewRecorder()
+	handler.SubscriptionEditHandler(recSub, reqSub)
+	if recSub.Code != http.StatusOK || recSub.Body.String() != "OK" {
+		t.Fatalf("subscribe failed: code=%d, body=%s", recSub.Code, recSub.Body.String())
+	}
+
+	feed, err := handler.db.GetFeedByURL("https://testnews.org/feed")
+	if err != nil || feed == nil {
+		t.Fatalf("feed not found in DB after subscribe: %v", err)
+	}
+	if feed.Title != "Test News" {
+		t.Errorf("feed.Title = %q; want 'Test News'", feed.Title)
+	}
+	if feed.CategoryName != "News" {
+		t.Errorf("feed.CategoryName = %q; want 'News'", feed.CategoryName)
+	}
+
+	// 2. Edit (修改标题和分类)
+	formEdit := url.Values{
+		"ac": {"edit"},
+		"s":  {feed.FeedURL},
+		"t":  {"Updated Title"},
+		"r":  {"user/-/label/News"},
+		"a":  {"user/-/label/Daily"},
+	}
+	reqEdit := httptest.NewRequest(http.MethodPost, "/reader/api/0/subscription/edit", strings.NewReader(formEdit.Encode()))
+	reqEdit.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recEdit := httptest.NewRecorder()
+	handler.SubscriptionEditHandler(recEdit, reqEdit)
+	if recEdit.Code != http.StatusOK || recEdit.Body.String() != "OK" {
+		t.Fatalf("edit failed: code=%d, body=%s", recEdit.Code, recEdit.Body.String())
+	}
+
+	feedUpdated, err := handler.db.GetFeedByID(feed.ID)
+	if err != nil || feedUpdated == nil {
+		t.Fatalf("feed not found: %v", err)
+	}
+	if feedUpdated.Title != "Updated Title" {
+		t.Errorf("feedUpdated.Title = %q; want 'Updated Title'", feedUpdated.Title)
+	}
+	if feedUpdated.CategoryName != "Daily" {
+		t.Errorf("feedUpdated.CategoryName = %q; want 'Daily'", feedUpdated.CategoryName)
+	}
+
+	// 3. Unsubscribe (通过 URL)
+	formUnsub := url.Values{
+		"ac": {"unsubscribe"},
+		"s":  {"feed/" + feed.FeedURL},
+	}
+	reqUnsub := httptest.NewRequest(http.MethodPost, "/reader/api/0/subscription/edit", strings.NewReader(formUnsub.Encode()))
+	reqUnsub.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recUnsub := httptest.NewRecorder()
+	handler.SubscriptionEditHandler(recUnsub, reqUnsub)
+	if recUnsub.Code != http.StatusOK || recUnsub.Body.String() != "OK" {
+		t.Fatalf("unsubscribe failed: code=%d, body=%s", recUnsub.Code, recUnsub.Body.String())
+	}
+
+	feedDeleted, _ := handler.db.GetFeedByID(feed.ID)
+	if feedDeleted != nil {
+		t.Errorf("expected feed to be deleted, but still exists")
+	}
+}
+
+func TestStreamHandlers(t *testing.T) {
+	database, handler := setupTestDB(t)
+
+	user, err := database.GetUserByUsername("testuser")
+	if err != nil {
+		t.Fatalf("failed to get testuser: %v", err)
+	}
+
+	feed := &db.Feed{
+		Title:         "Stream Feed",
+		FeedURL:       "https://stream.example.com/rss",
+		ScheduleType:  "interval",
+		ScheduleValue: "60m",
+	}
+	if err := database.CreateFeed(feed); err != nil {
+		t.Fatalf("CreateFeed failed: %v", err)
+	}
+
+	articles := []*db.Article{
+		{
+			FeedID: feed.ID,
+			GUID:   "item-1",
+			Title:  "Article 1",
+			URL:    "https://example.com/1",
+		},
+		{
+			FeedID: feed.ID,
+			GUID:   "item-2",
+			Title:  "Article 2",
+			URL:    "https://example.com/2",
+		},
+	}
+	if _, err := database.SaveArticles(articles); err != nil {
+		t.Fatalf("SaveArticles failed: %v", err)
+	}
+
+	// 1. Test StreamContentsHandler
+	req := httptest.NewRequest(http.MethodGet, "/reader/api/0/stream/contents/feed/"+feed.FeedURL, nil)
+	req = req.WithContext(SetUserContext(req.Context(), user))
+	rec := httptest.NewRecorder()
+	handler.StreamContentsHandler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("StreamContentsHandler code = %d; want 200", rec.Code)
+	}
+	var streamResp StreamContentsResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &streamResp); err != nil {
+		t.Fatalf("failed to decode StreamContentsResponse: %v", err)
+	}
+	if len(streamResp.Items) != 2 {
+		t.Errorf("expected 2 items, got %d", len(streamResp.Items))
+	}
+
+	// 2. Test StreamItemIDsHandler
+	reqIDs := httptest.NewRequest(http.MethodGet, "/reader/api/0/stream/items/ids?s=feed/"+feed.FeedURL, nil)
+	reqIDs = reqIDs.WithContext(SetUserContext(reqIDs.Context(), user))
+	recIDs := httptest.NewRecorder()
+	handler.StreamItemIDsHandler(recIDs, reqIDs)
+
+	if recIDs.Code != http.StatusOK {
+		t.Fatalf("StreamItemIDsHandler code = %d; want 200", recIDs.Code)
+	}
+	var idsResp ItemIDsResponse
+	if err := json.Unmarshal(recIDs.Body.Bytes(), &idsResp); err != nil {
+		t.Fatalf("failed to decode ItemIDsResponse: %v", err)
+	}
+	if len(idsResp.ItemRefs) != 2 {
+		t.Errorf("expected 2 item refs, got %d", len(idsResp.ItemRefs))
+	}
+
+	// 3. Test StreamItemsContentsHandler with item IDs
+	firstID := idsResp.ItemRefs[0].ID
+	reqItems := httptest.NewRequest(http.MethodGet, "/reader/api/0/stream/items/contents?i="+firstID, nil)
+	reqItems = reqItems.WithContext(SetUserContext(reqItems.Context(), user))
+	recItems := httptest.NewRecorder()
+	handler.StreamItemsContentsHandler(recItems, reqItems)
+
+	if recItems.Code != http.StatusOK {
+		t.Fatalf("StreamItemsContentsHandler code = %d; want 200", recItems.Code)
+	}
+	var itemsResp StreamContentsResponse
+	if err := json.Unmarshal(recItems.Body.Bytes(), &itemsResp); err != nil {
+		t.Fatalf("failed to decode items contents resp: %v", err)
+	}
+	if len(itemsResp.Items) != 1 {
+		t.Errorf("expected 1 item, got %d", len(itemsResp.Items))
+	}
+
+	// 4. Test EditTagHandler (mark read)
+	formTag := url.Values{
+		"i": {firstID},
+		"a": {"user/-/state/com.google/read"},
+	}
+	reqTag := httptest.NewRequest(http.MethodPost, "/reader/api/0/edit-tag", strings.NewReader(formTag.Encode()))
+	reqTag.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	reqTag = reqTag.WithContext(SetUserContext(reqTag.Context(), user))
+	recTag := httptest.NewRecorder()
+	handler.EditTagHandler(recTag, reqTag)
+	if recTag.Code != http.StatusOK {
+		t.Errorf("EditTagHandler code = %d; want 200", recTag.Code)
+	}
+
+	// 5. Test MarkAllAsReadHandler
+	formMarkAll := url.Values{
+		"s": {"feed/" + feed.FeedURL},
+	}
+	reqMarkAll := httptest.NewRequest(http.MethodPost, "/reader/api/0/mark-all-as-read", strings.NewReader(formMarkAll.Encode()))
+	reqMarkAll.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	reqMarkAll = reqMarkAll.WithContext(SetUserContext(reqMarkAll.Context(), user))
+	recMarkAll := httptest.NewRecorder()
+	handler.MarkAllAsReadHandler(recMarkAll, reqMarkAll)
+	if recMarkAll.Code != http.StatusOK {
+		t.Errorf("MarkAllAsReadHandler code = %d; want 200", recMarkAll.Code)
+	}
+}
+
+func TestUnauthorizedRequests(t *testing.T) {
+	_, handler := setupTestDB(t)
+
+	// Requests without user in context should safely return 401 without panicking
+	req := httptest.NewRequest(http.MethodGet, "/reader/api/0/user-info", nil)
+	rec := httptest.NewRecorder()
+	handler.UserInfoHandler(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("UserInfoHandler code = %d; want 401", rec.Code)
+	}
+
+	recUnread := httptest.NewRecorder()
+	handler.UnreadCountHandler(recUnread, req)
+	if recUnread.Code != http.StatusUnauthorized {
+		t.Errorf("UnreadCountHandler code = %d; want 401", recUnread.Code)
+	}
+
+	recStream := httptest.NewRecorder()
+	handler.StreamContentsHandler(recStream, req)
+	if recStream.Code != http.StatusUnauthorized {
+		t.Errorf("StreamContentsHandler code = %d; want 401", recStream.Code)
+	}
+
+	recEdit := httptest.NewRecorder()
+	handler.EditTagHandler(recEdit, req)
+	if recEdit.Code != http.StatusUnauthorized {
+		t.Errorf("EditTagHandler code = %d; want 401", recEdit.Code)
+	}
+}
+
+

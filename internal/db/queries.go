@@ -34,21 +34,22 @@ func (d *DB) DeleteFeed(feedID int64) error {
 	return err
 }
 
-func (d *DB) GetFeedByID(feedID int64) (*Feed, error) {
-	row := d.QueryRow(`
-		SELECT f.id, f.title, f.feed_url, f.site_url, f.category_id, COALESCE(c.name, ''), COALESCE(c.sort_order, 0),
-		       f.schedule_type, f.schedule_value, f.last_fetched_at, f.last_error, f.etag, f.last_modified, f.created_at
-		FROM feeds f
-		LEFT JOIN categories c ON f.category_id = c.id
-		WHERE f.id = ?
-	`, feedID)
+const feedSelectColumns = `
+	f.id, f.title, f.feed_url, f.site_url, f.category_id, COALESCE(c.name, ''), COALESCE(c.sort_order, 0),
+	f.schedule_type, f.schedule_value, f.last_fetched_at, f.last_error, f.etag, f.last_modified, f.created_at
+`
 
+type scanner interface {
+	Scan(dest ...any) error
+}
+
+func scanFeed(s scanner) (*Feed, error) {
 	var f Feed
 	var catName string
 	var catID sql.NullInt64
 	var lastFetched sql.NullTime
 
-	err := row.Scan(&f.ID, &f.Title, &f.FeedURL, &f.SiteURL, &catID, &catName, &f.CategorySortOrder,
+	err := s.Scan(&f.ID, &f.Title, &f.FeedURL, &f.SiteURL, &catID, &catName, &f.CategorySortOrder,
 		&f.ScheduleType, &f.ScheduleValue, &lastFetched, &f.LastError, &f.Etag, &f.LastModified, &f.CreatedAt)
 	if err != nil {
 		return nil, err
@@ -61,6 +62,26 @@ func (d *DB) GetFeedByID(feedID int64) (*Feed, error) {
 		f.LastFetchedAt = &lastFetched.Time
 	}
 	return &f, nil
+}
+
+func (d *DB) GetFeedByID(feedID int64) (*Feed, error) {
+	row := d.QueryRow(`
+		SELECT `+feedSelectColumns+`
+		FROM feeds f
+		LEFT JOIN categories c ON f.category_id = c.id
+		WHERE f.id = ?
+	`, feedID)
+	return scanFeed(row)
+}
+
+func (d *DB) GetFeedByURL(feedURL string) (*Feed, error) {
+	row := d.QueryRow(`
+		SELECT `+feedSelectColumns+`
+		FROM feeds f
+		LEFT JOIN categories c ON f.category_id = c.id
+		WHERE f.feed_url = ?
+	`, feedURL)
+	return scanFeed(row)
 }
 
 func (d *DB) GetAllFeeds() ([]*Feed, error) {

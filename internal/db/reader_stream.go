@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -13,7 +14,6 @@ type StreamQueryFilter struct {
 	ExcludeTarget string // 如 "user/-/state/com.google/read" (过滤未读)
 	Limit         int
 	Continuation  int64  // 基于文章 ID 或时间戳的分页
-	OnlyIDs       bool
 	OrderOldest   bool
 }
 
@@ -57,9 +57,14 @@ func (d *DB) GetStreamItems(filter StreamQueryFilter) ([]*StreamItem, error) {
 
 	// 针对特定目标流
 	if strings.HasPrefix(filter.StreamID, "feed/") {
-		feedID := strings.TrimPrefix(filter.StreamID, "feed/")
-		whereClauses = append(whereClauses, "a.feed_id = ?")
-		args = append(args, feedID)
+		feedTarget := strings.TrimPrefix(filter.StreamID, "feed/")
+		if id, err := strconv.ParseInt(feedTarget, 10, 64); err == nil && id > 0 {
+			whereClauses = append(whereClauses, "a.feed_id = ?")
+			args = append(args, id)
+		} else {
+			whereClauses = append(whereClauses, "f.feed_url = ?")
+			args = append(args, feedTarget)
+		}
 	} else if strings.HasPrefix(filter.StreamID, "user/-/label/") {
 		categoryName := strings.TrimPrefix(filter.StreamID, "user/-/label/")
 		whereClauses = append(whereClauses, "c.name = ?")
@@ -190,11 +195,18 @@ func (d *DB) MarkArticleStarred(userID, articleID int64, starred bool) error {
 	return err
 }
 
-func (d *DB) MarkFeedAllRead(userID, feedID int64, beforeTimestamp int64) error {
-	beforeTime := time.Unix(beforeTimestamp, 0)
-	if beforeTimestamp == 0 {
-		beforeTime = time.Now()
+func normalizeTimestamp(ts int64) time.Time {
+	if ts <= 0 {
+		return time.Now()
 	}
+	if ts > 1e12 {
+		ts = ts / 1e6
+	}
+	return time.Unix(ts, 0)
+}
+
+func (d *DB) MarkFeedAllRead(userID, feedID int64, beforeTimestamp int64) error {
+	beforeTime := normalizeTimestamp(beforeTimestamp)
 
 	_, err := d.Exec(`
 		INSERT INTO article_states (user_id, article_id, is_read, read_at)
@@ -209,10 +221,7 @@ func (d *DB) MarkFeedAllRead(userID, feedID int64, beforeTimestamp int64) error 
 }
 
 func (d *DB) MarkAllArticlesRead(userID int64, beforeTimestamp int64) error {
-	beforeTime := time.Unix(beforeTimestamp, 0)
-	if beforeTimestamp == 0 {
-		beforeTime = time.Now()
-	}
+	beforeTime := normalizeTimestamp(beforeTimestamp)
 
 	_, err := d.Exec(`
 		INSERT INTO article_states (user_id, article_id, is_read, read_at)

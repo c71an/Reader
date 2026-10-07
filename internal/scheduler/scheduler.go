@@ -152,12 +152,13 @@ func (s *Scheduler) shouldFetch(feed *db.Feed, now time.Time) bool {
 	}
 
 	s.mu.Lock()
-	if s.isBusy[feed.ID] {
-		s.mu.Unlock()
-		return false
-	}
+	busy := s.isBusy[feed.ID]
 	lastFired := s.lastFired[feed.ID]
 	s.mu.Unlock()
+
+	if busy {
+		return false
+	}
 
 	lastTime := feed.CreatedAt
 	if feed.LastFetchedAt != nil {
@@ -204,8 +205,8 @@ func (s *Scheduler) checkDailyFixed(timesStr string, lastTime, now time.Time) bo
 			continue
 		}
 
-		// 如果当前时间已经过了 targetTime，并且上次抓取在 targetTime 之前
-		if now.After(targetTime) && lastTime.Before(targetTime) {
+		// 如果当前时间已经到了或过了 targetTime，并且上次抓取在 targetTime 之前
+		if !now.Before(targetTime) && lastTime.Before(targetTime) {
 			return true
 		}
 	}

@@ -82,6 +82,21 @@ func (h *AdminHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+type contextKey string
+
+const adminUserKey contextKey = "admin_user"
+
+func setUserContext(ctx context.Context, user *db.User) context.Context {
+	return context.WithValue(ctx, adminUserKey, user)
+}
+
+func getUserFromContext(ctx context.Context) *db.User {
+	if u, ok := ctx.Value(adminUserKey).(*db.User); ok {
+		return u
+	}
+	return nil
+}
+
 // 认证中间件
 func (h *AdminHandler) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -108,7 +123,7 @@ func (h *AdminHandler) AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), "user", user)
+		ctx := setUserContext(r.Context(), user)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -454,17 +469,27 @@ func (h *AdminHandler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 
 // 获取个人设置 (包含 Reeder 凭证及接入指引)
 func (h *AdminHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
-	user := r.Context().Value("user").(*db.User)
+	user := getUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"username":   user.Username,
-		"auth_token": user.AuthToken,
+		"username":    user.Username,
+		"auth_token":  user.AuthToken,
 		"server_time": time.Now().Format("2006-01-02 15:04:05"),
 	})
 }
 
 // 查看指定订阅源在数据库中的文章详情
 func (h *AdminHandler) GetFeedArticles(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	idStr := chi.URLParam(r, "id")
 	feedID, _ := strconv.ParseInt(idStr, 10, 64)
 
@@ -474,7 +499,6 @@ func (h *AdminHandler) GetFeedArticles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user := r.Context().Value("user").(*db.User)
 	limit := 100
 	if lStr := r.URL.Query().Get("limit"); lStr != "" {
 		if l, err := strconv.Atoi(lStr); err == nil && l > 0 {
@@ -507,6 +531,12 @@ func (h *AdminHandler) GetFeedArticles(w http.ResponseWriter, r *http.Request) {
 
 // 批量设置文章已读/未读状态
 func (h *AdminHandler) BatchMarkArticlesRead(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	var req struct {
 		ArticleIDs []int64 `json:"article_ids"`
 		IsRead     bool    `json:"is_read"`
@@ -516,7 +546,6 @@ func (h *AdminHandler) BatchMarkArticlesRead(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	user := r.Context().Value("user").(*db.User)
 	if err := h.db.SetArticlesRead(user.ID, req.ArticleIDs, req.IsRead); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

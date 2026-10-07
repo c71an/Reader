@@ -81,8 +81,8 @@ func InitDB(dbPath, defaultUser, defaultPass string) (*DB, error) {
 	database.SetConnMaxLifetime(time.Hour)
 
 	d := &DB{database}
-	if err := d.migrate(); err != nil {
-		return nil, fmt.Errorf("migration failed: %w", err)
+	if err := d.initSchema(); err != nil {
+		return nil, fmt.Errorf("init schema failed: %w", err)
 	}
 
 	if err := d.ensureDefaultUser(defaultUser, defaultPass); err != nil {
@@ -92,7 +92,7 @@ func InitDB(dbPath, defaultUser, defaultPass string) (*DB, error) {
 	return d, nil
 }
 
-func (d *DB) migrate() error {
+func (d *DB) initSchema() error {
 	schema := `
 	CREATE TABLE IF NOT EXISTS users (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -8,16 +8,18 @@ import (
 	"strings"
 
 	"reader/internal/db"
+	"reader/internal/fetcher"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 type Handler struct {
-	db *db.DB
+	db      *db.DB
+	fetcher *fetcher.Fetcher
 }
 
-func NewHandler(database *db.DB) *Handler {
-	return &Handler{db: database}
+func NewHandler(database *db.DB, fetcher *fetcher.Fetcher) *Handler {
+	return &Handler{db: database, fetcher: fetcher}
 }
 
 // ClientLogin 实现 Reeder 客户端标准 Google Reader 认证

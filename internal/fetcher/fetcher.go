@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -90,7 +91,8 @@ func (f *Fetcher) FetchFeed(ctx context.Context, feed *db.Feed) (int, error) {
 		return 0, fmt.Errorf("%s", errStr)
 	}
 
-	parsedFeed, err := f.fp.Parse(resp.Body)
+	// 限制响应体最多读取 10MB，防止恶意异常大响应耗尽内存
+	parsedFeed, err := f.fp.Parse(io.LimitReader(resp.Body, 10<<20))
 	if err != nil {
 		now := time.Now()
 		_ = f.db.UpdateFeedFetchStatus(feed.ID, now, fmt.Sprintf("parse error: %v", err), feed.Etag, feed.LastModified)

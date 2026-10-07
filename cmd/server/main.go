@@ -70,7 +70,7 @@ func main() {
 	}))
 
 	// Google Reader API Handlers
-	greaderHandler := greader.NewHandler(database)
+	greaderHandler := greader.NewHandler(database, f)
 
 	// Reeder 认证接口
 	r.Post("/accounts/ClientLogin", greaderHandler.ClientLogin)
@@ -88,6 +88,8 @@ func main() {
 			r.Get("/user-info", greaderHandler.UserInfoHandler)
 			r.Get("/subscription/list", greaderHandler.SubscriptionListHandler)
 			r.Post("/subscription/edit", greaderHandler.SubscriptionEditHandler)
+			r.Post("/subscription/quickadd", greaderHandler.QuickAddHandler)
+			r.Get("/subscription/quickadd", greaderHandler.QuickAddHandler)
 			r.Get("/tag/list", greaderHandler.TagListHandler)
 			r.Get("/unread-count", greaderHandler.UnreadCountHandler)
 

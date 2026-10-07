@@ -51,6 +51,10 @@ type UserInfoResponse struct {
 // UserInfoHandler 返回 GET /reader/api/0/user-info
 func (h *Handler) UserInfoHandler(w http.ResponseWriter, r *http.Request) {
 	user := GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	_ = json.NewEncoder(w).Encode(UserInfoResponse{
 		UserID:        fmt.Sprintf("%d", user.ID),
@@ -119,6 +123,10 @@ func (h *Handler) TagListHandler(w http.ResponseWriter, r *http.Request) {
 // UnreadCountHandler 返回 GET /reader/api/0/unread-count
 func (h *Handler) UnreadCountHandler(w http.ResponseWriter, r *http.Request) {
 	user := GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 	counts, total, err := h.db.GetUnreadCounts(user.ID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
