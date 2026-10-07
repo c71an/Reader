@@ -166,7 +166,6 @@
                       <div class="font-semibold text-slate-900 flex items-center space-x-2">
                         <button @click="openDbView(feed)" class="text-left hover:text-indigo-600 transition flex items-center group max-w-full truncate" title="点击查看数据库文章内容">
                           <span x-text="feed.title" class="group-hover:underline truncate"></span>
-                          <span class="ml-1 text-[11px] text-slate-400 group-hover:text-indigo-500 font-normal shrink-0">🔍数据库</span>
                         </button>
                         <template x-if="feed.site_url">
                           <a :href="feed.site_url" target="_blank" class="text-slate-400 hover:text-indigo-600 shrink-0" title="打开网站主页">
@@ -202,9 +201,6 @@
                     </td>
                     <td class="px-6 py-3.5 text-right whitespace-nowrap">
                       <div class="inline-flex items-center justify-end space-x-1.5">
-                        <button @click="openDbView(feed)" class="text-xs px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium rounded transition">
-                          数据
-                        </button>
                         <button @click="fetchNow(feed)" class="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded transition">
                           抓取
                         </button>
@@ -748,3 +744,4 @@
   </script>
 </body>
 </html>
+
