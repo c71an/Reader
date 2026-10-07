@@ -164,21 +164,25 @@ func (d *DB) migrate() error {
 }
 
 func (d *DB) ensureDefaultUser(username, password string) error {
-	var count int
-	err := d.QueryRow("SELECT COUNT(*) FROM users WHERE username = ?", username).Scan(&count)
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
+
+	var count int
+	err = d.QueryRow("SELECT COUNT(*) FROM users WHERE username = ?", username).Scan(&count)
+	if err != nil {
+		return err
+	}
+
 	if count == 0 {
-		hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-		if err != nil {
-			return err
-		}
-		// 初始 authToken
 		authToken := fmt.Sprintf("reader_token_%d", time.Now().UnixNano())
 		_, err = d.Exec("INSERT INTO users (username, password_hash, auth_token) VALUES (?, ?, ?)", username, string(hash), authToken)
 		return err
 	}
-	return nil
+
+	// 用户已存在：将密码同步更新为环境变量中设置的最新的密码
+	_, err = d.Exec("UPDATE users SET password_hash = ? WHERE username = ?", string(hash), username)
+	return err
 }
 
