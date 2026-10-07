@@ -67,20 +67,33 @@ func InitDB(dbPath, defaultUser, defaultPass string) (*DB, error) {
 		return nil, fmt.Errorf("failed to create db directory: %w", err)
 	}
 
-	dsn := fmt.Sprintf("%s?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)", dbPath)
+	// 针对 Docker 挂载卷（尤其是 Windows Docker Desktop 的 VirtioFS/gRPC-FUSE）进行优化：
+	// 设置 busy_timeout 避免锁竞争；优先尝试 WAL，如环境受限则优雅降级。
+	dsn := fmt.Sprintf("%s?_pragma=busy_timeout(10000)&_pragma=synchronous(NORMAL)&_pragma=foreign_keys(ON)", dbPath)
 	database, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite database: %w", err)
 	}
 
-	// 限制单个写锁连接池体验最佳
-	database.SetMaxOpenConns(25)
-	database.SetMaxIdleConns(5)
+	// 纯 Go SQLite 针对单文件数据库，写操作采用单连接或自适应连接池体验最稳定
+	database.SetMaxOpenConns(1)
+	database.SetMaxIdleConns(1)
 	database.SetConnMaxLifetime(time.Hour)
+
+	// 尝试配置 journal_mode，如果 WAL 模式因跨系统共享内存报错（4618 SHMOPEN），则回退到 DELETE 模式
+	var currentJournalMode string
+	_ = database.QueryRow("PRAGMA journal_mode=WAL;").Scan(&currentJournalMode)
+	if currentJournalMode != "wal" {
+		_ = database.QueryRow("PRAGMA journal_mode=DELETE;").Scan(&currentJournalMode)
+	}
 
 	d := &DB{database}
 	if err := d.migrate(); err != nil {
-		return nil, fmt.Errorf("migration failed: %w", err)
+		// 如果在 migration 步骤依然报 WAL/SHM 相关的 disk I/O 错误，则强制切换为 DELETE 模式后重试
+		_, _ = database.Exec("PRAGMA journal_mode=DELETE;")
+		if errRetry := d.migrate(); errRetry != nil {
+			return nil, fmt.Errorf("migration failed: %w", errRetry)
+		}
 	}
 
 	if err := d.ensureDefaultUser(defaultUser, defaultPass); err != nil {
