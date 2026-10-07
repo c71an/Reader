@@ -187,9 +187,9 @@ func (d *DB) SaveArticles(articles []*Article) (int, error) {
 }
 
 // 查询指定订阅源下的已入库文章列表 (供 Web 端查看数据库存储内容)
-func (d *DB) GetFeedArticles(feedID int64, limit, offset int) ([]*Article, int, error) {
-	if limit <= 0 || limit > 100 {
-		limit = 50
+func (d *DB) GetFeedArticles(feedID int64, userID int64, limit, offset int) ([]*Article, int, error) {
+	if limit <= 0 || limit > 500 {
+		limit = 100
 	}
 	if offset < 0 {
 		offset = 0
@@ -206,11 +206,11 @@ func (d *DB) GetFeedArticles(feedID int64, limit, offset int) ([]*Article, int, 
 		       COALESCE(s.is_read, 0) as is_read, COALESCE(s.is_starred, 0) as is_starred
 		FROM articles a
 		JOIN feeds f ON a.feed_id = f.id
-		LEFT JOIN article_states s ON a.id = s.article_id
+		LEFT JOIN article_states s ON a.id = s.article_id AND s.user_id = ?
 		WHERE a.feed_id = ?
 		ORDER BY a.published_at DESC, a.id DESC
 		LIMIT ? OFFSET ?
-	`, feedID, limit, offset)
+	`, userID, feedID, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}

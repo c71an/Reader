@@ -295,7 +295,8 @@ func (h *AdminHandler) GetFeedArticles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	limit := 50
+	user := r.Context().Value("user").(*db.User)
+	limit := 100
 	if lStr := r.URL.Query().Get("limit"); lStr != "" {
 		if l, err := strconv.Atoi(lStr); err == nil && l > 0 {
 			limit = l
@@ -309,7 +310,7 @@ func (h *AdminHandler) GetFeedArticles(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	articles, total, err := h.db.GetFeedArticles(feedID, limit, offset)
+	articles, total, err := h.db.GetFeedArticles(feedID, user.ID, limit, offset)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
