@@ -135,6 +135,9 @@
         <button @click="runBatchAction('fetch')" :disabled="batchActionLoading" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs font-semibold flex items-center transition shadow-sm disabled:opacity-50">
           ⚡ 抓取
         </button>
+        <button @click="openStaggerModal(getSelectedFeeds(), '已选订阅')" :disabled="batchActionLoading" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 rounded-lg text-xs font-semibold flex items-center transition shadow-sm disabled:opacity-50">
+          ⏱ 错峰分配
+        </button>
         <button @click="runBatchAction('pause')" :disabled="batchActionLoading" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 rounded-lg text-xs font-semibold flex items-center transition shadow-sm disabled:opacity-50">
           ⏸ 暂停
         </button>
@@ -176,6 +179,14 @@
                         x-text="group.unreadTotal + ' 未读'"></span>
                 </template>
               </div>
+            </div>
+
+            <div class="flex items-center space-x-2" @click.stop>
+              <button @click="openStaggerModal(group.feeds, group.categoryName)" 
+                      class="text-xs text-indigo-600 hover:text-indigo-800 font-medium px-2.5 py-1 rounded-md bg-white border border-slate-200 hover:border-indigo-300 transition shadow-2xs flex items-center"
+                      title="为本文件夹内所有源均匀分配交错时间">
+                ⏱ 错峰分配
+              </button>
             </div>
           </div>
 
@@ -346,6 +357,57 @@
       <div class="mt-6 flex justify-end space-x-3">
         <button @click="closeModal()" class="px-4 py-2 border border-slate-300 rounded-md text-sm text-slate-700 hover:bg-slate-50 transition">取消</button>
         <button @click="saveModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 错峰时间分配弹窗 -->
+  <div x-show="showStaggerModal" class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 border border-slate-200">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 class="text-lg font-bold text-slate-900">自动交错分配拉取时间 (错峰调度)</h3>
+          <p class="text-xs text-slate-500 mt-0.5" x-text="'针对：' + staggerTargetName + '（共 ' + staggerTargetFeeds.length + ' 个源）'"></p>
+        </div>
+        <button @click="showStaggerModal = false" class="text-slate-400 hover:text-slate-600 p-1">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <div class="space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">起始时间 (HH:MM)</label>
+            <input type="text" x-model="staggerForm.start_time" placeholder="08:00" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono focus:ring-indigo-500 focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">时间跨度 / 窗口 (分钟)</label>
+            <input type="number" x-model.number="staggerForm.window_minutes" min="5" max="720" placeholder="30" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono focus:ring-indigo-500 focus:border-indigo-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 uppercase mb-2">预计分配时间预览 (实时计算):</label>
+          <div class="bg-slate-50 rounded-lg p-3 border border-slate-200 max-h-48 overflow-y-auto space-y-1.5 font-mono text-xs">
+            <template x-for="(item, idx) in staggerPreviewList" :key="item.id">
+              <div class="flex items-center justify-between py-1 px-2 rounded hover:bg-slate-100 transition">
+                <span class="text-slate-800 font-sans truncate max-w-[260px]" x-text="item.title"></span>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-800" x-text="item.time"></span>
+              </div>
+            </template>
+          </div>
+          <div class="text-[11px] text-slate-400 mt-1.5 flex items-center justify-between">
+            <span>💡 配合内置的 10~30 秒 Random Jitter，有效杜绝瞬时并发</span>
+            <span x-text="'平均间隔 ~' + staggerAverageStep + ' 分钟'"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-6 flex justify-end space-x-3">
+        <button @click="showStaggerModal = false" class="px-4 py-2 border border-slate-300 rounded-md text-sm text-slate-700 hover:bg-slate-50 transition">取消</button>
+        <button @click="saveStaggerSchedule()" :disabled="staggerLoading || staggerTargetFeeds.length === 0" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-md text-sm font-medium transition flex items-center">
+          <span x-text="staggerLoading ? '正在分配...' : '确认应用分配'"></span>
+        </button>
       </div>
     </div>
   </div>
@@ -578,6 +640,11 @@
         dbActionLoading: false,
         selectedFeedIds: [],
         batchActionLoading: false,
+        showStaggerModal: false,
+        staggerLoading: false,
+        staggerTargetName: '',
+        staggerTargetFeeds: [],
+        staggerForm: { start_time: '08:00', window_minutes: 30 },
         modalForm: { id: null, title: '', feed_url: '', category_name: '', schedule_type: 'daily_fixed', schedule_value: '08:00' },
 
         init() {
@@ -704,6 +771,82 @@
             if (feed) {
               this.openEditModal(feed);
             }
+          }
+        },
+
+        // 获取已勾选订阅列表
+        getSelectedFeeds() {
+          return this.feeds.filter(f => this.selectedFeedIds.includes(f.id));
+        },
+
+        // 打开错峰时间分配弹窗
+        openStaggerModal(feeds, name) {
+          if (!feeds || feeds.length === 0) {
+            alert('请先选择订阅源');
+            return;
+          }
+          this.staggerTargetFeeds = feeds;
+          this.staggerTargetName = name || '订阅源';
+          this.staggerForm = { start_time: '08:00', window_minutes: 30 };
+          this.showStaggerModal = true;
+        },
+
+        // 实时计算预计分配交错时间预览
+        get staggerPreviewList() {
+          const n = this.staggerTargetFeeds.length;
+          if (n === 0) return [];
+          const windowMin = Number(this.staggerForm.window_minutes) || 30;
+          const parts = (this.staggerForm.start_time || '08:00').split(':');
+          let startH = parseInt(parts[0], 10);
+          if (isNaN(startH)) startH = 8;
+          let startM = parseInt(parts[1], 10);
+          if (isNaN(startM)) startM = 0;
+          const step = n > 1 ? (windowMin / n) : 0;
+
+          return this.staggerTargetFeeds.map((f, i) => {
+            const offset = Math.floor(i * step);
+            const totalMin = (startH * 60 + startM + offset) % 1440;
+            const h = String(Math.floor(totalMin / 60)).padStart(2, '0');
+            const m = String(totalMin % 60).padStart(2, '0');
+            return {
+              id: f.id,
+              title: f.title || f.feed_url,
+              time: `${h}:${m}`
+            };
+          });
+        },
+
+        get staggerAverageStep() {
+          const n = this.staggerTargetFeeds.length;
+          if (n <= 1) return 0;
+          const windowMin = Number(this.staggerForm.window_minutes) || 30;
+          return (windowMin / n).toFixed(1);
+        },
+
+        // 保存并应用错峰分配
+        async saveStaggerSchedule() {
+          if (this.staggerTargetFeeds.length === 0) return;
+          this.staggerLoading = true;
+          try {
+            const res = await fetch('/api/admin/feeds/distribute-schedule', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                feed_ids: this.staggerTargetFeeds.map(f => f.id),
+                start_time: this.staggerForm.start_time || '08:00',
+                window_minutes: Number(this.staggerForm.window_minutes) || 30
+              })
+            });
+            if (res.ok) {
+              this.showStaggerModal = false;
+              await this.loadFeeds();
+            } else {
+              alert('错峰时间分配失败');
+            }
+          } catch (e) {
+            alert('请求异常: ' + e);
+          } finally {
+            this.staggerLoading = false;
           }
         },
 

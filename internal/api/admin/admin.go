@@ -3,6 +3,7 @@ package admin
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -337,6 +338,80 @@ func (h *AdminHandler) BatchAction(w http.ResponseWriter, r *http.Request) {
 		"action":        req.Action,
 		"affected":      len(req.FeedIDs),
 		"total_fetched": totalFetched,
+	})
+}
+
+// 自动均匀分配交错时间 (Staggered Schedule)
+func (h *AdminHandler) DistributeSchedule(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		FeedIDs       []int64 `json:"feed_ids"`
+		StartTime     string  `json:"start_time"`     // 格式如 "08:00"
+		WindowMinutes int     `json:"window_minutes"` // 窗口跨度分钟数，如 30, 60
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid body", http.StatusBadRequest)
+		return
+	}
+
+	if len(req.FeedIDs) == 0 {
+		http.Error(w, "No feed_ids provided", http.StatusBadRequest)
+		return
+	}
+
+	startHour, startMin := 8, 0
+	if req.StartTime != "" {
+		parts := strings.Split(req.StartTime, ":")
+		if len(parts) == 2 {
+			if hVal, err := strconv.Atoi(strings.TrimSpace(parts[0])); err == nil {
+				startHour = hVal
+			}
+			if mVal, err := strconv.Atoi(strings.TrimSpace(parts[1])); err == nil {
+				startMin = mVal
+			}
+		}
+	}
+
+	window := req.WindowMinutes
+	if window <= 0 {
+		window = 30
+	}
+
+	n := len(req.FeedIDs)
+	var step float64
+	if n > 1 {
+		step = float64(window) / float64(n)
+	}
+
+	updatedList := make([]map[string]interface{}, 0, n)
+	for i, feedID := range req.FeedIDs {
+		feed, err := h.db.GetFeedByID(feedID)
+		if err != nil || feed == nil {
+			continue
+		}
+
+		offsetMinutes := int(float64(i) * step)
+		totalMin := (startHour*60 + startMin + offsetMinutes) % 1440
+		targetHour := totalMin / 60
+		targetMin := totalMin % 60
+		timeStr := fmt.Sprintf("%02d:%02d", targetHour, targetMin)
+
+		feed.ScheduleType = "daily_fixed"
+		feed.ScheduleValue = timeStr
+		if err := h.db.UpdateFeed(feed); err == nil {
+			updatedList = append(updatedList, map[string]interface{}{
+				"id":             feed.ID,
+				"title":          feed.Title,
+				"schedule_type":  feed.ScheduleType,
+				"schedule_value": feed.ScheduleValue,
+			})
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":  true,
+		"affected": len(updatedList),
+		"feeds":    updatedList,
 	})
 }
 
