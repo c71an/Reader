@@ -146,43 +146,123 @@
       </div>
     </div>
 
-    <!-- 底部常驻勾选操作栏 (当有选中项时显示) -->
+    <!-- 底部常驻勾选操作栏 (白色浮动 Dock 风格，图标展示，文字悬停气泡提示) -->
     <div x-show="selectedFeedIds.length > 0" 
          x-transition:enter="transition ease-out duration-200"
-         x-transition:enter-start="opacity-0 translate-y-4"
-         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:enter-start="opacity-0 translate-y-4 scale-95"
+         x-transition:enter-end="opacity-100 translate-y-0 scale-100"
          x-transition:leave="transition ease-in duration-150"
-         x-transition:leave-start="opacity-100 translate-y-0"
-         x-transition:leave-end="opacity-0 translate-y-4"
-         class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 text-white backdrop-blur-md px-5 py-3 rounded-2xl shadow-2xl flex items-center space-x-4 border border-slate-700 text-sm">
-      <div class="flex items-center space-x-2">
-        <span class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
-        <span>已选择 <span class="font-bold text-indigo-300" x-text="selectedFeedIds.length"></span> 项</span>
+         x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+         x-transition:leave-end="opacity-0 translate-y-4 scale-95"
+         class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white/95 text-slate-700 backdrop-blur-md px-3.5 py-2 rounded-2xl shadow-xl flex items-center space-x-1.5 border border-slate-200/90 text-sm select-none">
+      
+      <!-- 已选数量提示 -->
+      <div class="flex items-center space-x-1.5 px-2.5 py-1 text-xs font-medium text-slate-500 border-r border-slate-200 mr-1 shrink-0">
+        <span class="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
+        <span>已选 <span class="font-bold text-slate-800" x-text="selectedFeedIds.length"></span> 项</span>
       </div>
-      <div class="h-4 w-px bg-slate-700"></div>
-      <div class="flex items-center space-x-2">
-        <button @click="runBatchAction('fetch')" :disabled="loading.batch" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs font-semibold flex items-center transition shadow-sm disabled:opacity-50">
-          ⚡ 抓取
+
+      <!-- 抓取按钮 -->
+      <div class="relative group">
+        <button @click="runBatchAction('fetch')" :disabled="loading.batch" 
+                class="w-9 h-9 flex items-center justify-center rounded-xl text-slate-600 hover:text-indigo-600 hover:bg-slate-100 active:scale-95 transition disabled:opacity-40">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+          </svg>
         </button>
-        <button @click="openStaggerModal(getSelectedFeeds(), '已选订阅')" :disabled="loading.batch" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 rounded-lg text-xs font-semibold flex items-center transition shadow-sm disabled:opacity-50">
-          ⏱ 错峰分配
-        </button>
-        <button @click="runBatchAction('pause')" :disabled="loading.batch" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 rounded-lg text-xs font-semibold flex items-center transition shadow-sm disabled:opacity-50">
-          ⏸ 暂停
-        </button>
-        <button @click="runBatchAction('resume')" :disabled="loading.batch" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-semibold flex items-center transition shadow-sm disabled:opacity-50">
-          ▶ 恢复
-        </button>
-        <button x-show="selectedFeedIds.length === 1" @click="editSelectedFeed()" :disabled="loading.batch" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-semibold flex items-center transition shadow-sm disabled:opacity-50">
-          ✏️ 编辑
-        </button>
-        <button @click="runBatchAction('delete')" :disabled="loading.batch" class="px-3 py-1.5 bg-red-600 hover:bg-red-500 rounded-lg text-xs font-semibold flex items-center transition shadow-sm disabled:opacity-50">
-          🗑 删除
-        </button>
-        <button @click="selectedFeedIds = []" class="px-2 py-1.5 text-slate-400 hover:text-slate-200 text-xs transition">
-          取消
-        </button>
+        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center pointer-events-none z-50">
+          <span class="px-2 py-1 bg-slate-900 text-white text-[11px] font-medium rounded-md whitespace-nowrap shadow-md">立即抓取</span>
+          <span class="w-2 h-1 border-x-4 border-x-transparent border-t-4 border-t-slate-900"></span>
+        </div>
       </div>
+
+      <!-- 错峰分配 -->
+      <div class="relative group">
+        <button @click="openStaggerModal(getSelectedFeeds(), '已选订阅')" :disabled="loading.batch"
+                class="w-9 h-9 flex items-center justify-center rounded-xl text-slate-600 hover:text-indigo-600 hover:bg-slate-100 active:scale-95 transition disabled:opacity-40">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </button>
+        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center pointer-events-none z-50">
+          <span class="px-2 py-1 bg-slate-900 text-white text-[11px] font-medium rounded-md whitespace-nowrap shadow-md">错峰分配</span>
+          <span class="w-2 h-1 border-x-4 border-x-transparent border-t-4 border-t-slate-900"></span>
+        </div>
+      </div>
+
+      <!-- 暂停抓取 -->
+      <div class="relative group">
+        <button @click="runBatchAction('pause')" :disabled="loading.batch"
+                class="w-9 h-9 flex items-center justify-center rounded-xl text-slate-600 hover:text-amber-600 hover:bg-slate-100 active:scale-95 transition disabled:opacity-40">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </button>
+        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center pointer-events-none z-50">
+          <span class="px-2 py-1 bg-slate-900 text-white text-[11px] font-medium rounded-md whitespace-nowrap shadow-md">暂停抓取</span>
+          <span class="w-2 h-1 border-x-4 border-x-transparent border-t-4 border-t-slate-900"></span>
+        </div>
+      </div>
+
+      <!-- 恢复抓取 -->
+      <div class="relative group">
+        <button @click="runBatchAction('resume')" :disabled="loading.batch"
+                class="w-9 h-9 flex items-center justify-center rounded-xl text-slate-600 hover:text-emerald-600 hover:bg-slate-100 active:scale-95 transition disabled:opacity-40">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </button>
+        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center pointer-events-none z-50">
+          <span class="px-2 py-1 bg-slate-900 text-white text-[11px] font-medium rounded-md whitespace-nowrap shadow-md">恢复抓取</span>
+          <span class="w-2 h-1 border-x-4 border-x-transparent border-t-4 border-t-slate-900"></span>
+        </div>
+      </div>
+
+      <!-- 编辑 (单选时显示) -->
+      <div x-show="selectedFeedIds.length === 1" class="relative group">
+        <button @click="editSelectedFeed()" :disabled="loading.batch"
+                class="w-9 h-9 flex items-center justify-center rounded-xl text-slate-600 hover:text-indigo-600 hover:bg-slate-100 active:scale-95 transition disabled:opacity-40">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+          </svg>
+        </button>
+        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center pointer-events-none z-50">
+          <span class="px-2 py-1 bg-slate-900 text-white text-[11px] font-medium rounded-md whitespace-nowrap shadow-md">编辑订阅</span>
+          <span class="w-2 h-1 border-x-4 border-x-transparent border-t-4 border-t-slate-900"></span>
+        </div>
+      </div>
+
+      <!-- 删除按钮 -->
+      <div class="relative group">
+        <button @click="runBatchAction('delete')" :disabled="loading.batch"
+                class="w-9 h-9 flex items-center justify-center rounded-xl text-slate-600 hover:text-rose-600 hover:bg-slate-100 active:scale-95 transition disabled:opacity-40">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+          </svg>
+        </button>
+        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center pointer-events-none z-50">
+          <span class="px-2 py-1 bg-slate-900 text-white text-[11px] font-medium rounded-md whitespace-nowrap shadow-md">删除订阅</span>
+          <span class="w-2 h-1 border-x-4 border-x-transparent border-t-4 border-t-slate-900"></span>
+        </div>
+      </div>
+
+      <div class="h-4 w-px bg-slate-200 mx-1"></div>
+
+      <!-- 取消选择 -->
+      <div class="relative group">
+        <button @click="selectedFeedIds = []"
+                class="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 active:scale-95 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </button>
+        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center pointer-events-none z-50">
+          <span class="px-2 py-1 bg-slate-900 text-white text-[11px] font-medium rounded-md whitespace-nowrap shadow-md">取消勾选</span>
+          <span class="w-2 h-1 border-x-4 border-x-transparent border-t-4 border-t-slate-900"></span>
+        </div>
+      </div>
+
     </div>
 
     <!-- 订阅源文件夹分组列表 -->
