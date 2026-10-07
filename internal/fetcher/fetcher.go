@@ -81,7 +81,7 @@ func (f *Fetcher) FetchFeed(ctx context.Context, feed *db.Feed) (int, error) {
 		errStr := fmt.Sprintf("unexpected http status: %s", resp.Status)
 		now := time.Now()
 		_ = f.db.UpdateFeedFetchStatus(feed.ID, now, errStr, feed.Etag, feed.LastModified)
-		return 0, fmt.Errorf(errStr)
+		return 0, fmt.Errorf("%s", errStr)
 	}
 
 	parsedFeed, err := f.fp.Parse(resp.Body)

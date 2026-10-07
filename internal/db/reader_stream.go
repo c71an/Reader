@@ -9,6 +9,7 @@ import (
 type StreamQueryFilter struct {
 	UserID        int64
 	StreamID      string // 如 "user/-/state/com.google/reading-list", "feed/123", "user/-/label/CategoryName"
+	ItemIDs       []int64 // 指定查询文章 ID 列表 (用于 stream/items/contents)
 	ExcludeTarget string // 如 "user/-/state/com.google/read" (过滤未读)
 	Limit         int
 	Continuation  int64  // 基于文章 ID 或时间戳的分页
@@ -42,6 +43,16 @@ func (d *DB) GetStreamItems(filter StreamQueryFilter) ([]*StreamItem, error) {
 	// 针对排除已读 (只看未读)
 	if filter.ExcludeTarget == "user/-/state/com.google/read" {
 		whereClauses = append(whereClauses, "(s.is_read IS NULL OR s.is_read = 0)")
+	}
+
+	// 针对明确指定的文章 ID 列表 (Reeder 的 stream/items/contents 关键接口)
+	if len(filter.ItemIDs) > 0 {
+		placeholders := make([]string, len(filter.ItemIDs))
+		for i, id := range filter.ItemIDs {
+			placeholders[i] = "?"
+			args = append(args, id)
+		}
+		whereClauses = append(whereClauses, fmt.Sprintf("a.id IN (%s)", strings.Join(placeholders, ",")))
 	}
 
 	// 针对特定目标流

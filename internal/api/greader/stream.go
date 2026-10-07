@@ -137,6 +137,11 @@ func (h *Handler) StreamContentsHandler(w http.ResponseWriter, r *http.Request) 
 
 		tagItemHex := fmt.Sprintf("tag:google.com,2005:reader/item/%016x", it.ID)
 
+		contentBody := StreamContentBody{
+			Direction: "ltr",
+			Content:   it.Content,
+		}
+
 		outItems = append(outItems, StreamItemOutput{
 			ID:            tagItemHex,
 			CrawlTimeMsec: crawlMsec,
@@ -153,11 +158,9 @@ func (h *Handler) StreamContentsHandler(w http.ResponseWriter, r *http.Request) 
 				Title:    it.FeedTitle,
 				HTMLURL:  it.URL,
 			},
-			Content: StreamContentBody{
-				Direction: "ltr",
-				Content:   it.Content,
-			},
-			Author: it.Author,
+			Summary: contentBody,
+			Content: contentBody,
+			Author:  it.Author,
 		})
 	}
 
@@ -211,5 +214,103 @@ func (h *Handler) StreamItemIDsHandler(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(ItemIDsResponse{
 		ItemRefs: refs,
 	})
+}
+
+// StreamItemsContentsHandler 处理 GET 或 POST /reader/api/0/stream/items/contents
+// Reeder 专属关键接口：客户端拿到 IDs 列表后，通过 POST 或 GET 批量请求 ?i=id1&i=id2 拉取具体文章正文！
+func (h *Handler) StreamItemsContentsHandler(w http.ResponseWriter, r *http.Request) {
+	user := GetUserFromContext(r.Context())
+	_ = r.ParseForm()
+
+	rawIDs := r.Form["i"]
+	if len(rawIDs) == 0 {
+		rawIDs = r.URL.Query()["i"]
+	}
+
+	var articleIDs []int64
+	for _, rawID := range rawIDs {
+		id := parseArticleID(rawID)
+		if id > 0 {
+			articleIDs = append(articleIDs, id)
+		}
+	}
+
+	if len(articleIDs) == 0 {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		_ = json.NewEncoder(w).Encode(StreamContentsResponse{
+			Direction: "ltr",
+			ID:        "user/-/state/com.google/reading-list",
+			Title:     "Articles",
+			Items:     []StreamItemOutput{},
+		})
+		return
+	}
+
+	items, err := h.db.GetStreamItems(db.StreamQueryFilter{
+		UserID:  user.ID,
+		ItemIDs: articleIDs,
+		Limit:   len(articleIDs),
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	now := time.Now()
+	var outItems []StreamItemOutput
+	for _, it := range items {
+		cats := []string{"user/-/state/com.google/reading-list"}
+		if it.IsRead {
+			cats = append(cats, "user/-/state/com.google/read")
+		} else {
+			cats = append(cats, "user/-/state/com.google/fresh")
+		}
+		if it.IsStarred {
+			cats = append(cats, "user/-/state/com.google/starred")
+		}
+
+		pubUnix := it.PublishedAt.Unix()
+		pubUsec := fmt.Sprintf("%d", it.PublishedAt.UnixNano()/1000)
+		crawlMsec := fmt.Sprintf("%d", it.PublishedAt.UnixMilli())
+		tagItemHex := fmt.Sprintf("tag:google.com,2005:reader/item/%016x", it.ID)
+
+		contentBody := StreamContentBody{
+			Direction: "ltr",
+			Content:   it.Content,
+		}
+
+		outItems = append(outItems, StreamItemOutput{
+			ID:            tagItemHex,
+			CrawlTimeMsec: crawlMsec,
+			TimestampUsec: pubUsec,
+			Published:     pubUnix,
+			Updated:       pubUnix,
+			Title:         it.Title,
+			PublishedUsec: pubUsec,
+			Alternate:     []StreamLink{{Href: it.URL}},
+			Canonical:     []StreamLink{{Href: it.URL}},
+			Categories:    cats,
+			Origin: StreamOrigin{
+				StreamID: fmt.Sprintf("feed/%d", it.FeedID),
+				Title:    it.FeedTitle,
+				HTMLURL:  it.URL,
+			},
+			Summary: contentBody,
+			Content: contentBody,
+			Author:  it.Author,
+		})
+	}
+
+	resp := StreamContentsResponse{
+		Direction:   "ltr",
+		ID:          "user/-/state/com.google/reading-list",
+		Title:       "Articles",
+		Updated:     now.Unix(),
+		UpdatedUsec: now.UnixNano() / 1000,
+		Items:       outItems,
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	_ = json.NewEncoder(w).Encode(resp)
 }
 

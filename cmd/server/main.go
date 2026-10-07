@@ -83,6 +83,8 @@ func main() {
 			// 文章流
 			r.Get("/stream/contents/*", greaderHandler.StreamContentsHandler)
 			r.Get("/stream/items/ids", greaderHandler.StreamItemIDsHandler)
+			r.Get("/stream/items/contents", greaderHandler.StreamItemsContentsHandler)
+			r.Post("/stream/items/contents", greaderHandler.StreamItemsContentsHandler)
 
 			// 状态标记
 			r.Post("/edit-tag", greaderHandler.EditTagHandler)
