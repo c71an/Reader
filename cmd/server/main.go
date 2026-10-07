@@ -106,6 +106,7 @@ func main() {
 			r.Post("/feeds", adminHandler.CreateFeed)
 			r.Post("/feeds/batch", adminHandler.BatchAction)
 			r.Get("/feeds/{id}/articles", adminHandler.GetFeedArticles)
+			r.Post("/articles/batch-read", adminHandler.BatchMarkArticlesRead)
 			r.Put("/feeds/{id}", adminHandler.UpdateFeed)
 			r.Delete("/feeds/{id}", adminHandler.DeleteFeed)
 			r.Post("/feeds/{id}/fetch", adminHandler.FetchFeedNow)

@@ -404,3 +404,29 @@ func (h *AdminHandler) GetFeedArticles(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// 批量设置文章已读/未读状态
+func (h *AdminHandler) BatchMarkArticlesRead(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		ArticleIDs []int64 `json:"article_ids"`
+		IsRead     bool    `json:"is_read"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid body", http.StatusBadRequest)
+		return
+	}
+
+	user := r.Context().Value("user").(*db.User)
+	if err := h.db.SetArticlesRead(user.ID, req.ArticleIDs, req.IsRead); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":  true,
+		"affected": len(req.ArticleIDs),
+		"is_read":  req.IsRead,
+	})
+}
+
+

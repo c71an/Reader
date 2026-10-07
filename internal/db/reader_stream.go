@@ -137,6 +137,44 @@ func (d *DB) MarkArticleRead(userID, articleID int64, read bool) error {
 	return err
 }
 
+func (d *DB) SetArticlesRead(userID int64, articleIDs []int64, isRead bool) error {
+	if len(articleIDs) == 0 {
+		return nil
+	}
+	readInt := 0
+	var readAt *time.Time
+	if isRead {
+		readInt = 1
+		now := time.Now()
+		readAt = &now
+	}
+
+	tx, err := d.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.Prepare(`
+		INSERT INTO article_states (user_id, article_id, is_read, read_at)
+		VALUES (?, ?, ?, ?)
+		ON CONFLICT(user_id, article_id) DO UPDATE SET
+			is_read = excluded.is_read,
+			read_at = excluded.read_at
+	`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, aid := range articleIDs {
+		if _, err := stmt.Exec(userID, aid, readInt, readAt); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
 func (d *DB) MarkArticleStarred(userID, articleID int64, starred bool) error {
 	starredInt := 0
 	if starred {
