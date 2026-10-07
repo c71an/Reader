@@ -140,8 +140,8 @@ func (h *AdminHandler) CreateFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.ScheduleType != "daily_fixed" && req.ScheduleType != "interval" {
-		req.ScheduleType = "interval"
+	if req.ScheduleType != "daily_fixed" && req.ScheduleType != "interval" && req.ScheduleType != "paused" {
+		req.ScheduleType = "daily_fixed"
 	}
 	if req.ScheduleValue == "" {
 		if req.ScheduleType == "daily_fixed" {
@@ -172,8 +172,7 @@ func (h *AdminHandler) CreateFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 触发后台首次抓取
-	go h.scheduler.FetchNow(feed.ID)
+	// 添加订阅后不自动抓取刷新，严格等待下一个定时时间再抓取
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(feed)
@@ -257,8 +256,87 @@ func (h *AdminHandler) FetchFeedNow(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"success":     true,
+		"success":      true,
 		"new_articles": count,
+	})
+}
+
+// 切换单个订阅暂停/恢复状态
+func (h *AdminHandler) ToggleFeedPause(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, _ := strconv.ParseInt(idStr, 10, 64)
+
+	feed, err := h.db.GetFeedByID(id)
+	if err != nil {
+		http.Error(w, "Feed not found", http.StatusNotFound)
+		return
+	}
+
+	if feed.ScheduleType == "paused" {
+		feed.ScheduleType = "daily_fixed"
+		if feed.ScheduleValue == "" {
+			feed.ScheduleValue = "08:00"
+		}
+	} else {
+		feed.ScheduleType = "paused"
+	}
+
+	if err := h.db.UpdateFeed(feed); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(feed)
+}
+
+// 批量操作接口 (支持 action: pause, resume, delete, fetch)
+func (h *AdminHandler) BatchAction(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Action  string  `json:"action"` // "pause", "resume", "delete", "fetch"
+		FeedIDs []int64 `json:"feed_ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid body", http.StatusBadRequest)
+		return
+	}
+
+	totalFetched := 0
+	for _, feedID := range req.FeedIDs {
+		switch req.Action {
+		case "pause":
+			feed, err := h.db.GetFeedByID(feedID)
+			if err == nil && feed != nil {
+				feed.ScheduleType = "paused"
+				_ = h.db.UpdateFeed(feed)
+			}
+		case "resume":
+			feed, err := h.db.GetFeedByID(feedID)
+			if err == nil && feed != nil {
+				if feed.ScheduleType == "paused" {
+					feed.ScheduleType = "daily_fixed"
+					if feed.ScheduleValue == "" {
+						feed.ScheduleValue = "08:00"
+					}
+					_ = h.db.UpdateFeed(feed)
+				}
+			}
+		case "delete":
+			_ = h.db.DeleteFeed(feedID)
+		case "fetch":
+			count, err := h.scheduler.FetchNow(feedID)
+			if err == nil {
+				totalFetched += count
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":       true,
+		"action":        req.Action,
+		"affected":      len(req.FeedIDs),
+		"total_fetched": totalFetched,
 	})
 }
 

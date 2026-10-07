@@ -113,8 +113,13 @@ func (s *Scheduler) FetchNow(feedID int64) (int, error) {
 	return count, nil
 }
 
-// shouldFetch 核心判定函数：支持 daily_fixed (每天固定时间) 与 interval (间隔时间)
+// shouldFetch 核心判定函数：支持 daily_fixed (每天固定时间) 与 interval (间隔时间)，跳过 paused (暂停)
 func (s *Scheduler) shouldFetch(feed *db.Feed, now time.Time) bool {
+	// 如果订阅处于暂停状态，永不自动调度抓取
+	if feed.ScheduleType == "paused" {
+		return false
+	}
+
 	s.mu.Lock()
 	if s.isBusy[feed.ID] {
 		s.mu.Unlock()
@@ -123,29 +128,27 @@ func (s *Scheduler) shouldFetch(feed *db.Feed, now time.Time) bool {
 	lastFired := s.lastFired[feed.ID]
 	s.mu.Unlock()
 
-	// 如果从未抓取过，先立即触发一次
-	if feed.LastFetchedAt == nil && lastFired.IsZero() {
-		return true
-	}
-
-	lastTime := time.Time{}
+	lastTime := feed.CreatedAt
 	if feed.LastFetchedAt != nil {
 		lastTime = *feed.LastFetchedAt
 	}
 	if lastFired.After(lastTime) {
 		lastTime = lastFired
 	}
+	if lastTime.IsZero() {
+		lastTime = now
+	}
 
+	// 添加订阅后不立即自动抓取，严格等待下一个固定或周期时间
 	switch feed.ScheduleType {
 	case "daily_fixed":
 		// 例如 "08:00" 或 "08:00,18:30"
 		return s.checkDailyFixed(feed.ScheduleValue, lastTime, now)
 	case "interval":
-		fallthrough
-	default:
-		// 例如 "30m", "1h", "12h" 或纯分钟数 "30"
 		duration := parseInterval(feed.ScheduleValue)
 		return now.Sub(lastTime) >= duration
+	default:
+		return false
 	}
 }
 
