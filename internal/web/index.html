@@ -14,6 +14,33 @@
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased min-h-screen" x-data="readerApp()" x-cloak>
   
+  <!-- 全局浮动 Toast 消息通知 -->
+  <div class="fixed top-5 right-5 z-[99999] flex flex-col space-y-2 pointer-events-none max-w-sm w-full">
+    <template x-for="toast in toasts" :key="toast.id">
+      <div x-transition:enter="transition ease-out duration-300"
+           x-transition:enter-start="opacity-0 translate-y-[-8px] scale-95"
+           x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+           x-transition:leave="transition ease-in duration-200"
+           x-transition:leave-start="opacity-100 scale-100"
+           x-transition:leave-end="opacity-0 scale-95"
+           class="pointer-events-auto px-4 py-3 rounded-xl shadow-lg border flex items-center justify-between text-sm transition"
+           :class="{
+             'bg-white text-emerald-900 border-emerald-200 shadow-emerald-500/10': toast.type === 'success',
+             'bg-white text-rose-900 border-rose-200 shadow-rose-500/10': toast.type === 'error',
+             'bg-white text-amber-900 border-amber-200 shadow-amber-500/10': toast.type === 'warning',
+             'bg-white text-slate-900 border-slate-200 shadow-slate-500/10': toast.type === 'info'
+           }">
+        <div class="flex items-center space-x-2.5 mr-2">
+          <span class="text-base" x-text="toast.type === 'success' ? '✅' : (toast.type === 'error' ? '❌' : (toast.type === 'warning' ? '⚠️' : 'ℹ️'))"></span>
+          <span class="font-medium leading-snug break-words" x-text="toast.message"></span>
+        </div>
+        <button @click="removeToast(toast.id)" class="text-slate-400 hover:text-slate-600 p-0.5 rounded transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+    </template>
+  </div>
+
   <!-- 顶部导航栏 -->
   <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -278,7 +305,10 @@
   </main>
 
   <!-- 添加/编辑订阅弹窗 -->
-  <div x-show="showAddModal || showEditModal" class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+  <div x-show="showAddModal || showEditModal" 
+       @keydown.escape.window="closeModal()" 
+       @click.self="closeModal()"
+       class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 border border-slate-200">
       <h3 class="text-lg font-bold text-slate-900 mb-4" x-text="showEditModal ? '修改订阅与拉取计划' : '添加新订阅 (支持 RSSHub)'"></h3>
       
@@ -365,7 +395,10 @@
   </div>
 
   <!-- 错峰时间分配弹窗 -->
-  <div x-show="showStaggerModal" class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+  <div x-show="showStaggerModal" 
+       @keydown.escape.window="showStaggerModal = false" 
+       @click.self="showStaggerModal = false"
+       class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 border border-slate-200">
       <div class="flex items-center justify-between mb-4">
         <div>
@@ -416,7 +449,10 @@
   </div>
 
   <!-- 文件夹设置弹窗 (设置标题与排序) -->
-  <div x-show="showCategoryModal" class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+  <div x-show="showCategoryModal" 
+       @keydown.escape.window="showCategoryModal = false" 
+       @click.self="showCategoryModal = false"
+       class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6 border border-slate-200">
       <div class="flex items-center justify-between mb-4">
         <div>
@@ -452,7 +488,10 @@
   </div>
 
   <!-- Reeder 接入指导弹窗 -->
-  <div x-show="showClientInfoModal" class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+  <div x-show="showClientInfoModal" 
+       @keydown.escape.window="showClientInfoModal = false" 
+       @click.self="showClientInfoModal = false"
+       class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 border border-slate-200">
       <h3 class="text-lg font-bold text-slate-900 mb-2">Reeder 客户端连接配置</h3>
       <p class="text-xs text-slate-500 mb-4">Reeder 完美原生支持 Google Reader API 规范，请在 Reeder 中直接添加账号：</p>
@@ -475,7 +514,10 @@
   </div>
 
   <!-- 数据库文章内容查看弹窗 (展示 articles 表所有表头与字段) -->
-  <div x-show="showDbModal" class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+  <div x-show="showDbModal" 
+       @keydown.escape.window="showDbModal = false" 
+       @click.self="showDbModal = false"
+       class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl max-w-7xl w-full max-h-[92vh] flex flex-col border border-slate-200 overflow-hidden">
       <!-- 弹窗顶栏 -->
       <div class="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
@@ -615,6 +657,8 @@
 
   <!-- 正文 (content) 原始 HTML 源码弹窗 (最高层级) -->
   <div x-show="showContentModal" 
+       @keydown.escape.window="showContentModal = false" 
+       @click.self="showContentModal = false"
        style="z-index: 9999;"
        class="fixed inset-0 overflow-y-auto bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[88vh] flex flex-col border border-slate-200 overflow-hidden">
@@ -671,6 +715,7 @@
         showContentModal: false,
         detailArticle: null,
         copySuccess: false,
+        toasts: [],
         dbLoading: false,
         dbCurrentFeed: {},
         dbArticles: [],
@@ -691,6 +736,19 @@
 
         init() {
           this.checkAuth();
+        },
+
+        // 全局 Toast 提示通知
+        toast(message, type = 'info', duration = 3000) {
+          const id = Date.now() + Math.random().toString(36).substring(2, 6);
+          this.toasts.push({ id, message, type });
+          setTimeout(() => {
+            this.removeToast(id);
+          }, duration);
+        },
+
+        removeToast(id) {
+          this.toasts = this.toasts.filter(t => t.id !== id);
         },
 
         // 统一轻量 API 请求客户端
@@ -726,9 +784,10 @@
         async login() {
           try {
             await this.api('/api/admin/login', { method: 'POST', body: this.loginForm });
+            this.toast('登录成功', 'success');
             await this.checkAuth();
           } catch (e) {
-            alert('登录失败: ' + e.message);
+            this.toast('登录失败: ' + e.message, 'error');
           }
         },
 
@@ -737,6 +796,7 @@
             await this.api('/api/admin/logout', { method: 'POST' });
           } catch (_) {}
           this.isLoggedIn = false;
+          this.toast('已安全退出', 'info');
         },
 
         async loadFeeds() {
@@ -855,12 +915,26 @@
           return this.feeds.filter(f => this.selectedFeedIds.includes(f.id));
         },
 
-        // 批量操作执行
+        // 批量操作执行 (支持乐观更新暂停/恢复)
         async runBatchAction(action) {
           if (this.selectedFeedIds.length === 0) return;
           if (action === 'delete' && !confirm(`确定要删除选中的 ${this.selectedFeedIds.length} 个订阅源吗？`)) {
             return;
           }
+
+          // 乐观更新：暂停与恢复立即变更前端界面状态
+          const backupMap = new Map();
+          if (action === 'pause' || action === 'resume') {
+            const targetIds = new Set(this.selectedFeedIds);
+            this.feeds.forEach(f => {
+              if (targetIds.has(f.id)) {
+                backupMap.set(f.id, f.schedule_type);
+                f.schedule_type = action === 'pause' ? 'paused' : 'daily_fixed';
+              }
+            });
+            this.toast(action === 'pause' ? '已暂停所选订阅' : '已恢复所选订阅', 'success');
+          }
+
           this.batchActionLoading = true;
           try {
             const data = await this.api('/api/admin/feeds/batch', {
@@ -868,14 +942,20 @@
               body: { action, feed_ids: this.selectedFeedIds }
             });
             if (action === 'fetch') {
-              alert(`抓取完成，共新增 ${data.total_fetched || 0} 篇文章`);
-            }
-            if (action === 'delete') {
+              this.toast(`抓取完成，共新增 ${data.total_fetched || 0} 篇文章`, 'success');
+            } else if (action === 'delete') {
+              this.toast(`已成功删除选中的订阅源`, 'success');
               this.selectedFeedIds = [];
             }
             await this.loadFeeds();
           } catch (e) {
-            alert('操作异常: ' + e.message);
+            // 乐观更新回滚
+            if (backupMap.size > 0) {
+              this.feeds.forEach(f => {
+                if (backupMap.has(f.id)) f.schedule_type = backupMap.get(f.id);
+              });
+            }
+            this.toast('操作失败: ' + e.message, 'error');
           } finally {
             this.batchActionLoading = false;
           }
@@ -883,7 +963,7 @@
 
         // 错峰时间分配
         openStaggerModal(feeds, name) {
-          if (!feeds || feeds.length === 0) return alert('请先选择订阅源');
+          if (!feeds || feeds.length === 0) return this.toast('请先选择订阅源', 'warning');
           this.staggerTargetFeeds = feeds;
           this.staggerTargetName = name || '订阅源';
           this.staggerForm = { start_time: '08:00', window_minutes: 30 };
@@ -925,9 +1005,10 @@
               }
             });
             this.showStaggerModal = false;
+            this.toast('错峰时间分配已应用', 'success');
             await this.loadFeeds();
           } catch (e) {
-            alert('错峰时间分配失败: ' + e.message);
+            this.toast('错峰时间分配失败: ' + e.message, 'error');
           } finally {
             this.staggerLoading = false;
           }
@@ -946,7 +1027,7 @@
 
         async saveCategorySettings() {
           const newName = (this.categoryForm.name || '').trim();
-          if (!newName) return alert('文件夹标题不能为空');
+          if (!newName) return this.toast('文件夹标题不能为空', 'warning');
           this.categorySaving = true;
           try {
             await this.api('/api/admin/categories/update', {
@@ -961,9 +1042,10 @@
             if (this.selectedCategory === (this.categoryForm.current_name || '未分类')) {
               this.selectedCategory = newName;
             }
+            this.toast('文件夹设置已保存', 'success');
             await this.loadFeeds();
           } catch (e) {
-            alert('保存文件夹设置失败: ' + e.message);
+            this.toast('保存文件夹设置失败: ' + e.message, 'error');
           } finally {
             this.categorySaving = false;
           }
@@ -1007,15 +1089,16 @@
         },
 
         async saveModal() {
-          if (!this.modalForm.feed_url) return alert('请输入源地址');
+          if (!this.modalForm.feed_url) return this.toast('请输入源地址', 'warning');
           try {
             const isEdit = this.showEditModal && this.modalForm.id;
             const url = isEdit ? `/api/admin/feeds/${this.modalForm.id}` : '/api/admin/feeds';
             await this.api(url, { method: isEdit ? 'PUT' : 'POST', body: this.modalForm });
             this.closeModal();
+            this.toast(isEdit ? '订阅已更新' : '订阅已添加', 'success');
             await this.loadFeeds();
           } catch (e) {
-            alert('保存失败: ' + e.message);
+            this.toast('保存失败: ' + e.message, 'error');
           }
         },
 
@@ -1033,13 +1116,13 @@
             this.dbArticles = data.articles || [];
             this.dbArticlesTotal = data.total || 0;
           } catch (e) {
-            alert('读取数据库记录失败: ' + e.message);
+            this.toast('读取数据库记录失败: ' + e.message, 'error');
           } finally {
             this.dbLoading = false;
           }
         },
 
-        // 文章多选与已读标记
+        // 文章多选与已读标记 (支持 Optimistic UI 乐观立即更新)
         isArticleSelected(id) {
           return this.selectedArticleIds.includes(id);
         },
@@ -1060,18 +1143,45 @@
 
         async batchMarkArticlesRead(isRead) {
           if (this.selectedArticleIds.length === 0) return;
+          const targetIds = [...this.selectedArticleIds];
+          const idSet = new Set(targetIds);
+
+          // 乐观更新本地 articles 状态
+          const prevStates = new Map();
+          let deltaUnread = 0;
+          this.dbArticles.forEach(a => {
+            if (idSet.has(a.id)) {
+              prevStates.set(a.id, a.is_read);
+              if (a.is_read !== isRead) {
+                deltaUnread += isRead ? -1 : 1;
+              }
+              a.is_read = isRead;
+            }
+          });
+
+          // 乐观同步 feed 的未读数
+          if (this.dbCurrentFeed && this.dbCurrentFeed.unread_count !== undefined) {
+            this.dbCurrentFeed.unread_count = Math.max(0, this.dbCurrentFeed.unread_count + deltaUnread);
+          }
+          this.selectedArticleIds = [];
+          this.toast(isRead ? `已设为已读 (${targetIds.length} 篇)` : `已设为未读 (${targetIds.length} 篇)`, 'success');
+
           this.dbActionLoading = true;
           try {
             await this.api('/api/admin/articles/batch-read', {
               method: 'POST',
-              body: { article_ids: this.selectedArticleIds, is_read: isRead }
+              body: { article_ids: targetIds, is_read: isRead }
             });
-            const set = new Set(this.selectedArticleIds);
-            this.dbArticles.forEach(a => { if (set.has(a.id)) a.is_read = isRead; });
-            this.selectedArticleIds = [];
             await this.loadFeeds();
           } catch (e) {
-            alert('操作异常: ' + e.message);
+            // 出错时回滚
+            this.dbArticles.forEach(a => {
+              if (prevStates.has(a.id)) a.is_read = prevStates.get(a.id);
+            });
+            if (this.dbCurrentFeed && this.dbCurrentFeed.unread_count !== undefined) {
+              this.dbCurrentFeed.unread_count = Math.max(0, this.dbCurrentFeed.unread_count - deltaUnread);
+            }
+            this.toast('更新已读状态失败: ' + e.message, 'error');
           } finally {
             this.dbActionLoading = false;
           }
@@ -1079,15 +1189,26 @@
 
         async toggleSingleArticleRead(art) {
           const nextState = !art.is_read;
+          const prevState = art.is_read;
+          // 乐观更新
+          art.is_read = nextState;
+          if (this.dbCurrentFeed && this.dbCurrentFeed.unread_count !== undefined) {
+            this.dbCurrentFeed.unread_count = Math.max(0, this.dbCurrentFeed.unread_count + (nextState ? -1 : 1));
+          }
+
           try {
             await this.api('/api/admin/articles/batch-read', {
               method: 'POST',
               body: { article_ids: [art.id], is_read: nextState }
             });
-            art.is_read = nextState;
             await this.loadFeeds();
           } catch (e) {
-            console.error('切换文章已读状态失败:', e);
+            // 回滚
+            art.is_read = prevState;
+            if (this.dbCurrentFeed && this.dbCurrentFeed.unread_count !== undefined) {
+              this.dbCurrentFeed.unread_count = Math.max(0, this.dbCurrentFeed.unread_count + (prevState ? -1 : 1));
+            }
+            this.toast('切换已读状态失败: ' + e.message, 'error');
           }
         },
 
@@ -1103,9 +1224,10 @@
           try {
             await navigator.clipboard.writeText(this.detailArticle.content);
             this.copySuccess = true;
+            this.toast('正文 HTML 已复制到剪贴板', 'success');
             setTimeout(() => { this.copySuccess = false; }, 2000);
           } catch (_) {
-            alert('复制失败，请手动全选复制');
+            this.toast('复制失败，请手动全选复制', 'error');
           }
         },
 
