@@ -12,7 +12,7 @@
     [x-cloak] { display: none !important; }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased min-h-screen" x-data="readerApp()" x-init="init()" x-cloak>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen" x-data="readerApp()" x-cloak>
   
   <!-- 顶部导航栏 -->
   <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
@@ -76,13 +76,13 @@
       <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
         <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">每日固定 / 暂停源</div>
         <div class="text-3xl font-extrabold text-emerald-600 flex items-baseline">
-          <span x-text="feeds.filter(f => f.schedule_type === 'daily_fixed').length">0</span>
-          <span class="text-xs font-medium text-slate-400 ml-2" x-text="'(' + feeds.filter(f => f.schedule_type === 'paused').length + ' 个已暂停)'"></span>
+          <span x-text="stats.dailyFixedCount">0</span>
+          <span class="text-xs font-medium text-slate-400 ml-2" x-text="'(' + stats.pausedCount + ' 个已暂停)'"></span>
         </div>
       </div>
       <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
         <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">未读文章累计</div>
-        <div class="text-3xl font-extrabold text-amber-500" x-text="feeds.reduce((acc, f) => acc + (f.unread_count || 0), 0)">0</div>
+        <div class="text-3xl font-extrabold text-amber-500" x-text="stats.unreadTotal">0</div>
       </div>
     </div>
 
@@ -693,84 +693,142 @@
           this.checkAuth();
         },
 
+        // 统一轻量 API 请求客户端
+        async api(url, options = {}) {
+          const config = {
+            headers: options.body ? { 'Content-Type': 'application/json' } : {},
+            ...options
+          };
+          if (config.body && typeof config.body === 'object') {
+            config.body = JSON.stringify(config.body);
+          }
+          const res = await fetch(url, config);
+          let data = null;
+          try {
+            data = await res.json();
+          } catch (_) {}
+          if (!res.ok) {
+            throw new Error((data && data.error) ? data.error : `请求失败 (${res.status})`);
+          }
+          return data;
+        },
+
         async checkAuth() {
           try {
-            const res = await fetch('/api/admin/profile');
-            if (res.ok) {
-              this.isLoggedIn = true;
-              this.profile = await res.json();
-              this.loadFeeds();
-            } else {
-              this.isLoggedIn = false;
-            }
-          } catch (e) {
+            this.profile = await this.api('/api/admin/profile');
+            this.isLoggedIn = true;
+            this.loadFeeds();
+          } catch (_) {
             this.isLoggedIn = false;
           }
         },
 
         async login() {
           try {
-            const res = await fetch('/api/admin/login', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(this.loginForm)
-            });
-            if (res.ok) {
-              await this.checkAuth();
-            } else {
-              alert('登录失败，请检查账号密码');
-            }
+            await this.api('/api/admin/login', { method: 'POST', body: this.loginForm });
+            await this.checkAuth();
           } catch (e) {
-            alert('网络异常: ' + e);
+            alert('登录失败: ' + e.message);
           }
         },
 
         async logout() {
-          await fetch('/api/admin/logout', { method: 'POST' });
+          try {
+            await this.api('/api/admin/logout', { method: 'POST' });
+          } catch (_) {}
           this.isLoggedIn = false;
         },
 
         async loadFeeds() {
           try {
-            const res = await fetch('/api/admin/feeds');
-            if (res.ok) {
-              this.feeds = await res.json();
-              const existingIds = new Set(this.feeds.map(f => f.id));
-              this.selectedFeedIds = this.selectedFeedIds.filter(id => existingIds.has(id));
-            }
+            this.feeds = await this.api('/api/admin/feeds');
+            const validIds = new Set(this.feeds.map(f => f.id));
+            this.selectedFeedIds = this.selectedFeedIds.filter(id => validIds.has(id));
           } catch (e) {
-            console.error(e);
+            console.error('加载订阅源失败:', e);
           }
         },
 
-        // 批量选择与操作辅助函数
+        // 顶部统计汇总 (一次循环计算所有统计值，提高求值效率)
+        get stats() {
+          let dailyFixedCount = 0;
+          let pausedCount = 0;
+          let unreadTotal = 0;
+          for (const f of this.feeds) {
+            if (f.schedule_type === 'daily_fixed') dailyFixedCount++;
+            else if (f.schedule_type === 'paused') pausedCount++;
+            unreadTotal += (f.unread_count || 0);
+          }
+          return { dailyFixedCount, pausedCount, unreadTotal };
+        },
+
+        // 分类文件夹分组及统计归纳 (单次遍历 + 统一排序)
+        get groupData() {
+          const groups = {};
+          for (const f of this.feeds) {
+            const name = f.category_name || '未分类';
+            if (!groups[name]) {
+              groups[name] = {
+                name,
+                count: 0,
+                sortOrder: f.category_name ? (f.category_sort_order ?? 0) : 999999,
+                feeds: [],
+                unreadTotal: 0
+              };
+            }
+            groups[name].count++;
+            groups[name].feeds.push(f);
+            groups[name].unreadTotal += (f.unread_count || 0);
+          }
+
+          const sorted = Object.values(groups).sort((a, b) => {
+            if (a.name === '未分类') return 1;
+            if (b.name === '未分类') return -1;
+            return a.sortOrder !== b.sortOrder ? a.sortOrder - b.sortOrder : a.name.localeCompare(b.name);
+          });
+
+          return sorted;
+        },
+
+        get categoryList() {
+          return this.groupData.map(g => ({ name: g.name, count: g.count }));
+        },
+
+        get filteredGroups() {
+          return this.groupData
+            .filter(g => this.selectedCategory === 'all' || this.selectedCategory === g.name)
+            .map(g => ({
+              categoryName: g.name,
+              sortOrder: g.sortOrder,
+              feeds: g.feeds,
+              unreadTotal: g.unreadTotal
+            }));
+        },
+
+        // 订阅多选操作
         isFeedSelected(id) {
           return this.selectedFeedIds.includes(id);
         },
 
         toggleFeedSelect(id) {
-          if (this.selectedFeedIds.includes(id)) {
-            this.selectedFeedIds = this.selectedFeedIds.filter(item => item !== id);
-          } else {
-            this.selectedFeedIds.push(id);
-          }
+          const idx = this.selectedFeedIds.indexOf(id);
+          if (idx >= 0) this.selectedFeedIds.splice(idx, 1);
+          else this.selectedFeedIds.push(id);
         },
 
         isGroupAllSelected(feeds) {
-          if (!feeds || feeds.length === 0) return false;
-          return feeds.every(f => this.selectedFeedIds.includes(f.id));
+          return feeds && feeds.length > 0 && feeds.every(f => this.selectedFeedIds.includes(f.id));
         },
 
         toggleGroupSelect(feeds) {
           if (!feeds || feeds.length === 0) return;
-          const allSelected = this.isGroupAllSelected(feeds);
-          if (allSelected) {
-            const idsToRemove = new Set(feeds.map(f => f.id));
-            this.selectedFeedIds = this.selectedFeedIds.filter(id => !idsToRemove.has(id));
+          if (this.isGroupAllSelected(feeds)) {
+            const removeSet = new Set(feeds.map(f => f.id));
+            this.selectedFeedIds = this.selectedFeedIds.filter(id => !removeSet.has(id));
           } else {
-            const currentSet = new Set(this.selectedFeedIds);
-            feeds.forEach(f => currentSet.add(f.id));
-            this.selectedFeedIds = Array.from(currentSet);
+            const set = new Set(this.selectedFeedIds);
+            feeds.forEach(f => set.add(f.id));
+            this.selectedFeedIds = Array.from(set);
           }
         },
 
@@ -779,255 +837,139 @@
         },
 
         toggleSelectAll() {
-          if (this.isAllSelected()) {
-            this.selectedFeedIds = [];
-          } else {
-            this.selectedFeedIds = this.feeds.map(f => f.id);
-          }
+          this.selectedFeedIds = this.isAllSelected() ? [] : this.feeds.map(f => f.id);
         },
 
         clearSelection() {
           this.selectedFeedIds = [];
         },
 
-        // 单个订阅暂停/恢复
-        async togglePause(feed) {
-          try {
-            const res = await fetch(`/api/admin/feeds/${feed.id}/pause`, { method: 'POST' });
-            if (res.ok) {
-              const updated = await res.json();
-              feed.schedule_type = updated.schedule_type;
-              await this.loadFeeds();
-            } else {
-              alert('操作失败');
-            }
-          } catch (e) {
-            alert('请求异常: ' + e);
-          }
-        },
-
-        // 单个选中的订阅编辑
         editSelectedFeed() {
           if (this.selectedFeedIds.length === 1) {
             const feed = this.feeds.find(f => f.id === this.selectedFeedIds[0]);
-            if (feed) {
-              this.openEditModal(feed);
-            }
+            if (feed) this.openEditModal(feed);
           }
         },
 
-        // 获取已勾选订阅列表
         getSelectedFeeds() {
           return this.feeds.filter(f => this.selectedFeedIds.includes(f.id));
         },
 
-        // 打开错峰时间分配弹窗
-        openStaggerModal(feeds, name) {
-          if (!feeds || feeds.length === 0) {
-            alert('请先选择订阅源');
+        // 批量操作执行
+        async runBatchAction(action) {
+          if (this.selectedFeedIds.length === 0) return;
+          if (action === 'delete' && !confirm(`确定要删除选中的 ${this.selectedFeedIds.length} 个订阅源吗？`)) {
             return;
           }
+          this.batchActionLoading = true;
+          try {
+            const data = await this.api('/api/admin/feeds/batch', {
+              method: 'POST',
+              body: { action, feed_ids: this.selectedFeedIds }
+            });
+            if (action === 'fetch') {
+              alert(`抓取完成，共新增 ${data.total_fetched || 0} 篇文章`);
+            }
+            if (action === 'delete') {
+              this.selectedFeedIds = [];
+            }
+            await this.loadFeeds();
+          } catch (e) {
+            alert('操作异常: ' + e.message);
+          } finally {
+            this.batchActionLoading = false;
+          }
+        },
+
+        // 错峰时间分配
+        openStaggerModal(feeds, name) {
+          if (!feeds || feeds.length === 0) return alert('请先选择订阅源');
           this.staggerTargetFeeds = feeds;
           this.staggerTargetName = name || '订阅源';
           this.staggerForm = { start_time: '08:00', window_minutes: 30 };
           this.showStaggerModal = true;
         },
 
-        // 实时计算预计分配交错时间预览
         get staggerPreviewList() {
           const n = this.staggerTargetFeeds.length;
           if (n === 0) return [];
           const windowMin = Number(this.staggerForm.window_minutes) || 30;
-          const parts = (this.staggerForm.start_time || '08:00').split(':');
-          let startH = parseInt(parts[0], 10);
-          if (isNaN(startH)) startH = 8;
-          let startM = parseInt(parts[1], 10);
-          if (isNaN(startM)) startM = 0;
+          const [hStr, mStr] = (this.staggerForm.start_time || '08:00').split(':');
+          const startH = parseInt(hStr, 10) || 8;
+          const startM = parseInt(mStr, 10) || 0;
           const step = n > 1 ? (windowMin / n) : 0;
 
           return this.staggerTargetFeeds.map((f, i) => {
-            const offset = Math.floor(i * step);
-            const totalMin = (startH * 60 + startM + offset) % 1440;
+            const totalMin = (startH * 60 + startM + Math.floor(i * step)) % 1440;
             const h = String(Math.floor(totalMin / 60)).padStart(2, '0');
             const m = String(totalMin % 60).padStart(2, '0');
-            return {
-              id: f.id,
-              title: f.title || f.feed_url,
-              time: `${h}:${m}`
-            };
+            return { id: f.id, title: f.title || f.feed_url, time: `${h}:${m}` };
           });
         },
 
         get staggerAverageStep() {
           const n = this.staggerTargetFeeds.length;
-          if (n <= 1) return 0;
-          const windowMin = Number(this.staggerForm.window_minutes) || 30;
-          return (windowMin / n).toFixed(1);
+          return n <= 1 ? 0 : ((Number(this.staggerForm.window_minutes) || 30) / n).toFixed(1);
         },
 
-        // 保存并应用错峰分配
         async saveStaggerSchedule() {
           if (this.staggerTargetFeeds.length === 0) return;
           this.staggerLoading = true;
           try {
-            const res = await fetch('/api/admin/feeds/distribute-schedule', {
+            await this.api('/api/admin/feeds/distribute-schedule', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
+              body: {
                 feed_ids: this.staggerTargetFeeds.map(f => f.id),
                 start_time: this.staggerForm.start_time || '08:00',
                 window_minutes: Number(this.staggerForm.window_minutes) || 30
-              })
+              }
             });
-            if (res.ok) {
-              this.showStaggerModal = false;
-              await this.loadFeeds();
-            } else {
-              alert('错峰时间分配失败');
-            }
+            this.showStaggerModal = false;
+            await this.loadFeeds();
           } catch (e) {
-            alert('请求异常: ' + e);
+            alert('错峰时间分配失败: ' + e.message);
           } finally {
             this.staggerLoading = false;
           }
         },
 
-        // 勾选操作执行
-        async runBatchAction(action) {
-          if (this.selectedFeedIds.length === 0) return;
-          if (action === 'delete') {
-            if (!confirm(`确定要删除选中的 ${this.selectedFeedIds.length} 个订阅源吗？`)) {
-              return;
-            }
-          }
-          this.batchActionLoading = true;
-          try {
-            const res = await fetch('/api/admin/feeds/batch', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                action: action,
-                feed_ids: this.selectedFeedIds
-              })
-            });
-            if (res.ok) {
-              const data = await res.json();
-              if (action === 'fetch') {
-                alert(`抓取完成，共新增 ${data.total_fetched || 0} 篇文章`);
-              }
-              if (action === 'delete') {
-                this.selectedFeedIds = [];
-              }
-              await this.loadFeeds();
-            } else {
-              alert('操作失败');
-            }
-          } catch (e) {
-            alert('操作异常: ' + e);
-          } finally {
-            this.batchActionLoading = false;
-          }
-        },
-
-        // 打开文件夹设置弹窗
+        // 文件夹设置 (标题与排序)
         openCategoryEditModal(group) {
           const catName = group.categoryName === '未分类' ? '' : group.categoryName;
-          const currentOrder = group.sortOrder !== undefined && group.sortOrder !== 999999 ? group.sortOrder : 0;
           this.categoryForm = {
             current_name: catName,
             name: catName,
-            sort_order: currentOrder
+            sort_order: group.sortOrder && group.sortOrder < 999999 ? group.sortOrder : 0
           };
           this.showCategoryModal = true;
         },
 
-        // 保存文件夹设置 (标题与排序)
         async saveCategorySettings() {
           const newName = (this.categoryForm.name || '').trim();
-          if (!newName) {
-            alert('文件夹标题不能为空');
-            return;
-          }
+          if (!newName) return alert('文件夹标题不能为空');
           this.categorySaving = true;
           try {
-            const res = await fetch('/api/admin/categories/update', {
+            await this.api('/api/admin/categories/update', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
+              body: {
                 current_name: this.categoryForm.current_name || '',
                 name: newName,
                 sort_order: Number(this.categoryForm.sort_order) || 0
-              })
-            });
-            if (res.ok) {
-              this.showCategoryModal = false;
-              // 如果当前选中的分类就是被修改的分类，同步更新选中态
-              if (this.selectedCategory === (this.categoryForm.current_name || '未分类')) {
-                this.selectedCategory = newName;
               }
-              await this.loadFeeds();
-            } else {
-              const errData = await res.json().catch(() => ({}));
-              alert('保存文件夹设置失败: ' + (errData.error || '未知错误'));
+            });
+            this.showCategoryModal = false;
+            if (this.selectedCategory === (this.categoryForm.current_name || '未分类')) {
+              this.selectedCategory = newName;
             }
+            await this.loadFeeds();
           } catch (e) {
-            alert('请求异常: ' + e);
+            alert('保存文件夹设置失败: ' + e.message);
           } finally {
             this.categorySaving = false;
           }
         },
 
-        // 获取分类统计列表 (按 sort_order ASC 排序，数字越小越靠前，未分类置底)
-        get categoryList() {
-          const map = {};
-          this.feeds.forEach(f => {
-            const name = f.category_name || '未分类';
-            const sortOrder = f.category_name ? (f.category_sort_order !== undefined ? f.category_sort_order : 0) : 999999;
-            if (!map[name]) {
-              map[name] = { name: name, count: 0, sortOrder: sortOrder };
-            }
-            map[name].count += 1;
-          });
-          return Object.values(map).sort((a, b) => {
-            if (a.name === '未分类') return 1;
-            if (b.name === '未分类') return -1;
-            if (a.sortOrder !== b.sortOrder) {
-              return a.sortOrder - b.sortOrder;
-            }
-            return a.name.localeCompare(b.name);
-          });
-        },
-
-        // 按照分类文件夹组织分组列表 (按 sort_order ASC 排序，数字越小越靠前，未分类置底)
-        get filteredGroups() {
-          const map = {};
-          this.feeds.forEach(f => {
-            const name = f.category_name || '未分类';
-            const sortOrder = f.category_name ? (f.category_sort_order !== undefined ? f.category_sort_order : 0) : 999999;
-            if (this.selectedCategory !== 'all' && this.selectedCategory !== name) {
-              return;
-            }
-            if (!map[name]) {
-              map[name] = {
-                categoryName: name,
-                sortOrder: sortOrder,
-                feeds: [],
-                unreadTotal: 0
-              };
-            }
-            map[name].feeds.push(f);
-            map[name].unreadTotal += (f.unread_count || 0);
-          });
-          return Object.values(map).sort((a, b) => {
-            if (a.categoryName === '未分类') return 1;
-            if (b.categoryName === '未分类') return -1;
-            if (a.sortOrder !== b.sortOrder) {
-              return a.sortOrder - b.sortOrder;
-            }
-            return a.categoryName.localeCompare(b.categoryName);
-          });
-        },
-
+        // 文件夹折叠与展开
         toggleGroup(catName) {
           this.collapsedGroups[catName] = !this.collapsedGroups[catName];
         },
@@ -1042,29 +984,10 @@
 
         toggleAllFolders() {
           const collapse = !this.areAllFoldersCollapsed();
-          this.categoryList.forEach(c => {
-            this.collapsedGroups[c.name] = collapse;
-          });
+          this.categoryList.forEach(c => { this.collapsedGroups[c.name] = collapse; });
         },
 
-        async batchFetch(feedList) {
-          if (!feedList || feedList.length === 0) return;
-          let count = 0;
-          for (const f of feedList) {
-            try {
-              const res = await fetch(`/api/admin/feeds/${f.id}/fetch`, { method: 'POST' });
-              if (res.ok) {
-                const data = await res.json();
-                count += (data.new_articles || 0);
-              }
-            } catch (e) {
-              console.error(e);
-            }
-          }
-          alert(`本文件夹抓取完成，共新增 ${count} 篇文章`);
-          await this.loadFeeds();
-        },
-
+        // 订阅表单弹窗
         openEditModal(feed) {
           this.modalForm = {
             id: feed.id,
@@ -1084,64 +1007,19 @@
         },
 
         async saveModal() {
-          if (!this.modalForm.feed_url) {
-            alert('请输入源地址');
-            return;
-          }
+          if (!this.modalForm.feed_url) return alert('请输入源地址');
           try {
-            let res;
-            if (this.showEditModal && this.modalForm.id) {
-              res = await fetch(`/api/admin/feeds/${this.modalForm.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(this.modalForm)
-              });
-            } else {
-              res = await fetch('/api/admin/feeds', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(this.modalForm)
-              });
-            }
-
-            if (res.ok) {
-              this.closeModal();
-              await this.loadFeeds();
-            } else {
-              alert('保存失败');
-            }
+            const isEdit = this.showEditModal && this.modalForm.id;
+            const url = isEdit ? `/api/admin/feeds/${this.modalForm.id}` : '/api/admin/feeds';
+            await this.api(url, { method: isEdit ? 'PUT' : 'POST', body: this.modalForm });
+            this.closeModal();
+            await this.loadFeeds();
           } catch (e) {
-            alert('保存异常: ' + e);
+            alert('保存失败: ' + e.message);
           }
         },
 
-        async deleteFeed(feed) {
-          if (!confirm(`确定删除订阅 "${feed.title || feed.feed_url}" 吗？`)) return;
-          try {
-            const res = await fetch(`/api/admin/feeds/${feed.id}`, { method: 'DELETE' });
-            if (res.ok) {
-              await this.loadFeeds();
-            }
-          } catch (e) {
-            alert('删除失败');
-          }
-        },
-
-        async fetchNow(feed) {
-          try {
-            const res = await fetch(`/api/admin/feeds/${feed.id}/fetch`, { method: 'POST' });
-            if (res.ok) {
-              const data = await res.json();
-              alert(`抓取完成，新增 ${data.new_articles} 篇文章`);
-              await this.loadFeeds();
-            } else {
-              alert('抓取失败，请检查链接或网络');
-            }
-          } catch (e) {
-            alert('抓取请求失败: ' + e);
-          }
-        },
-
+        // 文章数据库查看
         async openDbView(feed) {
           this.dbCurrentFeed = feed;
           this.dbArticles = [];
@@ -1151,32 +1029,25 @@
           this.showDbModal = true;
 
           try {
-            const res = await fetch(`/api/admin/feeds/${feed.id}/articles?limit=100`);
-            if (res.ok) {
-              const data = await res.json();
-              this.dbArticles = data.articles || [];
-              this.dbArticlesTotal = data.total || 0;
-            } else {
-              alert('读取数据库记录失败');
-            }
+            const data = await this.api(`/api/admin/feeds/${feed.id}/articles?limit=100`);
+            this.dbArticles = data.articles || [];
+            this.dbArticlesTotal = data.total || 0;
           } catch (e) {
-            alert('读取数据库异常: ' + e);
+            alert('读取数据库记录失败: ' + e.message);
           } finally {
             this.dbLoading = false;
           }
         },
 
-        // 文章批量勾选与已读/未读状态管理
+        // 文章多选与已读标记
         isArticleSelected(id) {
           return this.selectedArticleIds.includes(id);
         },
 
         toggleArticleSelect(id) {
-          if (this.selectedArticleIds.includes(id)) {
-            this.selectedArticleIds = this.selectedArticleIds.filter(i => i !== id);
-          } else {
-            this.selectedArticleIds.push(id);
-          }
+          const idx = this.selectedArticleIds.indexOf(id);
+          if (idx >= 0) this.selectedArticleIds.splice(idx, 1);
+          else this.selectedArticleIds.push(id);
         },
 
         isAllArticlesSelected() {
@@ -1184,39 +1055,23 @@
         },
 
         toggleSelectAllArticles() {
-          if (this.isAllArticlesSelected()) {
-            this.selectedArticleIds = [];
-          } else {
-            this.selectedArticleIds = this.dbArticles.map(a => a.id);
-          }
+          this.selectedArticleIds = this.isAllArticlesSelected() ? [] : this.dbArticles.map(a => a.id);
         },
 
         async batchMarkArticlesRead(isRead) {
           if (this.selectedArticleIds.length === 0) return;
           this.dbActionLoading = true;
           try {
-            const res = await fetch('/api/admin/articles/batch-read', {
+            await this.api('/api/admin/articles/batch-read', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                article_ids: this.selectedArticleIds,
-                is_read: isRead
-              })
+              body: { article_ids: this.selectedArticleIds, is_read: isRead }
             });
-            if (res.ok) {
-              const idSet = new Set(this.selectedArticleIds);
-              this.dbArticles.forEach(a => {
-                if (idSet.has(a.id)) {
-                  a.is_read = isRead;
-                }
-              });
-              this.selectedArticleIds = [];
-              await this.loadFeeds();
-            } else {
-              alert('操作失败');
-            }
+            const set = new Set(this.selectedArticleIds);
+            this.dbArticles.forEach(a => { if (set.has(a.id)) a.is_read = isRead; });
+            this.selectedArticleIds = [];
+            await this.loadFeeds();
           } catch (e) {
-            alert('操作异常: ' + e);
+            alert('操作异常: ' + e.message);
           } finally {
             this.dbActionLoading = false;
           }
@@ -1225,23 +1080,18 @@
         async toggleSingleArticleRead(art) {
           const nextState = !art.is_read;
           try {
-            const res = await fetch('/api/admin/articles/batch-read', {
+            await this.api('/api/admin/articles/batch-read', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                article_ids: [art.id],
-                is_read: nextState
-              })
+              body: { article_ids: [art.id], is_read: nextState }
             });
-            if (res.ok) {
-              art.is_read = nextState;
-              await this.loadFeeds();
-            }
+            art.is_read = nextState;
+            await this.loadFeeds();
           } catch (e) {
-            console.error(e);
+            console.error('切换文章已读状态失败:', e);
           }
         },
 
+        // 正文查看与复制
         openContentDetail(article) {
           this.detailArticle = article;
           this.copySuccess = false;
@@ -1254,15 +1104,13 @@
             await navigator.clipboard.writeText(this.detailArticle.content);
             this.copySuccess = true;
             setTimeout(() => { this.copySuccess = false; }, 2000);
-          } catch (e) {
+          } catch (_) {
             alert('复制失败，请手动全选复制');
           }
         },
 
         formatTime(t) {
-          if (!t) return '尚未抓取';
-          const d = new Date(t);
-          return d.toLocaleString();
+          return t ? new Date(t).toLocaleString() : '尚未抓取';
         }
       };
     }
