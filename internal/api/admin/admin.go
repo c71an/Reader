@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"reader/internal/db"
+	"reader/internal/logger"
 	"reader/internal/scheduler"
 
 	"github.com/go-chi/chi/v5"
@@ -19,12 +20,14 @@ import (
 type AdminHandler struct {
 	db        *db.DB
 	scheduler *scheduler.Scheduler
+	logger    *logger.Logger
 }
 
-func NewAdminHandler(database *db.DB, sched *scheduler.Scheduler) *AdminHandler {
+func NewAdminHandler(database *db.DB, sched *scheduler.Scheduler, l *logger.Logger) *AdminHandler {
 	return &AdminHandler{
 		db:        database,
 		scheduler: sched,
+		logger:    l,
 	}
 }
 
@@ -524,6 +527,41 @@ func (h *AdminHandler) BatchMarkArticlesRead(w http.ResponseWriter, r *http.Requ
 		"success":  true,
 		"affected": len(req.ArticleIDs),
 		"is_read":  req.IsRead,
+	})
+}
+
+// 获取系统运行日志 (支持 level, tag, limit 过滤)
+func (h *AdminHandler) GetLogs(w http.ResponseWriter, r *http.Request) {
+	limit := 100
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if val, err := strconv.Atoi(l); err == nil && val > 0 {
+			limit = val
+		}
+	}
+
+	level := r.URL.Query().Get("level")
+	tag := r.URL.Query().Get("tag")
+
+	var logs []logger.LogEntry
+	if h.logger != nil {
+		logs = h.logger.GetRecentLogs(limit, level, tag)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"logs":  logs,
+		"total": len(logs),
+	})
+}
+
+// 清空当前内存运行日志
+func (h *AdminHandler) ClearLogs(w http.ResponseWriter, r *http.Request) {
+	if h.logger != nil {
+		h.logger.ClearRecentLogs()
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
 	})
 }
 

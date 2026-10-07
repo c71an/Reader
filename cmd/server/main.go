@@ -15,6 +15,7 @@ import (
 	"reader/internal/config"
 	"reader/internal/db"
 	"reader/internal/fetcher"
+	"reader/internal/logger"
 	"reader/internal/scheduler"
 	"reader/internal/web"
 
@@ -25,6 +26,15 @@ import (
 
 func main() {
 	cfg := config.Load()
+
+	// 0. 初始化日志系统 (stdout + /data/logs/reader-YYYY-MM-DD.log 轮转保留7天 + 内存环形缓冲)
+	l, err := logger.Init(cfg.DataDir)
+	if err != nil {
+		log.Printf("[Logger] Warning: failed to init file logger: %v", err)
+	} else {
+		defer l.Close()
+	}
+
 	log.Printf("[Server] Initializing Reader (DataDir: %s, Port: %s)...", cfg.DataDir, cfg.Port)
 
 	// 1. 初始化 SQLite 数据库
@@ -94,7 +104,7 @@ func main() {
 	})
 
 	// Web Admin API
-	adminHandler := admin.NewAdminHandler(database, sched)
+	adminHandler := admin.NewAdminHandler(database, sched, l)
 	r.Route("/api/admin", func(r chi.Router) {
 		r.Post("/login", adminHandler.Login)
 		r.Post("/logout", adminHandler.Logout)
@@ -114,6 +124,8 @@ func main() {
 			r.Post("/feeds/{id}/pause", adminHandler.ToggleFeedPause)
 			r.Get("/categories", adminHandler.GetCategories)
 			r.Post("/categories/update", adminHandler.UpdateCategory)
+			r.Get("/logs", adminHandler.GetLogs)
+			r.Post("/logs/clear", adminHandler.ClearLogs)
 		})
 	})
 
