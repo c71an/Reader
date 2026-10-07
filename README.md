@@ -54,6 +54,19 @@ go run ./cmd/server
 
 ---
 
+## 📦 从 FreshRSS 一键数据迁移
+如果您之前在使用 FreshRSS (SQLite 版本)，可以直接使用内置迁移工具将分类文件夹、订阅源以及阅读状态无缝迁移过来：
+
+```bash
+# 全量迁移 (包括分类、订阅源、历史文章与已读/标星状态)
+go run ./cmd/migrate -src /path/to/freshrss/db.sqlite -dest ./data/reader.db
+
+# 仅迁移订阅源与分类 (不迁移旧历史文章，启动后自动拉取最新)
+go run ./cmd/migrate -src /path/to/freshrss/db.sqlite -dest ./data/reader.db -articles=false
+```
+
+---
+
 ## 📱 Reeder 客户端连接指引
 1. 打开 Reeder (iOS / macOS)，在 Accounts 中选择添加 **Google Reader**。
 2. 配置参数：
