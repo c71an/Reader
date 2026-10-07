@@ -104,6 +104,7 @@ func main() {
 			r.Get("/profile", adminHandler.GetProfile)
 			r.Get("/feeds", adminHandler.GetFeeds)
 			r.Post("/feeds", adminHandler.CreateFeed)
+			r.Get("/feeds/{id}/articles", adminHandler.GetFeedArticles)
 			r.Put("/feeds/{id}", adminHandler.UpdateFeed)
 			r.Delete("/feeds/{id}", adminHandler.DeleteFeed)
 			r.Post("/feeds/{id}/fetch", adminHandler.FetchFeedNow)

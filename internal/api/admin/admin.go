@@ -284,3 +284,44 @@ func (h *AdminHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// 查看指定订阅源在数据库中的文章详情
+func (h *AdminHandler) GetFeedArticles(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	feedID, _ := strconv.ParseInt(idStr, 10, 64)
+
+	feed, err := h.db.GetFeedByID(feedID)
+	if err != nil {
+		http.Error(w, "Feed not found", http.StatusNotFound)
+		return
+	}
+
+	limit := 50
+	if lStr := r.URL.Query().Get("limit"); lStr != "" {
+		if l, err := strconv.Atoi(lStr); err == nil && l > 0 {
+			limit = l
+		}
+	}
+
+	offset := 0
+	if oStr := r.URL.Query().Get("offset"); oStr != "" {
+		if o, err := strconv.Atoi(oStr); err == nil && o >= 0 {
+			offset = o
+		}
+	}
+
+	articles, total, err := h.db.GetFeedArticles(feedID, limit, offset)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"feed":     feed,
+		"articles": articles,
+		"total":    total,
+		"limit":    limit,
+		"offset":   offset,
+	})
+}
+

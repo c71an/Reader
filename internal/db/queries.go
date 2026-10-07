@@ -186,6 +186,51 @@ func (d *DB) SaveArticles(articles []*Article) (int, error) {
 	return newCount, tx.Commit()
 }
 
+// 查询指定订阅源下的已入库文章列表 (供 Web 端查看数据库存储内容)
+func (d *DB) GetFeedArticles(feedID int64, limit, offset int) ([]*Article, int, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	var total int
+	err := d.QueryRow("SELECT COUNT(*) FROM articles WHERE feed_id = ?", feedID).Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	rows, err := d.Query(`
+		SELECT a.id, a.feed_id, f.title, a.guid, a.title, a.url, a.content, a.author, a.published_at, a.created_at,
+		       COALESCE(s.is_read, 0) as is_read, COALESCE(s.is_starred, 0) as is_starred
+		FROM articles a
+		JOIN feeds f ON a.feed_id = f.id
+		LEFT JOIN article_states s ON a.id = s.article_id
+		WHERE a.feed_id = ?
+		ORDER BY a.published_at DESC, a.id DESC
+		LIMIT ? OFFSET ?
+	`, feedID, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var list []*Article
+	for rows.Next() {
+		var a Article
+		var isReadInt, isStarredInt int
+		if err := rows.Scan(&a.ID, &a.FeedID, &a.FeedTitle, &a.GUID, &a.Title, &a.URL, &a.Content, &a.Author,
+			&a.PublishedAt, &a.CreatedAt, &isReadInt, &isStarredInt); err != nil {
+			return nil, 0, err
+		}
+		a.IsRead = (isReadInt == 1)
+		a.IsStarred = (isStarredInt == 1)
+		list = append(list, &a)
+	}
+	return list, total, nil
+}
+
 // 用户认证
 func (d *DB) GetUserByUsername(username string) (*User, error) {
 	var u User

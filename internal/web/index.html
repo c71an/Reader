@@ -164,9 +164,12 @@
                   <tr class="hover:bg-slate-50/70 transition">
                     <td class="px-6 py-3.5">
                       <div class="font-semibold text-slate-900 flex items-center space-x-2">
-                        <span x-text="feed.title"></span>
+                        <button @click="openDbView(feed)" class="text-left hover:text-indigo-600 transition flex items-center group" title="点击查看数据库文章内容">
+                          <span x-text="feed.title" class="group-hover:underline"></span>
+                          <span class="ml-1 text-[11px] text-slate-400 group-hover:text-indigo-500 font-normal">🔍数据库</span>
+                        </button>
                         <template x-if="feed.site_url">
-                          <a :href="feed.site_url" target="_blank" class="text-slate-400 hover:text-indigo-600">
+                          <a :href="feed.site_url" target="_blank" class="text-slate-400 hover:text-indigo-600" title="打开网站主页">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                           </a>
                         </template>
@@ -198,10 +201,13 @@
                       </template>
                     </td>
                     <td class="px-6 py-3.5 text-right space-x-2">
+                      <button @click="openDbView(feed)" class="text-xs px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium rounded transition">
+                        数据
+                      </button>
                       <button @click="fetchNow(feed)" class="text-xs px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded transition">
                         抓取
                       </button>
-                      <button @click="openEditModal(feed)" class="text-xs px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium rounded transition">
+                      <button @click="openEditModal(feed)" class="text-xs px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded transition">
                         编辑
                       </button>
                       <button @click="deleteFeed(feed)" class="text-xs px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 font-medium rounded transition">
@@ -320,6 +326,102 @@
     </div>
   </div>
 
+  <!-- 数据库文章内容查看弹窗 / 抽屉 -->
+  <div x-show="showDbModal" class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col border border-slate-200 overflow-hidden">
+      <!-- 弹窗顶栏 -->
+      <div class="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-100 text-indigo-800">SQLite 数据库记录</span>
+            <h3 class="text-base font-bold text-slate-900" x-text="dbCurrentFeed.title"></h3>
+          </div>
+          <div class="text-xs text-slate-500 font-mono mt-0.5 truncate max-w-xl" x-text="dbCurrentFeed.feed_url"></div>
+        </div>
+        <div class="flex items-center space-x-3">
+          <span class="text-xs text-slate-500 font-medium" x-text="'共 ' + dbArticlesTotal + ' 条记录'"></span>
+          <button @click="showDbModal = false" class="text-slate-400 hover:text-slate-600 rounded-lg p-1.5 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- 内容主体区 (双栏：左侧文章列表，右侧文章详情/原文) -->
+      <div class="flex-1 flex overflow-hidden min-h-[450px]">
+        <!-- 左侧文章标题列表 -->
+        <div class="w-1/2 border-r border-slate-200 overflow-y-auto divide-y divide-slate-100 bg-slate-50/50">
+          <template x-for="art in dbArticles" :key="art.id">
+            <div @click="dbSelectedArticle = art" 
+                 :class="dbSelectedArticle && dbSelectedArticle.id === art.id ? 'bg-indigo-50/80 border-l-4 border-indigo-600' : 'hover:bg-slate-100/70 border-l-4 border-transparent'"
+                 class="p-4 cursor-pointer transition">
+              <div class="flex items-start justify-between gap-2">
+                <h4 class="text-sm font-semibold text-slate-900 line-clamp-2" x-text="art.title"></h4>
+                <span class="shrink-0 text-[10px] px-1.5 py-0.5 rounded font-mono"
+                      :class="art.is_read ? 'bg-slate-100 text-slate-500' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'"
+                      x-text="art.is_read ? '已读' : '未读'">
+                </span>
+              </div>
+              <div class="flex items-center justify-between text-xs text-slate-400 mt-2">
+                <span x-text="art.author || '未知作者'"></span>
+                <span x-text="formatTime(art.published_at)"></span>
+              </div>
+            </div>
+          </template>
+          <div x-show="dbArticles.length === 0 && !dbLoading" class="p-8 text-center text-slate-400 text-sm">
+            数据库暂无该订阅的文章记录，点击“立即抓取”获取
+          </div>
+          <div x-show="dbLoading" class="p-8 text-center text-slate-400 text-sm">
+            正在读取 SQLite 数据库...
+          </div>
+        </div>
+
+        <!-- 右侧文章详细内容预览 -->
+        <div class="w-1/2 flex-1 p-6 overflow-y-auto bg-white flex flex-col">
+          <template x-if="dbSelectedArticle">
+            <div class="space-y-4">
+              <div>
+                <span class="text-[11px] font-mono text-indigo-600 uppercase tracking-wider" x-text="'Article ID: ' + dbSelectedArticle.id"></span>
+                <h2 class="text-lg font-bold text-slate-900 mt-1" x-text="dbSelectedArticle.title"></h2>
+                <div class="text-xs text-slate-500 flex flex-wrap items-center gap-3 mt-2 border-b border-slate-100 pb-3">
+                  <span>发布时间: <span class="font-mono" x-text="formatTime(dbSelectedArticle.published_at)"></span></span>
+                  <a :href="dbSelectedArticle.url" target="_blank" class="text-indigo-600 hover:underline flex items-center">
+                    原网页链接
+                    <svg class="w-3 h-3 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                  </a>
+                </div>
+              </div>
+
+              <!-- GUID 数据库唯一索引信息 -->
+              <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs font-mono text-slate-600 break-all">
+                <span class="text-slate-400">GUID:</span> <span x-text="dbSelectedArticle.guid"></span>
+              </div>
+
+              <!-- 正文 HTML / 富文本渲染 -->
+              <div>
+                <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">存储内容 (Content Body)</div>
+                <div class="prose prose-sm max-w-none text-slate-800 leading-relaxed break-words bg-slate-50/40 p-4 rounded-xl border border-slate-100 overflow-x-auto" 
+                     x-html="dbSelectedArticle.content || '<span class=\"text-slate-400\">无正文内容</span>'"></div>
+              </div>
+            </div>
+          </template>
+          <template x-if="!dbSelectedArticle">
+            <div class="flex-1 flex items-center justify-center text-slate-400 text-sm">
+              👈 点击左侧文章即可查看其在 SQLite 数据库中的存储字段与全文
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- 弹窗底栏 -->
+      <div class="px-6 py-3 border-t border-slate-200 bg-slate-50 flex justify-between items-center text-xs text-slate-500">
+        <div>SQLite 表: <code>articles</code> (与 <code>article_states</code> 关联)</div>
+        <button @click="showDbModal = false" class="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-md transition">
+          关闭
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
     function readerApp() {
       return {
@@ -332,6 +434,12 @@
         showAddModal: false,
         showEditModal: false,
         showClientInfoModal: false,
+        showDbModal: false,
+        dbLoading: false,
+        dbCurrentFeed: {},
+        dbArticles: [],
+        dbArticlesTotal: 0,
+        dbSelectedArticle: null,
         modalForm: { id: null, title: '', feed_url: '', category_name: '', schedule_type: 'daily_fixed', schedule_value: '08:00' },
 
         init() {
@@ -533,6 +641,33 @@
             }
           } catch (e) {
             alert('抓取请求失败: ' + e);
+          }
+        },
+
+        async openDbView(feed) {
+          this.dbCurrentFeed = feed;
+          this.dbArticles = [];
+          this.dbArticlesTotal = 0;
+          this.dbSelectedArticle = null;
+          this.dbLoading = true;
+          this.showDbModal = true;
+
+          try {
+            const res = await fetch(`/api/admin/feeds/${feed.id}/articles?limit=50`);
+            if (res.ok) {
+              const data = await res.json();
+              this.dbArticles = data.articles || [];
+              this.dbArticlesTotal = data.total || 0;
+              if (this.dbArticles.length > 0) {
+                this.dbSelectedArticle = this.dbArticles[0];
+              }
+            } else {
+              alert('读取数据库记录失败');
+            }
+          } catch (e) {
+            alert('读取数据库异常: ' + e);
+          } finally {
+            this.dbLoading = false;
           }
         },
 
