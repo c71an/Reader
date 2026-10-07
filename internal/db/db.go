@@ -67,29 +67,16 @@ func InitDB(dbPath, defaultUser, defaultPass string) (*DB, error) {
 		return nil, fmt.Errorf("failed to create db directory: %w", err)
 	}
 
-	// 在容器跨平台挂载卷（Windows Docker Desktop 挂载目录）中，
-	// 如果旧数据库之前被打上了 WAL 标记，或者目录中残留有被宿主机锁死的 .db-shm 共享内存文件，
-	// Linux 容器内的 SQLite 打开时就会无条件触发 SQLITE_IOERR_SHMOPEN (4618)。
-	// 
-	// 解决策略：
-	// 1. 如果存在残留的 -shm 文件，先尝试删除清理（它只是临时共享内存索引，不含持久数据）。
-	// 2. DSN 强制指定 _pragma=journal_mode(DELETE)，使旧数据库直接解除对 WAL/SHM 的依赖。
-	shmFile := dbPath + "-shm"
-	_ = os.Remove(shmFile)
-
-	dsn := fmt.Sprintf("%s?_pragma=busy_timeout(10000)&_pragma=journal_mode(DELETE)&_pragma=synchronous(NORMAL)&_pragma=foreign_keys(ON)", dbPath)
+	dsn := fmt.Sprintf("%s?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)", dbPath)
 	database, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite database: %w", err)
 	}
 
-	// 限制单个写锁连接池体验最稳定
-	database.SetMaxOpenConns(1)
-	database.SetMaxIdleConns(1)
+	// 限制单个写锁连接池体验最佳
+	database.SetMaxOpenConns(25)
+	database.SetMaxIdleConns(5)
 	database.SetConnMaxLifetime(time.Hour)
-
-	// 显式将旧数据库文件头重置为 DELETE 模式，彻底清洗 WAL 标记
-	_, _ = database.Exec("PRAGMA journal_mode = DELETE;")
 
 	d := &DB{database}
 	if err := d.migrate(); err != nil {
