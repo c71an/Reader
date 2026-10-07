@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand/v2"
 	"strconv"
 	"strings"
 	"sync"
@@ -73,12 +74,38 @@ func (s *Scheduler) checkAndFetchAll() {
 	now := time.Now()
 	for _, feed := range feeds {
 		if s.shouldFetch(feed, now) {
-			go s.FetchNow(feed.ID)
+			s.mu.Lock()
+			if s.isBusy[feed.ID] {
+				s.mu.Unlock()
+				continue
+			}
+			s.isBusy[feed.ID] = true
+			s.mu.Unlock()
+
+			fID := feed.ID
+			fTitle := feed.Title
+			go func() {
+				// 匹配到触发时间点时，给每个源加上 10 ~ 30 秒的随机延迟（Random Jitter），削峰打散请求
+				jitterSeconds := 10 + rand.IntN(21) // 10 ~ 30 秒
+				jitter := time.Duration(jitterSeconds) * time.Second
+				log.Printf("[Scheduler] Feed [%d] %s matched trigger, applying %v random jitter...\n", fID, fTitle, jitter)
+
+				select {
+				case <-time.After(jitter):
+				case <-s.stopChan:
+					s.mu.Lock()
+					delete(s.isBusy, fID)
+					s.mu.Unlock()
+					return
+				}
+
+				s.doFetch(fID)
+			}()
 		}
 	}
 }
 
-// FetchNow 立即手动或调度触发单次抓取
+// FetchNow 立即手动触发单次抓取 (无需等待随机延迟)
 func (s *Scheduler) FetchNow(feedID int64) (int, error) {
 	s.mu.Lock()
 	if s.isBusy[feedID] {
@@ -88,6 +115,10 @@ func (s *Scheduler) FetchNow(feedID int64) (int, error) {
 	s.isBusy[feedID] = true
 	s.mu.Unlock()
 
+	return s.doFetch(feedID)
+}
+
+func (s *Scheduler) doFetch(feedID int64) (int, error) {
 	defer func() {
 		s.mu.Lock()
 		delete(s.isBusy, feedID)
