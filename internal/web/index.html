@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reader - RSS 订阅管理控制台</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Alpine.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen" x-data="readerApp()" x-init="init()" x-cloak>
+  
+  <!-- 顶部导航栏 -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-sm">
+          R
+        </div>
+        <div>
+          <h1 class="font-bold text-lg text-slate-900 tracking-tight leading-none">Reader</h1>
+          <span class="text-xs text-slate-500 font-mono">SQLite + Reeder API + RSSHub</span>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-4" x-show="isLoggedIn">
+        <button @click="showAddModal = true" class="inline-flex items-center px-3.5 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition">
+          <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+          添加订阅
+        </button>
+        <button @click="showClientInfoModal = true" class="text-sm text-slate-600 hover:text-indigo-600 font-medium px-2 py-1 rounded transition">
+          Reeder 接入指引
+        </button>
+        <button @click="logout()" class="text-sm text-red-600 hover:text-red-700 font-medium px-2 py-1 rounded transition">
+          退出
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 登录页面 -->
+  <div x-show="!isLoggedIn" class="max-w-md mx-auto mt-20 p-6 bg-white rounded-xl shadow-md border border-slate-200">
+    <h2 class="text-xl font-bold text-slate-900 mb-2">登录管理控制台</h2>
+    <p class="text-sm text-slate-500 mb-6">默认账号 admin / 密码 admin123</p>
+    <form @submit.prevent="login">
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-slate-700 mb-1">用户名</label>
+        <input type="text" x-model="loginForm.username" required class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+      </div>
+      <div class="mb-6">
+        <label class="block text-sm font-medium text-slate-700 mb-1">密码</label>
+        <input type="password" x-model="loginForm.password" required class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+      </div>
+      <button type="submit" class="w-full py-2 px-4 bg-indigo-600 text-white rounded-md font-medium text-sm hover:bg-indigo-700 transition">
+        登录
+      </button>
+    </form>
+  </div>
+
+  <!-- 主内容区 -->
+  <main x-show="isLoggedIn" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- 统计卡片与提示 -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">已订阅源</div>
+        <div class="text-3xl font-extrabold text-slate-900" x-text="feeds.length">0</div>
+      </div>
+      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">每日固定拉取订阅数</div>
+        <div class="text-3xl font-extrabold text-indigo-600" x-text="feeds.filter(f => f.schedule_type === 'daily_fixed').length">0</div>
+      </div>
+      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">未读文章累计</div>
+        <div class="text-3xl font-extrabold text-amber-500" x-text="feeds.reduce((acc, f) => acc + (f.unread_count || 0), 0)">0</div>
+      </div>
+    </div>
+
+    <!-- 订阅列表管理表格 -->
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+        <h3 class="font-bold text-slate-900">订阅源列表</h3>
+        <button @click="loadFeeds()" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center">
+          <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+          刷新状态
+        </button>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-200 text-sm">
+          <thead class="bg-slate-50 text-slate-500 font-semibold text-xs">
+            <tr>
+              <th class="px-6 py-3 text-left">源信息 / 链接</th>
+              <th class="px-4 py-3 text-left">分类</th>
+              <th class="px-4 py-3 text-left">调度策略 (定时 / 每日固定)</th>
+              <th class="px-4 py-3 text-left">上次拉取状态</th>
+              <th class="px-6 py-3 text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200">
+            <template x-for="feed in feeds" :key="feed.id">
+              <tr class="hover:bg-slate-50/70 transition">
+                <td class="px-6 py-4">
+                  <div class="font-semibold text-slate-900" x-text="feed.title"></div>
+                  <div class="text-xs text-slate-500 font-mono truncate max-w-xs" x-text="feed.feed_url"></div>
+                </td>
+                <td class="px-4 py-4">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700" x-text="feed.category_name || '未分类'"></span>
+                </td>
+                <td class="px-4 py-4">
+                  <template x-if="feed.schedule_type === 'daily_fixed'">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      每天固定: <span class="font-mono ml-1" x-text="feed.schedule_value"></span>
+                    </span>
+                  </template>
+                  <template x-if="feed.schedule_type === 'interval'">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                      间隔: <span class="font-mono ml-1" x-text="feed.schedule_value"></span>
+                    </span>
+                  </template>
+                </td>
+                <td class="px-4 py-4">
+                  <div class="text-xs text-slate-600" x-text="formatTime(feed.last_fetched_at)"></div>
+                  <template x-if="feed.last_error">
+                    <div class="text-xs text-red-500 truncate max-w-xs" :title="feed.last_error" x-text="'⚠️ ' + feed.last_error"></div>
+                  </template>
+                </td>
+                <td class="px-6 py-4 text-right space-x-2">
+                  <button @click="fetchNow(feed)" class="text-xs px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded transition">
+                    立即抓取
+                  </button>
+                  <button @click="openEditModal(feed)" class="text-xs px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium rounded transition">
+                    设置
+                  </button>
+                  <button @click="deleteFeed(feed)" class="text-xs px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 font-medium rounded transition">
+                    删除
+                  </button>
+                </td>
+              </tr>
+            </template>
+            <tr x-show="feeds.length === 0">
+              <td colspan="5" class="px-6 py-8 text-center text-slate-400 text-sm">
+                暂无订阅，点击右上角 “添加订阅” 开始使用（支持 RSSHub 链接）
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- 添加/编辑订阅弹窗 -->
+  <div x-show="showAddModal || showEditModal" class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 border border-slate-200">
+      <h3 class="text-lg font-bold text-slate-900 mb-4" x-text="showEditModal ? '修改订阅与拉取计划' : '添加新订阅 (支持 RSSHub)'"></h3>
+      
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">源地址 (Feed URL / RSSHub)</label>
+          <input type="text" x-model="modalForm.feed_url" placeholder="https://rsshub.app/... 或自定义 RSSHub 路由" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 font-mono">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">自定义标题 (留空自动抓取)</label>
+          <input type="text" x-model="modalForm.title" placeholder="如：我的微博周刊" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">分类 / 文件夹</label>
+          <input type="text" x-model="modalForm.category_name" placeholder="如：科技 / 资讯" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
+        </div>
+
+        <div class="border-t border-slate-100 pt-3">
+          <label class="block text-xs font-semibold text-slate-700 uppercase mb-2">拉取调度策略</label>
+          
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <label class="flex items-center p-3 border rounded-lg cursor-pointer transition" :class="modalForm.schedule_type === 'daily_fixed' ? 'border-indigo-600 bg-indigo-50/50' : 'border-slate-200'">
+              <input type="radio" value="daily_fixed" x-model="modalForm.schedule_type" class="text-indigo-600 mr-2">
+              <div>
+                <div class="text-sm font-semibold text-slate-900">每日固定时间</div>
+                <div class="text-xs text-slate-500">指定每天特定时刻拉取</div>
+              </div>
+            </label>
+
+            <label class="flex items-center p-3 border rounded-lg cursor-pointer transition" :class="modalForm.schedule_type === 'interval' ? 'border-indigo-600 bg-indigo-50/50' : 'border-slate-200'">
+              <input type="radio" value="interval" x-model="modalForm.schedule_type" class="text-indigo-600 mr-2">
+              <div>
+                <div class="text-sm font-semibold text-slate-900">定时间隔</div>
+                <div class="text-xs text-slate-500">按周期频率轮询</div>
+              </div>
+            </label>
+          </div>
+
+          <template x-if="modalForm.schedule_type === 'daily_fixed'">
+            <div>
+              <label class="block text-xs text-slate-600 mb-1">固定拉取时刻 (HH:MM，多个用逗号隔开，如 08:00,18:30)</label>
+              <input type="text" x-model="modalForm.schedule_value" placeholder="08:00" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono">
+              <span class="text-xs text-emerald-600 mt-1 block">💡 非常适合 RSSHub 每日精选/周刊源，避免频繁抓取被封</span>
+            </div>
+          </template>
+
+          <template x-if="modalForm.schedule_type === 'interval'">
+            <div>
+              <label class="block text-xs text-slate-600 mb-1">间隔时长 (如 30m, 1h, 2h, 12h)</label>
+              <input type="text" x-model="modalForm.schedule_value" placeholder="60m" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono">
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <div class="mt-6 flex justify-end space-x-3">
+        <button @click="closeModal()" class="px-4 py-2 border border-slate-300 rounded-md text-sm text-slate-700 hover:bg-slate-50 transition">取消</button>
+        <button @click="saveModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reeder 接入指导弹窗 -->
+  <div x-show="showClientInfoModal" class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 border border-slate-200">
+      <h3 class="text-lg font-bold text-slate-900 mb-2">Reeder 客户端连接配置</h3>
+      <p class="text-xs text-slate-500 mb-4">Reeder 完美原生支持 Google Reader API 规范，请在 Reeder 中直接添加账号：</p>
+      
+      <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 text-xs font-mono space-y-2 mb-4">
+        <div><span class="text-slate-400">账号类型:</span> <span class="font-bold text-indigo-600">Google Reader</span> 或 <span class="font-bold text-indigo-600">FreshRSS / Inoreader 兼容</span></div>
+        <div><span class="text-slate-400">Server (服务器地址):</span> <span class="text-slate-800" x-text="window.location.origin"></span></div>
+        <div><span class="text-slate-400">Username (用户名):</span> <span class="text-slate-800" x-text="profile.username"></span></div>
+        <div><span class="text-slate-400">Password (密码):</span> <span class="text-slate-800">您的控制台登录密码 (默认 admin123)</span></div>
+      </div>
+
+      <div class="text-xs text-slate-600 leading-relaxed bg-amber-50 border border-amber-200 p-3 rounded-lg mb-6">
+        ℹ️ Reeder 会自动通过 <code>/accounts/ClientLogin</code> 完成认证并请求 <code>/reader/api/0/*</code> 接口，拉取所有订阅源、未读状态与自定义文件夹。
+      </div>
+
+      <div class="flex justify-end">
+        <button @click="showClientInfoModal = false" class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700">完成</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function readerApp() {
+      return {
+        isLoggedIn: false,
+        feeds: [],
+        profile: { username: '', auth_token: '' },
+        loginForm: { username: 'admin', password: 'admin123' },
+        showAddModal: false,
+        showEditModal: false,
+        showClientInfoModal: false,
+        modalForm: { id: null, title: '', feed_url: '', category_name: '', schedule_type: 'daily_fixed', schedule_value: '08:00' },
+
+        init() {
+          this.checkAuth();
+        },
+
+        async checkAuth() {
+          try {
+            const res = await fetch('/api/admin/profile');
+            if (res.ok) {
+              this.isLoggedIn = true;
+              this.profile = await res.json();
+              this.loadFeeds();
+            } else {
+              this.isLoggedIn = false;
+            }
+          } catch (e) {
+            this.isLoggedIn = false;
+          }
+        },
+
+        async login() {
+          try {
+            const res = await fetch('/api/admin/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(this.loginForm)
+            });
+            if (res.ok) {
+              await this.checkAuth();
+            } else {
+              alert('登录失败，请检查账号密码');
+            }
+          } catch (e) {
+            alert('网络异常: ' + e);
+          }
+        },
+
+        async logout() {
+          await fetch('/api/admin/logout', { method: 'POST' });
+          this.isLoggedIn = false;
+        },
+
+        async loadFeeds() {
+          try {
+            const res = await fetch('/api/admin/feeds');
+            if (res.ok) {
+              this.feeds = await res.json();
+            }
+          } catch (e) {
+            console.error(e);
+          }
+        },
+
+        openEditModal(feed) {
+          this.modalForm = {
+            id: feed.id,
+            title: feed.title,
+            feed_url: feed.feed_url,
+            category_name: feed.category_name || '',
+            schedule_type: feed.schedule_type,
+            schedule_value: feed.schedule_value
+          };
+          this.showEditModal = true;
+        },
+
+        closeModal() {
+          this.showAddModal = false;
+          this.showEditModal = false;
+          this.modalForm = { id: null, title: '', feed_url: '', category_name: '', schedule_type: 'daily_fixed', schedule_value: '08:00' };
+        },
+
+        async saveModal() {
+          if (!this.modalForm.feed_url) {
+            alert('请输入源地址');
+            return;
+          }
+          try {
+            let res;
+            if (this.showEditModal && this.modalForm.id) {
+              res = await fetch(`/api/admin/feeds/${this.modalForm.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(this.modalForm)
+              });
+            } else {
+              res = await fetch('/api/admin/feeds', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(this.modalForm)
+              });
+            }
+
+            if (res.ok) {
+              this.closeModal();
+              await this.loadFeeds();
+            } else {
+              alert('保存失败');
+            }
+          } catch (e) {
+            alert('保存异常: ' + e);
+          }
+        },
+
+        async deleteFeed(feed) {
+          if (!confirm(`确定删除订阅 "${feed.title || feed.feed_url}" 吗？`)) return;
+          try {
+            const res = await fetch(`/api/admin/feeds/${feed.id}`, { method: 'DELETE' });
+            if (res.ok) {
+              await this.loadFeeds();
+            }
+          } catch (e) {
+            alert('删除失败');
+          }
+        },
+
+        async fetchNow(feed) {
+          try {
+            const res = await fetch(`/api/admin/feeds/${feed.id}/fetch`, { method: 'POST' });
+            if (res.ok) {
+              const data = await res.json();
+              alert(`抓取完成，新增 ${data.new_articles} 篇文章`);
+              await this.loadFeeds();
+            } else {
+              alert('抓取失败，请检查链接或网络');
+            }
+          } catch (e) {
+            alert('抓取请求失败: ' + e);
+          }
+        },
+
+        formatTime(t) {
+          if (!t) return '尚未抓取';
+          const d = new Date(t);
+          return d.toLocaleString();
+        }
+      };
+    }
+  </script>
+</body>
+</html>
+

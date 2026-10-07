@@ -1,0 +1,16 @@
+services:
+  reader:
+    build: .
+    container_name: reader
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - DATA_DIR=/data
+      - ADMIN_USER=admin
+      - ADMIN_PASSWORD=admin123
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./data:/data
+
