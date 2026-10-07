@@ -16,7 +16,7 @@
   
   <!-- 全局浮动 Toast 消息通知 -->
   <div class="fixed top-5 right-5 z-[99999] flex flex-col space-y-2 pointer-events-none max-w-sm w-full">
-    <template x-for="toast in toasts" :key="toast.id">
+    <template x-for="t in toasts" :key="t.id">
       <div x-transition:enter="transition ease-out duration-300"
            x-transition:enter-start="opacity-0 translate-y-[-8px] scale-95"
            x-transition:enter-end="opacity-100 translate-y-0 scale-100"
@@ -25,16 +25,16 @@
            x-transition:leave-end="opacity-0 scale-95"
            class="pointer-events-auto px-4 py-3 rounded-xl shadow-lg border flex items-center justify-between text-sm transition"
            :class="{
-             'bg-white text-emerald-900 border-emerald-200 shadow-emerald-500/10': toast.type === 'success',
-             'bg-white text-rose-900 border-rose-200 shadow-rose-500/10': toast.type === 'error',
-             'bg-white text-amber-900 border-amber-200 shadow-amber-500/10': toast.type === 'warning',
-             'bg-white text-slate-900 border-slate-200 shadow-slate-500/10': toast.type === 'info'
+             'bg-white text-emerald-900 border-emerald-200 shadow-emerald-500/10': t.type === 'success',
+             'bg-white text-rose-900 border-rose-200 shadow-rose-500/10': t.type === 'error',
+             'bg-white text-amber-900 border-amber-200 shadow-amber-500/10': t.type === 'warning',
+             'bg-white text-slate-900 border-slate-200 shadow-slate-500/10': t.type === 'info'
            }">
         <div class="flex items-center space-x-2.5 mr-2">
-          <span class="text-base" x-text="toast.type === 'success' ? '✅' : (toast.type === 'error' ? '❌' : (toast.type === 'warning' ? '⚠️' : 'ℹ️'))"></span>
-          <span class="font-medium leading-snug break-words" x-text="toast.message"></span>
+          <span class="text-base" x-text="t.type === 'success' ? '✅' : (t.type === 'error' ? '❌' : (t.type === 'warning' ? '⚠️' : 'ℹ️'))"></span>
+          <span class="font-medium leading-snug break-words" x-text="t.message"></span>
         </div>
-        <button @click="removeToast(toast.id)" class="text-slate-400 hover:text-slate-600 p-0.5 rounded transition">
+        <button @click="removeToast(t.id)" class="text-slate-400 hover:text-slate-600 p-0.5 rounded transition">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
       </div>
@@ -55,11 +55,11 @@
       </div>
 
       <div class="flex items-center space-x-4" x-show="isLoggedIn">
-        <button @click="showAddModal = true" class="inline-flex items-center px-3.5 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition">
+        <button @click="modals.add = true" class="inline-flex items-center px-3.5 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition">
           <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
           添加订阅
         </button>
-        <button @click="showClientInfoModal = true" class="text-sm text-slate-600 hover:text-indigo-600 font-medium px-2 py-1 rounded transition">
+        <button @click="modals.clientInfo = true" class="text-sm text-slate-600 hover:text-indigo-600 font-medium px-2 py-1 rounded transition">
           Reeder 接入指引
         </button>
         <button @click="logout()" class="text-sm text-red-600 hover:text-red-700 font-medium px-2 py-1 rounded transition">
@@ -94,22 +94,22 @@
     <div class="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">
       <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
         <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">全部订阅源</div>
-        <div class="text-3xl font-extrabold text-slate-900" x-text="feeds.length">0</div>
+        <div class="text-3xl font-extrabold text-slate-900" x-text="computedData.totalFeeds">0</div>
       </div>
       <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
         <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">分类文件夹数</div>
-        <div class="text-3xl font-extrabold text-indigo-600" x-text="categoryList.length">0</div>
+        <div class="text-3xl font-extrabold text-indigo-600" x-text="computedData.categoryList.length">0</div>
       </div>
       <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
         <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">每日固定 / 暂停源</div>
         <div class="text-3xl font-extrabold text-emerald-600 flex items-baseline">
-          <span x-text="stats.dailyFixedCount">0</span>
-          <span class="text-xs font-medium text-slate-400 ml-2" x-text="'(' + stats.pausedCount + ' 个已暂停)'"></span>
+          <span x-text="computedData.dailyFixedCount">0</span>
+          <span class="text-xs font-medium text-slate-400 ml-2" x-text="'(' + computedData.pausedCount + ' 个已暂停)'"></span>
         </div>
       </div>
       <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
         <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">未读文章累计</div>
-        <div class="text-3xl font-extrabold text-amber-500" x-text="stats.unreadTotal">0</div>
+        <div class="text-3xl font-extrabold text-amber-500" x-text="computedData.unreadTotal">0</div>
       </div>
     </div>
 
@@ -121,9 +121,9 @@
                 :class="selectedCategory === 'all' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'"
                 class="px-3 py-1 rounded-full text-xs font-medium transition flex items-center">
           全部
-          <span class="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px]" :class="selectedCategory === 'all' ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-600'" x-text="feeds.length"></span>
+          <span class="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px]" :class="selectedCategory === 'all' ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-600'" x-text="computedData.totalFeeds"></span>
         </button>
-        <template x-for="cat in categoryList" :key="cat.name">
+        <template x-for="cat in computedData.categoryList" :key="cat.name">
           <button @click="selectedCategory = cat.name" 
                   :class="selectedCategory === cat.name ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'"
                   class="px-3 py-1 rounded-full text-xs font-medium transition flex items-center">
@@ -159,25 +159,25 @@
       </div>
       <div class="h-4 w-px bg-slate-700"></div>
       <div class="flex items-center space-x-2">
-        <button @click="runBatchAction('fetch')" :disabled="batchActionLoading" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs font-semibold flex items-center transition shadow-sm disabled:opacity-50">
+        <button @click="runBatchAction('fetch')" :disabled="loading.batch" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs font-semibold flex items-center transition shadow-sm disabled:opacity-50">
           ⚡ 抓取
         </button>
-        <button @click="openStaggerModal(getSelectedFeeds(), '已选订阅')" :disabled="batchActionLoading" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 rounded-lg text-xs font-semibold flex items-center transition shadow-sm disabled:opacity-50">
+        <button @click="openStaggerModal(getSelectedFeeds(), '已选订阅')" :disabled="loading.batch" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 rounded-lg text-xs font-semibold flex items-center transition shadow-sm disabled:opacity-50">
           ⏱ 错峰分配
         </button>
-        <button @click="runBatchAction('pause')" :disabled="batchActionLoading" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 rounded-lg text-xs font-semibold flex items-center transition shadow-sm disabled:opacity-50">
+        <button @click="runBatchAction('pause')" :disabled="loading.batch" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 rounded-lg text-xs font-semibold flex items-center transition shadow-sm disabled:opacity-50">
           ⏸ 暂停
         </button>
-        <button @click="runBatchAction('resume')" :disabled="batchActionLoading" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-semibold flex items-center transition shadow-sm disabled:opacity-50">
+        <button @click="runBatchAction('resume')" :disabled="loading.batch" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-semibold flex items-center transition shadow-sm disabled:opacity-50">
           ▶ 恢复
         </button>
-        <button x-show="selectedFeedIds.length === 1" @click="editSelectedFeed()" :disabled="batchActionLoading" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-semibold flex items-center transition shadow-sm disabled:opacity-50">
+        <button x-show="selectedFeedIds.length === 1" @click="editSelectedFeed()" :disabled="loading.batch" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-semibold flex items-center transition shadow-sm disabled:opacity-50">
           ✏️ 编辑
         </button>
-        <button @click="runBatchAction('delete')" :disabled="batchActionLoading" class="px-3 py-1.5 bg-red-600 hover:bg-red-500 rounded-lg text-xs font-semibold flex items-center transition shadow-sm disabled:opacity-50">
+        <button @click="runBatchAction('delete')" :disabled="loading.batch" class="px-3 py-1.5 bg-red-600 hover:bg-red-500 rounded-lg text-xs font-semibold flex items-center transition shadow-sm disabled:opacity-50">
           🗑 删除
         </button>
-        <button @click="clearSelection()" class="px-2 py-1.5 text-slate-400 hover:text-slate-200 text-xs transition">
+        <button @click="selectedFeedIds = []" class="px-2 py-1.5 text-slate-400 hover:text-slate-200 text-xs transition">
           取消
         </button>
       </div>
@@ -185,7 +185,7 @@
 
     <!-- 订阅源文件夹分组列表 -->
     <div class="space-y-6">
-      <template x-for="group in filteredGroups" :key="group.categoryName">
+      <template x-for="group in computedData.filteredGroups" :key="group.categoryName">
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden transition">
           <!-- 文件夹卡片头部 -->
           <div class="px-6 py-3.5 bg-slate-50/80 border-b border-slate-200 flex justify-between items-center cursor-pointer select-none hover:bg-slate-100/80 transition"
@@ -201,10 +201,9 @@
                 <span class="font-bold text-slate-900" x-text="group.categoryName"></span>
                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100" 
                       x-text="group.feeds.length + ' 个源'"></span>
-                <template x-if="group.unreadTotal > 0">
-                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200" 
-                        x-text="group.unreadTotal + ' 未读'"></span>
-                </template>
+                <span x-show="group.unreadTotal > 0" 
+                      class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200" 
+                      x-text="group.unreadTotal + ' 未读'"></span>
               </div>
             </div>
 
@@ -239,11 +238,11 @@
               </thead>
               <tbody class="divide-y divide-slate-100">
                 <template x-for="feed in group.feeds" :key="feed.id">
-                  <tr class="hover:bg-slate-50/70 transition" :class="isFeedSelected(feed.id) ? 'bg-indigo-50/40' : ''">
+                  <tr class="hover:bg-slate-50/70 transition" :class="isSelected(selectedFeedIds, feed.id) ? 'bg-indigo-50/40' : ''">
                     <td class="w-12 px-3 py-3.5 text-center">
                       <input type="checkbox" 
-                             :checked="isFeedSelected(feed.id)" 
-                             @change="toggleFeedSelect(feed.id)" 
+                             :checked="isSelected(selectedFeedIds, feed.id)" 
+                             @change="toggleSelect(selectedFeedIds, feed.id)" 
                              class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
                     </td>
                     <td class="px-4 py-3.5">
@@ -251,30 +250,22 @@
                         <button @click="openDbView(feed)" class="text-left hover:text-indigo-600 transition flex items-center group max-w-full truncate" title="点击查看数据库文章内容">
                           <span x-text="feed.title" class="group-hover:underline truncate"></span>
                         </button>
-                        <template x-if="feed.site_url">
-                          <a :href="feed.site_url" target="_blank" class="text-slate-400 hover:text-indigo-600 shrink-0" title="打开网站主页">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-                          </a>
-                        </template>
+                        <a x-show="feed.site_url" :href="feed.site_url" target="_blank" class="text-slate-400 hover:text-indigo-600 shrink-0" title="打开网站主页">
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                        </a>
                       </div>
                       <div class="text-xs text-slate-400 font-mono truncate max-w-sm mt-0.5" x-text="feed.feed_url"></div>
                     </td>
                     <td class="px-4 py-3.5 whitespace-nowrap">
-                      <template x-if="feed.schedule_type === 'daily_fixed'">
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          每天固定: <span class="font-mono ml-1" x-text="feed.schedule_value"></span>
-                        </span>
-                      </template>
-                      <template x-if="feed.schedule_type === 'interval'">
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                          定时间隔: <span class="font-mono ml-1" x-text="feed.schedule_value"></span>
-                        </span>
-                      </template>
-                      <template x-if="feed.schedule_type === 'paused'">
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-300">
-                          ⏸ 已暂停
-                        </span>
-                      </template>
+                      <span x-show="feed.schedule_type === 'daily_fixed'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        每天固定: <span class="font-mono ml-1" x-text="feed.schedule_value"></span>
+                      </span>
+                      <span x-show="feed.schedule_type === 'interval'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                        定时间隔: <span class="font-mono ml-1" x-text="feed.schedule_value"></span>
+                      </span>
+                      <span x-show="feed.schedule_type === 'paused'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-300">
+                        ⏸ 已暂停
+                      </span>
                     </td>
                     <td class="px-3 py-3.5 text-center">
                       <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
@@ -284,9 +275,7 @@
                     </td>
                     <td class="px-4 py-3.5 whitespace-nowrap">
                       <div class="text-xs text-slate-600 font-mono" x-text="formatTime(feed.last_fetched_at)"></div>
-                      <template x-if="feed.last_error">
-                        <div class="text-xs text-red-500 truncate max-w-[160px] mt-0.5" :title="feed.last_error" x-text="'⚠️ ' + feed.last_error"></div>
-                      </template>
+                      <div x-show="feed.last_error" class="text-xs text-red-500 truncate max-w-[160px] mt-0.5" :title="feed.last_error" x-text="'⚠️ ' + feed.last_error"></div>
                     </td>
                   </tr>
                 </template>
@@ -297,7 +286,7 @@
       </template>
 
       <!-- 空订阅源提示 -->
-      <div x-show="feeds.length === 0" class="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-400 text-sm shadow-sm">
+      <div x-show="computedData.totalFeeds === 0" class="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-400 text-sm shadow-sm">
         <div class="text-3xl mb-2">📭</div>
         暂无订阅，点击右上角 “添加订阅” 开始配置（支持输入分类文件夹与每日固定抓取）
       </div>
@@ -305,12 +294,12 @@
   </main>
 
   <!-- 添加/编辑订阅弹窗 -->
-  <div x-show="showAddModal || showEditModal" 
+  <div x-show="modals.add || modals.edit" 
        @keydown.escape.window="closeModal()" 
        @click.self="closeModal()"
        class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 border border-slate-200">
-      <h3 class="text-lg font-bold text-slate-900 mb-4" x-text="showEditModal ? '修改订阅与拉取计划' : '添加新订阅 (支持 RSSHub)'"></h3>
+      <h3 class="text-lg font-bold text-slate-900 mb-4" x-text="modals.edit ? '修改订阅与拉取计划' : '添加新订阅 (支持 RSSHub)'"></h3>
       
       <div class="space-y-4">
         <div>
@@ -328,7 +317,7 @@
           <div class="relative">
             <input type="text" list="categoryOptions" x-model="modalForm.category_name" placeholder="如：科技 / 资讯 / 日常（留空为未分类）" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
             <datalist id="categoryOptions">
-              <template x-for="cat in categoryList" :key="cat.name">
+              <template x-for="cat in computedData.categoryList" :key="cat.name">
                 <option :value="cat.name"></option>
               </template>
             </datalist>
@@ -364,26 +353,20 @@
             </label>
           </div>
 
-          <template x-if="modalForm.schedule_type === 'daily_fixed'">
-            <div>
-              <label class="block text-xs text-slate-600 mb-1">固定拉取时刻 (HH:MM，多个用逗号隔开，如 08:00,18:30)</label>
-              <input type="text" x-model="modalForm.schedule_value" placeholder="08:00" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono">
-              <span class="text-xs text-emerald-600 mt-1 block">💡 非常适合 RSSHub 每日精选/周刊源，避免频繁抓取被封</span>
-            </div>
-          </template>
+          <div x-show="modalForm.schedule_type === 'daily_fixed'">
+            <label class="block text-xs text-slate-600 mb-1">固定拉取时刻 (HH:MM，多个用逗号隔开，如 08:00,18:30)</label>
+            <input type="text" x-model="modalForm.schedule_value" placeholder="08:00" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono">
+            <span class="text-xs text-emerald-600 mt-1 block">💡 非常适合 RSSHub 每日精选/周刊源，避免频繁抓取被封</span>
+          </div>
 
-          <template x-if="modalForm.schedule_type === 'interval'">
-            <div>
-              <label class="block text-xs text-slate-600 mb-1">间隔时长 (如 30m, 1h, 2h, 12h)</label>
-              <input type="text" x-model="modalForm.schedule_value" placeholder="60m" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono">
-            </div>
-          </template>
+          <div x-show="modalForm.schedule_type === 'interval'">
+            <label class="block text-xs text-slate-600 mb-1">间隔时长 (如 30m, 1h, 2h, 12h)</label>
+            <input type="text" x-model="modalForm.schedule_value" placeholder="60m" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono">
+          </div>
 
-          <template x-if="modalForm.schedule_type === 'paused'">
-            <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
-              ⏸ 订阅保存后处于暂停状态，后台调度器不会自动调度拉取，可在列表随时点击恢复。
-            </div>
-          </template>
+          <div x-show="modalForm.schedule_type === 'paused'" class="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+            ⏸ 订阅保存后处于暂停状态，后台调度器不会自动调度拉取，可在列表随时点击恢复。
+          </div>
         </div>
       </div>
 
@@ -395,9 +378,9 @@
   </div>
 
   <!-- 错峰时间分配弹窗 -->
-  <div x-show="showStaggerModal" 
-       @keydown.escape.window="showStaggerModal = false" 
-       @click.self="showStaggerModal = false"
+  <div x-show="modals.stagger" 
+       @keydown.escape.window="modals.stagger = false" 
+       @click.self="modals.stagger = false"
        class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 border border-slate-200">
       <div class="flex items-center justify-between mb-4">
@@ -405,7 +388,7 @@
           <h3 class="text-lg font-bold text-slate-900">自动交错分配拉取时间 (错峰调度)</h3>
           <p class="text-xs text-slate-500 mt-0.5" x-text="'针对：' + staggerTargetName + '（共 ' + staggerTargetFeeds.length + ' 个源）'"></p>
         </div>
-        <button @click="showStaggerModal = false" class="text-slate-400 hover:text-slate-600 p-1">
+        <button @click="modals.stagger = false" class="text-slate-400 hover:text-slate-600 p-1">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
       </div>
@@ -425,7 +408,7 @@
         <div>
           <label class="block text-xs font-semibold text-slate-700 uppercase mb-2">预计分配时间预览 (实时计算):</label>
           <div class="bg-slate-50 rounded-lg p-3 border border-slate-200 max-h-48 overflow-y-auto space-y-1.5 font-mono text-xs">
-            <template x-for="(item, idx) in staggerPreviewList" :key="item.id">
+            <template x-for="item in staggerPreviewList" :key="item.id">
               <div class="flex items-center justify-between py-1 px-2 rounded hover:bg-slate-100 transition">
                 <span class="text-slate-800 font-sans truncate max-w-[260px]" x-text="item.title"></span>
                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-800" x-text="item.time"></span>
@@ -440,18 +423,18 @@
       </div>
 
       <div class="mt-6 flex justify-end space-x-3">
-        <button @click="showStaggerModal = false" class="px-4 py-2 border border-slate-300 rounded-md text-sm text-slate-700 hover:bg-slate-50 transition">取消</button>
-        <button @click="saveStaggerSchedule()" :disabled="staggerLoading || staggerTargetFeeds.length === 0" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-md text-sm font-medium transition flex items-center">
-          <span x-text="staggerLoading ? '正在分配...' : '确认应用分配'"></span>
+        <button @click="modals.stagger = false" class="px-4 py-2 border border-slate-300 rounded-md text-sm text-slate-700 hover:bg-slate-50 transition">取消</button>
+        <button @click="saveStaggerSchedule()" :disabled="loading.stagger || staggerTargetFeeds.length === 0" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-md text-sm font-medium transition flex items-center">
+          <span x-text="loading.stagger ? '正在分配...' : '确认应用分配'"></span>
         </button>
       </div>
     </div>
   </div>
 
   <!-- 文件夹设置弹窗 (设置标题与排序) -->
-  <div x-show="showCategoryModal" 
-       @keydown.escape.window="showCategoryModal = false" 
-       @click.self="showCategoryModal = false"
+  <div x-show="modals.category" 
+       @keydown.escape.window="modals.category = false" 
+       @click.self="modals.category = false"
        class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6 border border-slate-200">
       <div class="flex items-center justify-between mb-4">
@@ -459,7 +442,7 @@
           <h3 class="text-lg font-bold text-slate-900">文件夹设置</h3>
           <p class="text-xs text-slate-500 mt-0.5" x-text="'当前文件夹：' + (categoryForm.current_name || '未分类')"></p>
         </div>
-        <button @click="showCategoryModal = false" class="text-slate-400 hover:text-slate-600 p-1">
+        <button @click="modals.category = false" class="text-slate-400 hover:text-slate-600 p-1">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
       </div>
@@ -479,18 +462,18 @@
       </div>
 
       <div class="mt-6 flex justify-end space-x-3">
-        <button @click="showCategoryModal = false" class="px-4 py-2 border border-slate-300 rounded-md text-sm text-slate-700 hover:bg-slate-50 transition">取消</button>
-        <button @click="saveCategorySettings()" :disabled="categorySaving" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-md text-sm font-medium transition flex items-center">
-          <span x-text="categorySaving ? '正在保存...' : '保存设置'"></span>
+        <button @click="modals.category = false" class="px-4 py-2 border border-slate-300 rounded-md text-sm text-slate-700 hover:bg-slate-50 transition">取消</button>
+        <button @click="saveCategorySettings()" :disabled="loading.category" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-md text-sm font-medium transition flex items-center">
+          <span x-text="loading.category ? '正在保存...' : '保存设置'"></span>
         </button>
       </div>
     </div>
   </div>
 
   <!-- Reeder 接入指导弹窗 -->
-  <div x-show="showClientInfoModal" 
-       @keydown.escape.window="showClientInfoModal = false" 
-       @click.self="showClientInfoModal = false"
+  <div x-show="modals.clientInfo" 
+       @keydown.escape.window="modals.clientInfo = false" 
+       @click.self="modals.clientInfo = false"
        class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 border border-slate-200">
       <h3 class="text-lg font-bold text-slate-900 mb-2">Reeder 客户端连接配置</h3>
@@ -508,15 +491,15 @@
       </div>
 
       <div class="flex justify-end">
-        <button @click="showClientInfoModal = false" class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700">完成</button>
+        <button @click="modals.clientInfo = false" class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700">完成</button>
       </div>
     </div>
   </div>
 
   <!-- 数据库文章内容查看弹窗 (展示 articles 表所有表头与字段) -->
-  <div x-show="showDbModal" 
-       @keydown.escape.window="showDbModal = false" 
-       @click.self="showDbModal = false"
+  <div x-show="modals.db" 
+       @keydown.escape.window="modals.db = false" 
+       @click.self="modals.db = false"
        class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl max-w-7xl w-full max-h-[92vh] flex flex-col border border-slate-200 overflow-hidden">
       <!-- 弹窗顶栏 -->
@@ -531,7 +514,7 @@
         </div>
         <div class="flex items-center space-x-3">
           <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-200 text-slate-700" x-text="'共 ' + dbArticlesTotal + ' 条记录'"></span>
-          <button @click="showDbModal = false" class="text-slate-400 hover:text-slate-600 rounded-lg p-1.5 transition">
+          <button @click="modals.db = false" class="text-slate-400 hover:text-slate-600 rounded-lg p-1.5 transition">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
           </button>
         </div>
@@ -552,12 +535,12 @@
         
         <div class="flex items-center space-x-2">
           <button @click="batchMarkArticlesRead(true)" 
-                  :disabled="selectedArticleIds.length === 0 || dbActionLoading"
+                  :disabled="selectedArticleIds.length === 0 || loading.dbAction"
                   class="px-3 py-1 bg-slate-700 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium rounded text-xs transition flex items-center shadow-xs">
             ✓ 设为已读
           </button>
           <button @click="batchMarkArticlesRead(false)" 
-                  :disabled="selectedArticleIds.length === 0 || dbActionLoading"
+                  :disabled="selectedArticleIds.length === 0 || loading.dbAction"
                   class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium rounded text-xs transition flex items-center shadow-xs">
             ● 设为未读
           </button>
@@ -587,9 +570,9 @@
           </thead>
           <tbody class="divide-y divide-slate-100">
             <template x-for="art in dbArticles" :key="art.id">
-              <tr class="hover:bg-indigo-50/40 transition group" :class="isArticleSelected(art.id) ? 'bg-indigo-50/70' : ''">
+              <tr class="hover:bg-indigo-50/40 transition group" :class="isSelected(selectedArticleIds, art.id) ? 'bg-indigo-50/70' : ''">
                 <td class="w-10 px-3 py-3 text-center">
-                  <input type="checkbox" :checked="isArticleSelected(art.id)" @change="toggleArticleSelect(art.id)" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+                  <input type="checkbox" :checked="isSelected(selectedArticleIds, art.id)" @change="toggleSelect(selectedArticleIds, art.id)" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
                 </td>
                 <td class="px-4 py-3 text-slate-900 font-semibold" x-text="art.id"></td>
                 <td class="px-3 py-3 text-slate-500" x-text="art.feed_id"></td>
@@ -601,12 +584,10 @@
                 <td class="px-4 py-3 text-slate-600 whitespace-nowrap" x-text="formatTime(art.published_at)"></td>
                 <td class="px-4 py-3 text-slate-400 whitespace-nowrap" x-text="formatTime(art.created_at)"></td>
                 <td class="px-3 py-3 text-center">
-                  <template x-if="art.url">
-                    <a :href="art.url" target="_blank" class="text-indigo-600 hover:text-indigo-800 underline font-sans" title="在新标签打开链接">
-                      链接
-                    </a>
-                  </template>
-                  <template x-if="!art.url">-</template>
+                  <a x-show="art.url" :href="art.url" target="_blank" class="text-indigo-600 hover:text-indigo-800 underline font-sans" title="在新标签打开链接">
+                    链接
+                  </a>
+                  <span x-show="!art.url">-</span>
                 </td>
                 <td class="px-3 py-3 text-center">
                   <button @click="openContentDetail(art)" class="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium rounded text-[11px] font-sans transition">
@@ -629,12 +610,12 @@
                 </td>
               </tr>
             </template>
-            <tr x-show="dbArticles.length === 0 && !dbLoading">
+            <tr x-show="dbArticles.length === 0 && !loading.db">
               <td colspan="12" class="px-6 py-12 text-center text-slate-400 font-sans text-sm">
                 📭 articles 表中暂无属于此 feed_id 的记录，可点击关闭后勾选源并点击「抓取」写入数据
               </td>
             </tr>
-            <tr x-show="dbLoading">
+            <tr x-show="loading.db">
               <td colspan="12" class="px-6 py-12 text-center text-slate-400 font-sans text-sm">
                 ⏳ 正在查询 SQLite 数据表 articles...
               </td>
@@ -648,7 +629,7 @@
         <div class="font-mono text-slate-500">
           SCHEMA: <code>id, feed_id, guid, title, url, content, author, published_at, created_at</code>
         </div>
-        <button @click="showDbModal = false" class="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-md transition">
+        <button @click="modals.db = false" class="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-md transition">
           关闭
         </button>
       </div>
@@ -656,9 +637,9 @@
   </div>
 
   <!-- 正文 (content) 原始 HTML 源码弹窗 (最高层级) -->
-  <div x-show="showContentModal" 
-       @keydown.escape.window="showContentModal = false" 
-       @click.self="showContentModal = false"
+  <div x-show="modals.content" 
+       @keydown.escape.window="modals.content = false" 
+       @click.self="modals.content = false"
        style="z-index: 9999;"
        class="fixed inset-0 overflow-y-auto bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[88vh] flex flex-col border border-slate-200 overflow-hidden">
@@ -670,7 +651,7 @@
           </div>
           <h3 class="text-base font-bold text-slate-900 mt-1 line-clamp-1" x-text="detailArticle ? detailArticle.title : ''"></h3>
         </div>
-        <button @click="showContentModal = false" class="text-slate-400 hover:text-slate-600 rounded-lg p-1.5 transition">
+        <button @click="modals.content = false" class="text-slate-400 hover:text-slate-600 rounded-lg p-1.5 transition">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
       </div>
@@ -692,7 +673,7 @@
 
       <div class="px-6 py-3 border-t border-slate-200 bg-slate-50 flex justify-between items-center text-xs text-slate-500">
         <div>未做任何格式转换或 DOM 渲染，完全为数据库存储的原始数据</div>
-        <button @click="showContentModal = false" class="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-md text-xs transition">
+        <button @click="modals.content = false" class="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-md text-xs transition">
           关闭
         </button>
       </div>
@@ -708,29 +689,37 @@
         selectedCategory: 'all',
         profile: { username: '', auth_token: '' },
         loginForm: { username: 'admin', password: 'admin123' },
-        showAddModal: false,
-        showEditModal: false,
-        showClientInfoModal: false,
-        showDbModal: false,
-        showContentModal: false,
+        
+        // 1. 状态收纳 (统一集中管理弹窗和异步加载状态)
+        modals: {
+          add: false,
+          edit: false,
+          clientInfo: false,
+          db: false,
+          content: false,
+          stagger: false,
+          category: false
+        },
+        loading: {
+          db: false,
+          dbAction: false,
+          batch: false,
+          stagger: false,
+          category: false
+        },
+
         detailArticle: null,
         copySuccess: false,
         toasts: [],
-        dbLoading: false,
         dbCurrentFeed: {},
         dbArticles: [],
         dbArticlesTotal: 0,
         selectedArticleIds: [],
-        dbActionLoading: false,
         selectedFeedIds: [],
-        batchActionLoading: false,
-        showStaggerModal: false,
-        staggerLoading: false,
+
         staggerTargetName: '',
         staggerTargetFeeds: [],
         staggerForm: { start_time: '08:00', window_minutes: 30 },
-        showCategoryModal: false,
-        categorySaving: false,
         categoryForm: { current_name: '', name: '', sort_order: 0 },
         modalForm: { id: null, title: '', feed_url: '', category_name: '', schedule_type: 'daily_fixed', schedule_value: '08:00' },
 
@@ -742,9 +731,7 @@
         toast(message, type = 'info', duration = 3000) {
           const id = Date.now() + Math.random().toString(36).substring(2, 6);
           this.toasts.push({ id, message, type });
-          setTimeout(() => {
-            this.removeToast(id);
-          }, duration);
+          setTimeout(() => { this.removeToast(id); }, duration);
         },
 
         removeToast(id) {
@@ -805,57 +792,45 @@
             const validIds = new Set(this.feeds.map(f => f.id));
             this.selectedFeedIds = this.selectedFeedIds.filter(id => validIds.has(id));
           } catch (e) {
-            console.error('加载订阅源失败:', e);
+            this.toast('加载订阅源失败: ' + e.message, 'error');
           }
         },
 
-        // 顶部统计汇总 (一次循环计算所有统计值，提高求值效率)
-        get stats() {
+        // 1. 单次遍历计算 (Single-Pass)：归纳统计和文件夹分组，一次循环计算出全部衍生数据
+        get computedData() {
           let dailyFixedCount = 0;
           let pausedCount = 0;
           let unreadTotal = 0;
+          const groupsMap = {};
+
           for (const f of this.feeds) {
             if (f.schedule_type === 'daily_fixed') dailyFixedCount++;
             else if (f.schedule_type === 'paused') pausedCount++;
             unreadTotal += (f.unread_count || 0);
-          }
-          return { dailyFixedCount, pausedCount, unreadTotal };
-        },
 
-        // 分类文件夹分组及统计归纳 (单次遍历 + 统一排序)
-        get groupData() {
-          const groups = {};
-          for (const f of this.feeds) {
-            const name = f.category_name || '未分类';
-            if (!groups[name]) {
-              groups[name] = {
-                name,
+            const catName = f.category_name || '未分类';
+            if (!groupsMap[catName]) {
+              groupsMap[catName] = {
+                name: catName,
                 count: 0,
                 sortOrder: f.category_name ? (f.category_sort_order ?? 0) : 999999,
                 feeds: [],
                 unreadTotal: 0
               };
             }
-            groups[name].count++;
-            groups[name].feeds.push(f);
-            groups[name].unreadTotal += (f.unread_count || 0);
+            groupsMap[catName].count++;
+            groupsMap[catName].feeds.push(f);
+            groupsMap[catName].unreadTotal += (f.unread_count || 0);
           }
 
-          const sorted = Object.values(groups).sort((a, b) => {
+          const sortedGroups = Object.values(groupsMap).sort((a, b) => {
             if (a.name === '未分类') return 1;
             if (b.name === '未分类') return -1;
             return a.sortOrder !== b.sortOrder ? a.sortOrder - b.sortOrder : a.name.localeCompare(b.name);
           });
 
-          return sorted;
-        },
-
-        get categoryList() {
-          return this.groupData.map(g => ({ name: g.name, count: g.count }));
-        },
-
-        get filteredGroups() {
-          return this.groupData
+          const categoryList = sortedGroups.map(g => ({ name: g.name, count: g.count }));
+          const filteredGroups = sortedGroups
             .filter(g => this.selectedCategory === 'all' || this.selectedCategory === g.name)
             .map(g => ({
               categoryName: g.name,
@@ -863,17 +838,40 @@
               feeds: g.feeds,
               unreadTotal: g.unreadTotal
             }));
+
+          return {
+            totalFeeds: this.feeds.length,
+            dailyFixedCount,
+            pausedCount,
+            unreadTotal,
+            categoryList,
+            filteredGroups
+          };
         },
 
-        // 订阅多选操作
-        isFeedSelected(id) {
-          return this.selectedFeedIds.includes(id);
+        // 2. 通用选择与全选抽象函数 (DRY Principle)
+        isSelected(list, id) {
+          return list.includes(id);
         },
 
-        toggleFeedSelect(id) {
-          const idx = this.selectedFeedIds.indexOf(id);
-          if (idx >= 0) this.selectedFeedIds.splice(idx, 1);
-          else this.selectedFeedIds.push(id);
+        toggleSelect(list, id) {
+          const idx = list.indexOf(id);
+          if (idx >= 0) list.splice(idx, 1);
+          else list.push(id);
+        },
+
+        toggleAll(list, sourceList) {
+          if (sourceList.length > 0 && sourceList.every(item => list.includes(item.id))) {
+            const removeSet = new Set(sourceList.map(item => item.id));
+            const remaining = list.filter(id => !removeSet.has(id));
+            list.length = 0;
+            list.push(...remaining);
+          } else {
+            const set = new Set(list);
+            sourceList.forEach(item => set.add(item.id));
+            list.length = 0;
+            list.push(...Array.from(set));
+          }
         },
 
         isGroupAllSelected(feeds) {
@@ -881,15 +879,7 @@
         },
 
         toggleGroupSelect(feeds) {
-          if (!feeds || feeds.length === 0) return;
-          if (this.isGroupAllSelected(feeds)) {
-            const removeSet = new Set(feeds.map(f => f.id));
-            this.selectedFeedIds = this.selectedFeedIds.filter(id => !removeSet.has(id));
-          } else {
-            const set = new Set(this.selectedFeedIds);
-            feeds.forEach(f => set.add(f.id));
-            this.selectedFeedIds = Array.from(set);
-          }
+          this.toggleAll(this.selectedFeedIds, feeds);
         },
 
         isAllSelected() {
@@ -897,11 +887,7 @@
         },
 
         toggleSelectAll() {
-          this.selectedFeedIds = this.isAllSelected() ? [] : this.feeds.map(f => f.id);
-        },
-
-        clearSelection() {
-          this.selectedFeedIds = [];
+          this.toggleAll(this.selectedFeedIds, this.feeds);
         },
 
         editSelectedFeed() {
@@ -915,17 +901,18 @@
           return this.feeds.filter(f => this.selectedFeedIds.includes(f.id));
         },
 
-        // 批量操作执行 (支持乐观更新暂停/恢复)
+        // 3. 执行效率与交互响应优化 (Optimistic UI 乐观立即更新，减少无谓全量刷盘)
         async runBatchAction(action) {
           if (this.selectedFeedIds.length === 0) return;
           if (action === 'delete' && !confirm(`确定要删除选中的 ${this.selectedFeedIds.length} 个订阅源吗？`)) {
             return;
           }
 
-          // 乐观更新：暂停与恢复立即变更前端界面状态
+          const targetIds = new Set(this.selectedFeedIds);
           const backupMap = new Map();
+
+          // 乐观更新：暂停与恢复立即变更本地状态
           if (action === 'pause' || action === 'resume') {
-            const targetIds = new Set(this.selectedFeedIds);
             this.feeds.forEach(f => {
               if (targetIds.has(f.id)) {
                 backupMap.set(f.id, f.schedule_type);
@@ -935,7 +922,7 @@
             this.toast(action === 'pause' ? '已暂停所选订阅' : '已恢复所选订阅', 'success');
           }
 
-          this.batchActionLoading = true;
+          this.loading.batch = true;
           try {
             const data = await this.api('/api/admin/feeds/batch', {
               method: 'POST',
@@ -943,13 +930,14 @@
             });
             if (action === 'fetch') {
               this.toast(`抓取完成，共新增 ${data.total_fetched || 0} 篇文章`, 'success');
+              await this.loadFeeds(); // 仅抓取产出新数据时拉取最新状态
             } else if (action === 'delete') {
-              this.toast(`已成功删除选中的订阅源`, 'success');
+              this.feeds = this.feeds.filter(f => !targetIds.has(f.id));
               this.selectedFeedIds = [];
+              this.toast('已成功删除选中的订阅源', 'success');
             }
-            await this.loadFeeds();
           } catch (e) {
-            // 乐观更新回滚
+            // 回滚
             if (backupMap.size > 0) {
               this.feeds.forEach(f => {
                 if (backupMap.has(f.id)) f.schedule_type = backupMap.get(f.id);
@@ -957,7 +945,7 @@
             }
             this.toast('操作失败: ' + e.message, 'error');
           } finally {
-            this.batchActionLoading = false;
+            this.loading.batch = false;
           }
         },
 
@@ -967,7 +955,7 @@
           this.staggerTargetFeeds = feeds;
           this.staggerTargetName = name || '订阅源';
           this.staggerForm = { start_time: '08:00', window_minutes: 30 };
-          this.showStaggerModal = true;
+          this.modals.stagger = true;
         },
 
         get staggerPreviewList() {
@@ -994,7 +982,7 @@
 
         async saveStaggerSchedule() {
           if (this.staggerTargetFeeds.length === 0) return;
-          this.staggerLoading = true;
+          this.loading.stagger = true;
           try {
             await this.api('/api/admin/feeds/distribute-schedule', {
               method: 'POST',
@@ -1004,13 +992,20 @@
                 window_minutes: Number(this.staggerForm.window_minutes) || 30
               }
             });
-            this.showStaggerModal = false;
+            // 乐观同步本地分配计划时刻
+            const previewMap = new Map(this.staggerPreviewList.map(p => [p.id, p.time]));
+            this.feeds.forEach(f => {
+              if (previewMap.has(f.id)) {
+                f.schedule_type = 'daily_fixed';
+                f.schedule_value = previewMap.get(f.id);
+              }
+            });
+            this.modals.stagger = false;
             this.toast('错峰时间分配已应用', 'success');
-            await this.loadFeeds();
           } catch (e) {
             this.toast('错峰时间分配失败: ' + e.message, 'error');
           } finally {
-            this.staggerLoading = false;
+            this.loading.stagger = false;
           }
         },
 
@@ -1022,13 +1017,13 @@
             name: catName,
             sort_order: group.sortOrder && group.sortOrder < 999999 ? group.sortOrder : 0
           };
-          this.showCategoryModal = true;
+          this.modals.category = true;
         },
 
         async saveCategorySettings() {
           const newName = (this.categoryForm.name || '').trim();
           if (!newName) return this.toast('文件夹标题不能为空', 'warning');
-          this.categorySaving = true;
+          this.loading.category = true;
           try {
             await this.api('/api/admin/categories/update', {
               method: 'POST',
@@ -1038,7 +1033,7 @@
                 sort_order: Number(this.categoryForm.sort_order) || 0
               }
             });
-            this.showCategoryModal = false;
+            this.modals.category = false;
             if (this.selectedCategory === (this.categoryForm.current_name || '未分类')) {
               this.selectedCategory = newName;
             }
@@ -1047,7 +1042,7 @@
           } catch (e) {
             this.toast('保存文件夹设置失败: ' + e.message, 'error');
           } finally {
-            this.categorySaving = false;
+            this.loading.category = false;
           }
         },
 
@@ -1061,12 +1056,13 @@
         },
 
         areAllFoldersCollapsed() {
-          return this.categoryList.length > 0 && this.categoryList.every(c => this.collapsedGroups[c.name]);
+          const list = this.computedData.categoryList;
+          return list.length > 0 && list.every(c => this.collapsedGroups[c.name]);
         },
 
         toggleAllFolders() {
           const collapse = !this.areAllFoldersCollapsed();
-          this.categoryList.forEach(c => { this.collapsedGroups[c.name] = collapse; });
+          this.computedData.categoryList.forEach(c => { this.collapsedGroups[c.name] = collapse; });
         },
 
         // 订阅表单弹窗
@@ -1079,19 +1075,19 @@
             schedule_type: feed.schedule_type,
             schedule_value: feed.schedule_value
           };
-          this.showEditModal = true;
+          this.modals.edit = true;
         },
 
         closeModal() {
-          this.showAddModal = false;
-          this.showEditModal = false;
+          this.modals.add = false;
+          this.modals.edit = false;
           this.modalForm = { id: null, title: '', feed_url: '', category_name: '', schedule_type: 'daily_fixed', schedule_value: '08:00' };
         },
 
         async saveModal() {
           if (!this.modalForm.feed_url) return this.toast('请输入源地址', 'warning');
           try {
-            const isEdit = this.showEditModal && this.modalForm.id;
+            const isEdit = this.modals.edit && this.modalForm.id;
             const url = isEdit ? `/api/admin/feeds/${this.modalForm.id}` : '/api/admin/feeds';
             await this.api(url, { method: isEdit ? 'PUT' : 'POST', body: this.modalForm });
             this.closeModal();
@@ -1108,8 +1104,8 @@
           this.dbArticles = [];
           this.dbArticlesTotal = 0;
           this.selectedArticleIds = [];
-          this.dbLoading = true;
-          this.showDbModal = true;
+          this.loading.db = true;
+          this.modals.db = true;
 
           try {
             const data = await this.api(`/api/admin/feeds/${feed.id}/articles?limit=100`);
@@ -1118,27 +1114,17 @@
           } catch (e) {
             this.toast('读取数据库记录失败: ' + e.message, 'error');
           } finally {
-            this.dbLoading = false;
+            this.loading.db = false;
           }
         },
 
-        // 文章多选与已读标记 (支持 Optimistic UI 乐观立即更新)
-        isArticleSelected(id) {
-          return this.selectedArticleIds.includes(id);
-        },
-
-        toggleArticleSelect(id) {
-          const idx = this.selectedArticleIds.indexOf(id);
-          if (idx >= 0) this.selectedArticleIds.splice(idx, 1);
-          else this.selectedArticleIds.push(id);
-        },
-
+        // 文章多选与已读标记
         isAllArticlesSelected() {
           return this.dbArticles.length > 0 && this.dbArticles.every(a => this.selectedArticleIds.includes(a.id));
         },
 
         toggleSelectAllArticles() {
-          this.selectedArticleIds = this.isAllArticlesSelected() ? [] : this.dbArticles.map(a => a.id);
+          this.toggleAll(this.selectedArticleIds, this.dbArticles);
         },
 
         async batchMarkArticlesRead(isRead) {
@@ -1159,20 +1145,24 @@
             }
           });
 
-          // 乐观同步 feed 的未读数
+          // 乐观同步当前 feed 和 feeds 列表的未读数，避免全量重新请求
           if (this.dbCurrentFeed && this.dbCurrentFeed.unread_count !== undefined) {
             this.dbCurrentFeed.unread_count = Math.max(0, this.dbCurrentFeed.unread_count + deltaUnread);
           }
+          const feedInList = this.feeds.find(f => f.id === this.dbCurrentFeed.id);
+          if (feedInList && feedInList.unread_count !== undefined) {
+            feedInList.unread_count = Math.max(0, feedInList.unread_count + deltaUnread);
+          }
+
           this.selectedArticleIds = [];
           this.toast(isRead ? `已设为已读 (${targetIds.length} 篇)` : `已设为未读 (${targetIds.length} 篇)`, 'success');
 
-          this.dbActionLoading = true;
+          this.loading.dbAction = true;
           try {
             await this.api('/api/admin/articles/batch-read', {
               method: 'POST',
               body: { article_ids: targetIds, is_read: isRead }
             });
-            await this.loadFeeds();
           } catch (e) {
             // 出错时回滚
             this.dbArticles.forEach(a => {
@@ -1181,19 +1171,28 @@
             if (this.dbCurrentFeed && this.dbCurrentFeed.unread_count !== undefined) {
               this.dbCurrentFeed.unread_count = Math.max(0, this.dbCurrentFeed.unread_count - deltaUnread);
             }
+            if (feedInList && feedInList.unread_count !== undefined) {
+              feedInList.unread_count = Math.max(0, feedInList.unread_count - deltaUnread);
+            }
             this.toast('更新已读状态失败: ' + e.message, 'error');
           } finally {
-            this.dbActionLoading = false;
+            this.loading.dbAction = false;
           }
         },
 
         async toggleSingleArticleRead(art) {
           const nextState = !art.is_read;
           const prevState = art.is_read;
+          const delta = nextState ? -1 : 1;
+
           // 乐观更新
           art.is_read = nextState;
           if (this.dbCurrentFeed && this.dbCurrentFeed.unread_count !== undefined) {
-            this.dbCurrentFeed.unread_count = Math.max(0, this.dbCurrentFeed.unread_count + (nextState ? -1 : 1));
+            this.dbCurrentFeed.unread_count = Math.max(0, this.dbCurrentFeed.unread_count + delta);
+          }
+          const feedInList = this.feeds.find(f => f.id === this.dbCurrentFeed.id);
+          if (feedInList && feedInList.unread_count !== undefined) {
+            feedInList.unread_count = Math.max(0, feedInList.unread_count + delta);
           }
 
           try {
@@ -1201,12 +1200,14 @@
               method: 'POST',
               body: { article_ids: [art.id], is_read: nextState }
             });
-            await this.loadFeeds();
           } catch (e) {
             // 回滚
             art.is_read = prevState;
             if (this.dbCurrentFeed && this.dbCurrentFeed.unread_count !== undefined) {
-              this.dbCurrentFeed.unread_count = Math.max(0, this.dbCurrentFeed.unread_count + (prevState ? -1 : 1));
+              this.dbCurrentFeed.unread_count = Math.max(0, this.dbCurrentFeed.unread_count - delta);
+            }
+            if (feedInList && feedInList.unread_count !== undefined) {
+              feedInList.unread_count = Math.max(0, feedInList.unread_count - delta);
             }
             this.toast('切换已读状态失败: ' + e.message, 'error');
           }
@@ -1216,7 +1217,7 @@
         openContentDetail(article) {
           this.detailArticle = article;
           this.copySuccess = false;
-          this.showContentModal = true;
+          this.modals.content = true;
         },
 
         async copyRawContent() {
@@ -1239,4 +1240,3 @@
   </script>
 </body>
 </html>
-
