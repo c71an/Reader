@@ -1,12 +1,11 @@
-# Build Stage
-FROM golang:1.24-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:alpine AS builder
 
 WORKDIR /app
 
-# 安装 ca-certificates
 RUN apk add --no-cache ca-certificates tzdata
 
 COPY go.mod go.sum ./
+ENV GOTOOLCHAIN=auto
 RUN go mod download
 
 COPY . .
