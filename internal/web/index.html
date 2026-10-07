@@ -182,10 +182,13 @@
             </div>
 
             <div class="flex items-center space-x-2" @click.stop>
-              <button @click="openStaggerModal(group.feeds, group.categoryName)" 
-                      class="text-xs text-indigo-600 hover:text-indigo-800 font-medium px-2.5 py-1 rounded-md bg-white border border-slate-200 hover:border-indigo-300 transition shadow-2xs flex items-center"
-                      title="为本文件夹内所有源均匀分配交错时间">
-                ⏱ 错峰分配
+              <button @click="openCategoryEditModal(group)" 
+                      class="text-xs text-slate-500 hover:text-indigo-600 font-medium p-1.5 rounded-md bg-white border border-slate-200 hover:border-indigo-300 transition shadow-2xs flex items-center"
+                      title="设置文件夹标题与排列顺序">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
               </button>
             </div>
           </div>
@@ -407,6 +410,42 @@
         <button @click="showStaggerModal = false" class="px-4 py-2 border border-slate-300 rounded-md text-sm text-slate-700 hover:bg-slate-50 transition">取消</button>
         <button @click="saveStaggerSchedule()" :disabled="staggerLoading || staggerTargetFeeds.length === 0" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-md text-sm font-medium transition flex items-center">
           <span x-text="staggerLoading ? '正在分配...' : '确认应用分配'"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 文件夹设置弹窗 (设置标题与排序) -->
+  <div x-show="showCategoryModal" class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6 border border-slate-200">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 class="text-lg font-bold text-slate-900">文件夹设置</h3>
+          <p class="text-xs text-slate-500 mt-0.5" x-text="'当前文件夹：' + (categoryForm.current_name || '未分类')"></p>
+        </div>
+        <button @click="showCategoryModal = false" class="text-slate-400 hover:text-slate-600 p-1">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">文件夹标题 (分类名称)</label>
+          <input type="text" x-model="categoryForm.name" placeholder="输入文件夹标题" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500">
+          <p class="text-[11px] text-slate-400 mt-1">修改后本文件夹下的所有订阅源将归属于此标题</p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">排列顺序 (数字越小越上面)</label>
+          <input type="number" x-model.number="categoryForm.sort_order" placeholder="0" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono focus:ring-indigo-500 focus:border-indigo-500">
+          <p class="text-[11px] text-slate-400 mt-1">例如：1 排在 2 上面；数字越小，在页面与分类栏中的排列位置越靠前</p>
+        </div>
+      </div>
+
+      <div class="mt-6 flex justify-end space-x-3">
+        <button @click="showCategoryModal = false" class="px-4 py-2 border border-slate-300 rounded-md text-sm text-slate-700 hover:bg-slate-50 transition">取消</button>
+        <button @click="saveCategorySettings()" :disabled="categorySaving" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-md text-sm font-medium transition flex items-center">
+          <span x-text="categorySaving ? '正在保存...' : '保存设置'"></span>
         </button>
       </div>
     </div>
@@ -645,6 +684,9 @@
         staggerTargetName: '',
         staggerTargetFeeds: [],
         staggerForm: { start_time: '08:00', window_minutes: 30 },
+        showCategoryModal: false,
+        categorySaving: false,
+        categoryForm: { current_name: '', name: '', sort_order: 0 },
         modalForm: { id: null, title: '', feed_url: '', category_name: '', schedule_type: 'daily_fixed', schedule_value: '08:00' },
 
         init() {
@@ -887,27 +929,88 @@
           }
         },
 
-        // 获取分类统计列表
+        // 打开文件夹设置弹窗
+        openCategoryEditModal(group) {
+          const catName = group.categoryName === '未分类' ? '' : group.categoryName;
+          const currentOrder = group.sortOrder !== undefined && group.sortOrder !== 999999 ? group.sortOrder : 0;
+          this.categoryForm = {
+            current_name: catName,
+            name: catName,
+            sort_order: currentOrder
+          };
+          this.showCategoryModal = true;
+        },
+
+        // 保存文件夹设置 (标题与排序)
+        async saveCategorySettings() {
+          const newName = (this.categoryForm.name || '').trim();
+          if (!newName) {
+            alert('文件夹标题不能为空');
+            return;
+          }
+          this.categorySaving = true;
+          try {
+            const res = await fetch('/api/admin/categories/update', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                current_name: this.categoryForm.current_name || '',
+                name: newName,
+                sort_order: Number(this.categoryForm.sort_order) || 0
+              })
+            });
+            if (res.ok) {
+              this.showCategoryModal = false;
+              // 如果当前选中的分类就是被修改的分类，同步更新选中态
+              if (this.selectedCategory === (this.categoryForm.current_name || '未分类')) {
+                this.selectedCategory = newName;
+              }
+              await this.loadFeeds();
+            } else {
+              const errData = await res.json().catch(() => ({}));
+              alert('保存文件夹设置失败: ' + (errData.error || '未知错误'));
+            }
+          } catch (e) {
+            alert('请求异常: ' + e);
+          } finally {
+            this.categorySaving = false;
+          }
+        },
+
+        // 获取分类统计列表 (按 sort_order ASC 排序，数字越小越靠前，未分类置底)
         get categoryList() {
           const map = {};
           this.feeds.forEach(f => {
             const name = f.category_name || '未分类';
-            map[name] = (map[name] || 0) + 1;
+            const sortOrder = f.category_name ? (f.category_sort_order !== undefined ? f.category_sort_order : 0) : 999999;
+            if (!map[name]) {
+              map[name] = { name: name, count: 0, sortOrder: sortOrder };
+            }
+            map[name].count += 1;
           });
-          return Object.keys(map).map(k => ({ name: k, count: map[k] }));
+          return Object.values(map).sort((a, b) => {
+            if (a.name === '未分类') return 1;
+            if (b.name === '未分类') return -1;
+            if (a.sortOrder !== b.sortOrder) {
+              return a.sortOrder - b.sortOrder;
+            }
+            return a.name.localeCompare(b.name);
+          });
         },
 
-        // 按照分类文件夹组织分组列表
+        // 按照分类文件夹组织分组列表 (按 sort_order ASC 排序，数字越小越靠前，未分类置底)
         get filteredGroups() {
           const map = {};
           this.feeds.forEach(f => {
             const name = f.category_name || '未分类';
+            const sortOrder = f.category_name ? (f.category_sort_order !== undefined ? f.category_sort_order : 0) : 999999;
             if (this.selectedCategory !== 'all' && this.selectedCategory !== name) {
               return;
             }
             if (!map[name]) {
               map[name] = {
                 categoryName: name,
+                sortOrder: sortOrder,
                 feeds: [],
                 unreadTotal: 0
               };
@@ -915,10 +1018,12 @@
             map[name].feeds.push(f);
             map[name].unreadTotal += (f.unread_count || 0);
           });
-          // 未分类排最后，其余按首字母排序
           return Object.values(map).sort((a, b) => {
             if (a.categoryName === '未分类') return 1;
             if (b.categoryName === '未分类') return -1;
+            if (a.sortOrder !== b.sortOrder) {
+              return a.sortOrder - b.sortOrder;
+            }
             return a.categoryName.localeCompare(b.categoryName);
           });
         },

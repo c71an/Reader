@@ -26,24 +26,26 @@ type User struct {
 type Category struct {
 	ID        int64     `json:"id"`
 	Name      string    `json:"name"`
+	SortOrder int       `json:"sort_order"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
 type Feed struct {
-	ID            int64      `json:"id"`
-	Title         string     `json:"title"`
-	FeedURL       string     `json:"feed_url"`
-	SiteURL       string     `json:"site_url"`
-	CategoryID    *int64     `json:"category_id"`
-	CategoryName  string     `json:"category_name,omitempty"`
-	ScheduleType  string     `json:"schedule_type"`  // "interval" 或 "daily_fixed"
-	ScheduleValue string     `json:"schedule_value"` // "30m", "1h" 或 "08:00,18:30"
-	LastFetchedAt *time.Time `json:"last_fetched_at"`
-	LastError     string     `json:"last_error"`
-	Etag          string     `json:"etag"`
-	LastModified  string     `json:"last_modified"`
-	UnreadCount   int        `json:"unread_count,omitempty"`
-	CreatedAt     time.Time  `json:"created_at"`
+	ID                int64      `json:"id"`
+	Title             string     `json:"title"`
+	FeedURL           string     `json:"feed_url"`
+	SiteURL           string     `json:"site_url"`
+	CategoryID        *int64     `json:"category_id"`
+	CategoryName      string     `json:"category_name,omitempty"`
+	CategorySortOrder int        `json:"category_sort_order"`
+	ScheduleType      string     `json:"schedule_type"`  // "interval" 或 "daily_fixed"
+	ScheduleValue     string     `json:"schedule_value"` // "30m", "1h" 或 "08:00,18:30"
+	LastFetchedAt     *time.Time `json:"last_fetched_at"`
+	LastError         string     `json:"last_error"`
+	Etag              string     `json:"etag"`
+	LastModified      string     `json:"last_modified"`
+	UnreadCount       int        `json:"unread_count,omitempty"`
+	CreatedAt         time.Time  `json:"created_at"`
 }
 
 type Article struct {
@@ -103,6 +105,7 @@ func (d *DB) migrate() error {
 	CREATE TABLE IF NOT EXISTS categories (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		name TEXT UNIQUE NOT NULL,
+		sort_order INTEGER DEFAULT 0,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
 
@@ -153,7 +156,11 @@ func (d *DB) migrate() error {
 	CREATE INDEX IF NOT EXISTS idx_states_user_starred ON article_states(user_id, is_starred);
 	`
 	_, err := d.Exec(schema)
-	return err
+	if err != nil {
+		return err
+	}
+	_, _ = d.Exec("ALTER TABLE categories ADD COLUMN sort_order INTEGER DEFAULT 0;")
+	return nil
 }
 
 func (d *DB) ensureDefaultUser(username, password string) error {

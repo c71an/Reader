@@ -426,6 +426,29 @@ func (h *AdminHandler) GetCategories(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(cats)
 }
 
+// 修改分类文件夹标题与排列顺序
+func (h *AdminHandler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		CurrentName string `json:"current_name"`
+		Name        string `json:"name"`
+		SortOrder   int    `json:"sort_order"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid body", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.db.UpdateCategoryByName(req.CurrentName, req.Name, req.SortOrder); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+	})
+}
+
 // 获取个人设置 (包含 Reeder 凭证及接入指引)
 func (h *AdminHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value("user").(*db.User)

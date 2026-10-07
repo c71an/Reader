@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -35,7 +36,7 @@ func (d *DB) DeleteFeed(feedID int64) error {
 
 func (d *DB) GetFeedByID(feedID int64) (*Feed, error) {
 	row := d.QueryRow(`
-		SELECT f.id, f.title, f.feed_url, f.site_url, f.category_id, COALESCE(c.name, ''),
+		SELECT f.id, f.title, f.feed_url, f.site_url, f.category_id, COALESCE(c.name, ''), COALESCE(c.sort_order, 0),
 		       f.schedule_type, f.schedule_value, f.last_fetched_at, f.last_error, f.etag, f.last_modified, f.created_at
 		FROM feeds f
 		LEFT JOIN categories c ON f.category_id = c.id
@@ -47,7 +48,7 @@ func (d *DB) GetFeedByID(feedID int64) (*Feed, error) {
 	var catID sql.NullInt64
 	var lastFetched sql.NullTime
 
-	err := row.Scan(&f.ID, &f.Title, &f.FeedURL, &f.SiteURL, &catID, &catName,
+	err := row.Scan(&f.ID, &f.Title, &f.FeedURL, &f.SiteURL, &catID, &catName, &f.CategorySortOrder,
 		&f.ScheduleType, &f.ScheduleValue, &lastFetched, &f.LastError, &f.Etag, &f.LastModified, &f.CreatedAt)
 	if err != nil {
 		return nil, err
@@ -64,14 +65,14 @@ func (d *DB) GetFeedByID(feedID int64) (*Feed, error) {
 
 func (d *DB) GetAllFeeds() ([]*Feed, error) {
 	rows, err := d.Query(`
-		SELECT f.id, f.title, f.feed_url, f.site_url, f.category_id, COALESCE(c.name, ''),
+		SELECT f.id, f.title, f.feed_url, f.site_url, f.category_id, COALESCE(c.name, ''), COALESCE(c.sort_order, 0),
 		       f.schedule_type, f.schedule_value, f.last_fetched_at, f.last_error, f.etag, f.last_modified, f.created_at,
 		       (SELECT COUNT(*) FROM articles a 
 		        LEFT JOIN article_states s ON a.id = s.article_id 
 		        WHERE a.feed_id = f.id AND (s.is_read IS NULL OR s.is_read = 0)) as unread_count
 		FROM feeds f
 		LEFT JOIN categories c ON f.category_id = c.id
-		ORDER BY f.id ASC
+		ORDER BY COALESCE(c.sort_order, 0) ASC, f.id ASC
 	`)
 	if err != nil {
 		return nil, err
@@ -85,7 +86,7 @@ func (d *DB) GetAllFeeds() ([]*Feed, error) {
 		var catID sql.NullInt64
 		var lastFetched sql.NullTime
 
-		if err := rows.Scan(&f.ID, &f.Title, &f.FeedURL, &f.SiteURL, &catID, &catName,
+		if err := rows.Scan(&f.ID, &f.Title, &f.FeedURL, &f.SiteURL, &catID, &catName, &f.CategorySortOrder,
 			&f.ScheduleType, &f.ScheduleValue, &lastFetched, &f.LastError, &f.Etag, &f.LastModified, &f.CreatedAt, &f.UnreadCount); err != nil {
 			return nil, err
 		}
@@ -111,7 +112,7 @@ func (d *DB) UpdateFeedFetchStatus(feedID int64, lastFetched time.Time, lastErro
 
 // 分类管理
 func (d *DB) GetAllCategories() ([]Category, error) {
-	rows, err := d.Query("SELECT id, name, created_at FROM categories ORDER BY name ASC")
+	rows, err := d.Query("SELECT id, name, sort_order, created_at FROM categories ORDER BY sort_order ASC, name ASC")
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +121,7 @@ func (d *DB) GetAllCategories() ([]Category, error) {
 	var cats []Category
 	for rows.Next() {
 		var c Category
-		if err := rows.Scan(&c.ID, &c.Name, &c.CreatedAt); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.SortOrder, &c.CreatedAt); err != nil {
 			return nil, err
 		}
 		cats = append(cats, c)
@@ -133,14 +134,14 @@ func (d *DB) GetOrCreateCategory(name string) (*Category, error) {
 		return nil, nil
 	}
 	var c Category
-	err := d.QueryRow("SELECT id, name, created_at FROM categories WHERE name = ?", name).Scan(&c.ID, &c.Name, &c.CreatedAt)
+	err := d.QueryRow("SELECT id, name, sort_order, created_at FROM categories WHERE name = ?", name).Scan(&c.ID, &c.Name, &c.SortOrder, &c.CreatedAt)
 	if err == nil {
 		return &c, nil
 	}
 	res, err := d.Exec("INSERT INTO categories (name) VALUES (?)", name)
 	if err != nil {
 		// 并发可能冲突，重试查询
-		err = d.QueryRow("SELECT id, name, created_at FROM categories WHERE name = ?", name).Scan(&c.ID, &c.Name, &c.CreatedAt)
+		err = d.QueryRow("SELECT id, name, sort_order, created_at FROM categories WHERE name = ?", name).Scan(&c.ID, &c.Name, &c.SortOrder, &c.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -150,6 +151,54 @@ func (d *DB) GetOrCreateCategory(name string) (*Category, error) {
 	c.Name = name
 	c.CreatedAt = time.Now()
 	return &c, nil
+}
+
+func (d *DB) UpdateCategoryByName(currentName, newName string, sortOrder int) error {
+	currentName = strings.TrimSpace(currentName)
+	newName = strings.TrimSpace(newName)
+	if newName == "" {
+		newName = currentName
+	}
+	if currentName == "" || currentName == "未分类" {
+		if newName == "未分类" || newName == "" {
+			return nil
+		}
+		cat, err := d.GetOrCreateCategory(newName)
+		if err != nil {
+			return err
+		}
+		_, _ = d.Exec("UPDATE categories SET sort_order = ? WHERE id = ?", sortOrder, cat.ID)
+		_, err = d.Exec("UPDATE feeds SET category_id = ? WHERE category_id IS NULL", cat.ID)
+		return err
+	}
+
+	var cat Category
+	err := d.QueryRow("SELECT id, name, sort_order, created_at FROM categories WHERE name = ?", currentName).
+		Scan(&cat.ID, &cat.Name, &cat.SortOrder, &cat.CreatedAt)
+	if err != nil {
+		return err
+	}
+
+	if newName == currentName {
+		_, err = d.Exec("UPDATE categories SET sort_order = ? WHERE id = ?", sortOrder, cat.ID)
+		return err
+	}
+
+	var targetCat Category
+	errTarget := d.QueryRow("SELECT id, name, sort_order, created_at FROM categories WHERE name = ?", newName).
+		Scan(&targetCat.ID, &targetCat.Name, &targetCat.SortOrder, &targetCat.CreatedAt)
+	if errTarget == nil {
+		_, err = d.Exec("UPDATE feeds SET category_id = ? WHERE category_id = ?", targetCat.ID, cat.ID)
+		if err != nil {
+			return err
+		}
+		_, _ = d.Exec("UPDATE categories SET sort_order = ? WHERE id = ?", sortOrder, targetCat.ID)
+		_, _ = d.Exec("DELETE FROM categories WHERE id = ?", cat.ID)
+		return nil
+	}
+
+	_, err = d.Exec("UPDATE categories SET name = ?, sort_order = ? WHERE id = ?", newName, sortOrder, cat.ID)
+	return err
 }
 
 // 文章插入 (如果 guid 重复则忽略)

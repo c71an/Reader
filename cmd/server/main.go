@@ -113,6 +113,7 @@ func main() {
 			r.Post("/feeds/{id}/fetch", adminHandler.FetchFeedNow)
 			r.Post("/feeds/{id}/pause", adminHandler.ToggleFeedPause)
 			r.Get("/categories", adminHandler.GetCategories)
+			r.Post("/categories/update", adminHandler.UpdateCategory)
 		})
 	})
 
