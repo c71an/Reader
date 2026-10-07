@@ -430,42 +430,41 @@
     </div>
   </div>
 
-  <!-- 正文 (content) 详情弹窗 -->
+  <!-- 正文 (content) 原始 HTML 源码弹窗 -->
   <div x-show="showContentModal" class="fixed inset-0 z-60 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[85vh] flex flex-col border border-slate-200 overflow-hidden">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[88vh] flex flex-col border border-slate-200 overflow-hidden">
       <div class="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
         <div>
-          <span class="text-xs font-mono font-semibold text-indigo-600" x-text="'articles.content (id: ' + (detailArticle ? detailArticle.id : '') + ')'"></span>
-          <h3 class="text-base font-bold text-slate-900 mt-0.5 line-clamp-1" x-text="detailArticle ? detailArticle.title : ''"></h3>
+          <div class="flex items-center space-x-2">
+            <span class="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-indigo-100 text-indigo-800">articles.content (原始 HTML 源码)</span>
+            <span class="text-xs text-slate-500 font-mono" x-text="'id: ' + (detailArticle ? detailArticle.id : '')"></span>
+          </div>
+          <h3 class="text-base font-bold text-slate-900 mt-1 line-clamp-1" x-text="detailArticle ? detailArticle.title : ''"></h3>
         </div>
         <button @click="showContentModal = false" class="text-slate-400 hover:text-slate-600 rounded-lg p-1.5 transition">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
       </div>
 
-      <!-- 正文展示：支持 HTML 渲染与 Raw 源码切换 -->
-      <div class="p-6 overflow-y-auto flex-1 space-y-4">
-        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-          <span class="text-xs font-semibold text-slate-500">正文渲染预览 (Rendered HTML)</span>
-          <button @click="viewRawContent = !viewRawContent" class="text-xs text-indigo-600 hover:underline">
-            <span x-text="viewRawContent ? '切换回富文本预览' : '查看原始 HTML 源码'"></span>
+      <!-- 纯原始 HTML 源码展示区 -->
+      <div class="p-6 overflow-y-auto flex-1 flex flex-col space-y-3 bg-slate-900">
+        <div class="flex items-center justify-between text-xs text-slate-400 font-mono">
+          <span>原始数据长度: <span class="text-emerald-400 font-bold" x-text="(detailArticle && detailArticle.content ? detailArticle.content.length : 0) + ' 字符'"></span></span>
+          <button @click="copyRawContent()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs transition flex items-center">
+            <span x-text="copySuccess ? '已复制！' : '复制代码'"></span>
           </button>
         </div>
 
-        <template x-if="detailArticle && !viewRawContent">
-          <div class="prose prose-sm max-w-none text-slate-800 leading-relaxed break-words bg-slate-50/50 p-4 rounded-xl border border-slate-100 overflow-x-auto" 
-               x-html="detailArticle.content || '<span class=\"text-slate-400\">无正文内容</span>'"></div>
-        </template>
-
-        <template x-if="detailArticle && viewRawContent">
-          <textarea readonly class="w-full h-80 p-3 bg-slate-900 text-slate-100 font-mono text-xs rounded-xl border border-slate-700 select-all" 
-                    x-text="detailArticle.content || ''"></textarea>
-        </template>
+        <textarea readonly 
+                  class="w-full flex-1 min-h-[380px] p-4 bg-slate-950 text-emerald-400 font-mono text-xs rounded-xl border border-slate-800 focus:outline-none select-all resize-none leading-relaxed" 
+                  x-text="detailArticle ? (detailArticle.content || '') : ''"
+                  placeholder="无正文内容"></textarea>
       </div>
 
-      <div class="px-6 py-3 border-t border-slate-200 bg-slate-50 flex justify-end">
-        <button @click="showContentModal = false" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md text-xs transition">
-          确定
+      <div class="px-6 py-3 border-t border-slate-200 bg-slate-50 flex justify-between items-center text-xs text-slate-500">
+        <div>未做任何格式转换或 DOM 渲染，完全为数据库存储的原始数据</div>
+        <button @click="showContentModal = false" class="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-md text-xs transition">
+          关闭
         </button>
       </div>
     </div>
@@ -486,12 +485,11 @@
         showDbModal: false,
         showContentModal: false,
         detailArticle: null,
-        viewRawContent: false,
+        copySuccess: false,
         dbLoading: false,
         dbCurrentFeed: {},
         dbArticles: [],
         dbArticlesTotal: 0,
-        dbSelectedArticle: null,
         modalForm: { id: null, title: '', feed_url: '', category_name: '', schedule_type: 'daily_fixed', schedule_value: '08:00' },
 
         init() {
@@ -721,8 +719,19 @@
 
         openContentDetail(article) {
           this.detailArticle = article;
-          this.viewRawContent = false;
+          this.copySuccess = false;
           this.showContentModal = true;
+        },
+
+        async copyRawContent() {
+          if (!this.detailArticle || !this.detailArticle.content) return;
+          try {
+            await navigator.clipboard.writeText(this.detailArticle.content);
+            this.copySuccess = true;
+            setTimeout(() => { this.copySuccess = false; }, 2000);
+          } catch (e) {
+            alert('复制失败，请手动全选复制');
+          }
         },
 
         formatTime(t) {
