@@ -149,14 +149,14 @@
 
           <!-- 文件夹下属订阅源列表 -->
           <div x-show="!isGroupCollapsed(group.categoryName)" class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-slate-100 text-sm">
+            <table class="min-w-full divide-y divide-slate-100 text-sm table-fixed">
               <thead class="bg-white text-slate-400 font-semibold text-xs border-b border-slate-100">
                 <tr>
-                  <th class="px-6 py-2.5 text-left">订阅源标题 / 链接</th>
-                  <th class="px-4 py-2.5 text-left">调度策略 (定时 / 每日固定)</th>
-                  <th class="px-4 py-2.5 text-left">未读数</th>
-                  <th class="px-4 py-2.5 text-left">上次抓取情况</th>
-                  <th class="px-6 py-2.5 text-right">操作</th>
+                  <th class="w-5/12 px-6 py-2.5 text-left">订阅源标题 / 链接</th>
+                  <th class="w-2/12 px-4 py-2.5 text-left">调度策略</th>
+                  <th class="w-1/12 px-4 py-2.5 text-center">未读数</th>
+                  <th class="w-2/12 px-4 py-2.5 text-left">上次抓取情况</th>
+                  <th class="w-2/12 px-6 py-2.5 text-right">操作</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-100">
@@ -164,19 +164,19 @@
                   <tr class="hover:bg-slate-50/70 transition">
                     <td class="px-6 py-3.5">
                       <div class="font-semibold text-slate-900 flex items-center space-x-2">
-                        <button @click="openDbView(feed)" class="text-left hover:text-indigo-600 transition flex items-center group" title="点击查看数据库文章内容">
-                          <span x-text="feed.title" class="group-hover:underline"></span>
-                          <span class="ml-1 text-[11px] text-slate-400 group-hover:text-indigo-500 font-normal">🔍数据库</span>
+                        <button @click="openDbView(feed)" class="text-left hover:text-indigo-600 transition flex items-center group max-w-full truncate" title="点击查看数据库文章内容">
+                          <span x-text="feed.title" class="group-hover:underline truncate"></span>
+                          <span class="ml-1 text-[11px] text-slate-400 group-hover:text-indigo-500 font-normal shrink-0">🔍数据库</span>
                         </button>
                         <template x-if="feed.site_url">
-                          <a :href="feed.site_url" target="_blank" class="text-slate-400 hover:text-indigo-600" title="打开网站主页">
+                          <a :href="feed.site_url" target="_blank" class="text-slate-400 hover:text-indigo-600 shrink-0" title="打开网站主页">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                           </a>
                         </template>
                       </div>
                       <div class="text-xs text-slate-400 font-mono truncate max-w-sm mt-0.5" x-text="feed.feed_url"></div>
                     </td>
-                    <td class="px-4 py-3.5">
+                    <td class="px-4 py-3.5 whitespace-nowrap">
                       <template x-if="feed.schedule_type === 'daily_fixed'">
                         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                           每天固定: <span class="font-mono ml-1" x-text="feed.schedule_value"></span>
@@ -188,31 +188,33 @@
                         </span>
                       </template>
                     </td>
-                    <td class="px-4 py-3.5">
+                    <td class="px-4 py-3.5 text-center">
                       <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
                             :class="feed.unread_count > 0 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-500'"
                             x-text="feed.unread_count || 0">
                       </span>
                     </td>
-                    <td class="px-4 py-3.5">
-                      <div class="text-xs text-slate-600" x-text="formatTime(feed.last_fetched_at)"></div>
+                    <td class="px-4 py-3.5 whitespace-nowrap">
+                      <div class="text-xs text-slate-600 font-mono" x-text="formatTime(feed.last_fetched_at)"></div>
                       <template x-if="feed.last_error">
-                        <div class="text-xs text-red-500 truncate max-w-xs mt-0.5" :title="feed.last_error" x-text="'⚠️ ' + feed.last_error"></div>
+                        <div class="text-xs text-red-500 truncate max-w-[160px] mt-0.5" :title="feed.last_error" x-text="'⚠️ ' + feed.last_error"></div>
                       </template>
                     </td>
-                    <td class="px-6 py-3.5 text-right space-x-2">
-                      <button @click="openDbView(feed)" class="text-xs px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium rounded transition">
-                        数据
-                      </button>
-                      <button @click="fetchNow(feed)" class="text-xs px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded transition">
-                        抓取
-                      </button>
-                      <button @click="openEditModal(feed)" class="text-xs px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded transition">
-                        编辑
-                      </button>
-                      <button @click="deleteFeed(feed)" class="text-xs px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 font-medium rounded transition">
-                        删除
-                      </button>
+                    <td class="px-6 py-3.5 text-right whitespace-nowrap">
+                      <div class="inline-flex items-center justify-end space-x-1.5">
+                        <button @click="openDbView(feed)" class="text-xs px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium rounded transition">
+                          数据
+                        </button>
+                        <button @click="fetchNow(feed)" class="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded transition">
+                          抓取
+                        </button>
+                        <button @click="openEditModal(feed)" class="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded transition">
+                          编辑
+                        </button>
+                        <button @click="deleteFeed(feed)" class="text-xs px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 font-medium rounded transition">
+                          删除
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 </template>
