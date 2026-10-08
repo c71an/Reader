@@ -1,4 +1,4 @@
-﻿    function readerApp() {
+    function readerApp() {
       return {
         isLoggedIn: false,
         feeds: [],
@@ -15,16 +15,14 @@
           db: false,
           content: false,
           stagger: false,
-          category: false,
-          logs: false
+          category: false
         },
         loading: {
           db: false,
           dbAction: false,
           batch: false,
           stagger: false,
-          category: false,
-          logs: false
+          category: false
         },
 
         detailArticle: null,
@@ -35,13 +33,6 @@
         dbArticlesTotal: 0,
         selectedArticleIds: [],
         selectedFeedIds: [],
-
-        // 日志系统状态
-        systemLogs: [],
-        logFilterLevel: '',
-        logFilterTag: '',
-        logAutoRefresh: false,
-        logTimer: null,
 
         staggerTargetName: '',
         staggerTargetFeeds: [],
@@ -560,80 +551,6 @@
 
         formatTime(t) {
           return t ? new Date(t).toLocaleString() : '尚未抓取';
-        },
-
-        // 运行日志相关交互方法
-        openLogsModal() {
-          this.modals.logs = true;
-          this.fetchLogs();
-          if (this.logAutoRefresh) {
-            this.startLogTimer();
-          }
-        },
-
-        async fetchLogs() {
-          this.loading.logs = true;
-          try {
-            const params = new URLSearchParams();
-            params.set('limit', '300');
-            if (this.logFilterLevel) params.set('level', this.logFilterLevel);
-            if (this.logFilterTag) params.set('tag', this.logFilterTag);
-
-            const res = await this.api(`/api/admin/logs?${params.toString()}`);
-            this.systemLogs = res.logs || [];
-            // 自动滚动至底部
-            this.$nextTick(() => {
-              const box = document.getElementById('logScrollBox');
-              if (box) box.scrollTop = box.scrollHeight;
-            });
-          } catch (e) {
-            this.toast('获取系统日志失败: ' + e.message, 'error');
-          } finally {
-            this.loading.logs = false;
-          }
-        },
-
-        async clearLogs() {
-          try {
-            await this.api('/api/admin/logs/clear', { method: 'POST' });
-            this.systemLogs = [];
-            this.toast('已清空当前运行日志', 'info');
-          } catch (e) {
-            this.toast('清空日志失败: ' + e.message, 'error');
-          }
-        },
-
-        toggleLogAutoRefresh() {
-          if (this.logAutoRefresh) {
-            this.startLogTimer();
-          } else {
-            this.stopLogTimer();
-          }
-        },
-
-        startLogTimer() {
-          this.stopLogTimer();
-          this.logTimer = setInterval(() => {
-            if (this.modals.logs) {
-              this.fetchLogs();
-            } else {
-              this.stopLogTimer();
-            }
-          }, 3000);
-        },
-
-        stopLogTimer() {
-          if (this.logTimer) {
-            clearInterval(this.logTimer);
-            this.logTimer = null;
-          }
-        },
-
-        formatLogTime(t) {
-          if (!t) return '';
-          const d = new Date(t);
-          const pad = n => String(n).padStart(2, '0');
-          return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
         }
       };
     }
