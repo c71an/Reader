@@ -313,13 +313,39 @@ func (d *DB) GetUserByUsername(username string) (*User, error) {
 }
 
 func (d *DB) GetUserByToken(token string) (*User, error) {
+	if token == "" {
+		return nil, sql.ErrNoRows
+	}
+
 	var u User
-	err := d.QueryRow("SELECT id, username, password_hash, auth_token, created_at FROM users WHERE auth_token = ?", token).
+	// 1. 优先查 user_tokens 多设备会话表
+	err := d.QueryRow(`
+		SELECT u.id, u.username, u.password_hash, u.auth_token, u.created_at
+		FROM users u
+		JOIN user_tokens t ON u.id = t.user_id
+		WHERE t.token = ?
+	`, token).Scan(&u.ID, &u.Username, &u.PasswordHash, &u.AuthToken, &u.CreatedAt)
+	if err == nil {
+		return &u, nil
+	}
+
+	// 2. 兜底兼容 users 表自身自带的 auth_token
+	err = d.QueryRow("SELECT id, username, password_hash, auth_token, created_at FROM users WHERE auth_token = ?", token).
 		Scan(&u.ID, &u.Username, &u.PasswordHash, &u.AuthToken, &u.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
 	return &u, nil
+}
+
+func (d *DB) AddUserToken(userID int64, token, clientType string) error {
+	_, err := d.Exec("INSERT OR IGNORE INTO user_tokens (user_id, token, client_type) VALUES (?, ?, ?)", userID, token, clientType)
+	return err
+}
+
+func (d *DB) DeleteUserToken(token string) error {
+	_, err := d.Exec("DELETE FROM user_tokens WHERE token = ?", token)
+	return err
 }
 
 func (d *DB) UpdateUserToken(userID int64, token string) error {

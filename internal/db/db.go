@@ -150,16 +150,28 @@ func (d *DB) initSchema() error {
 		FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE
 	);
 
+	CREATE TABLE IF NOT EXISTS user_tokens (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id INTEGER NOT NULL,
+		token TEXT UNIQUE NOT NULL,
+		client_type TEXT DEFAULT '',
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+	);
+
 	CREATE INDEX IF NOT EXISTS idx_articles_published ON articles(published_at DESC);
 	CREATE INDEX IF NOT EXISTS idx_articles_feed ON articles(feed_id);
 	CREATE INDEX IF NOT EXISTS idx_states_user_read ON article_states(user_id, is_read);
 	CREATE INDEX IF NOT EXISTS idx_states_user_starred ON article_states(user_id, is_starred);
+	CREATE INDEX IF NOT EXISTS idx_user_tokens_token ON user_tokens(token);
+	CREATE INDEX IF NOT EXISTS idx_user_tokens_user ON user_tokens(user_id);
 	`
 	_, err := d.Exec(schema)
 	if err != nil {
 		return err
 	}
 	_, _ = d.Exec("ALTER TABLE categories ADD COLUMN sort_order INTEGER DEFAULT 0;")
+	_, _ = d.Exec("INSERT OR IGNORE INTO user_tokens (user_id, token, client_type) SELECT id, auth_token, 'legacy' FROM users WHERE auth_token != '';")
 	return nil
 }
 

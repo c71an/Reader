@@ -416,5 +416,71 @@ func TestNewArticleSyncDetails(t *testing.T) {
 	}
 }
 
+func TestMultiDeviceTokensCoexist(t *testing.T) {
+	database, handler := setupTestDB(t)
+
+	// 1. 设备 A (如 iPhone Reeder) 登录
+	formLoginA := url.Values{
+		"Email":  {"testuser"},
+		"Passwd": {"testpass"},
+	}
+	reqA := httptest.NewRequest(http.MethodPost, "/accounts/ClientLogin", strings.NewReader(formLoginA.Encode()))
+	reqA.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recA := httptest.NewRecorder()
+	handler.ClientLogin(recA, reqA)
+	if recA.Code != http.StatusOK {
+		t.Fatalf("ClientLogin A failed: %d", recA.Code)
+	}
+
+	tokenA := ""
+	for _, line := range strings.Split(recA.Body.String(), "\n") {
+		if strings.HasPrefix(line, "Auth=") {
+			tokenA = strings.TrimPrefix(line, "Auth=")
+			break
+		}
+	}
+	if tokenA == "" {
+		t.Fatalf("tokenA is empty")
+	}
+
+	// 2. 模拟 Web 端登录 (生成独立的 web_session_ token)
+	webToken := "web_session_test_12345"
+	user, _ := database.GetUserByUsername("testuser")
+	if err := database.AddUserToken(user.ID, webToken, "web"); err != nil {
+		t.Fatalf("AddUserToken for web failed: %v", err)
+	}
+
+	// 3. 设备 B (如 iPad Reeder) 登录
+	recB := httptest.NewRecorder()
+	reqB := httptest.NewRequest(http.MethodPost, "/accounts/ClientLogin", strings.NewReader(formLoginA.Encode()))
+	reqB.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	handler.ClientLogin(recB, reqB)
+	if recB.Code != http.StatusOK {
+		t.Fatalf("ClientLogin B failed: %d", recB.Code)
+	}
+	tokenB := ""
+	for _, line := range strings.Split(recB.Body.String(), "\n") {
+		if strings.HasPrefix(line, "Auth=") {
+			tokenB = strings.TrimPrefix(line, "Auth=")
+			break
+		}
+	}
+	if tokenB == "" || tokenB == tokenA {
+		t.Fatalf("tokenB should be non-empty and distinct from tokenA: %q vs %q", tokenB, tokenA)
+	}
+
+	// 4. 关键验证：设备 A 的 Token、Web 端的 Token、设备 B 的 Token 必须全部同时有效！
+	for name, tok := range map[string]string{
+		"Device A (iPhone)": tokenA,
+		"Web Session":       webToken,
+		"Device B (iPad)":   tokenB,
+	} {
+		u, err := database.GetUserByToken(tok)
+		if err != nil || u == nil {
+			t.Errorf("%s token %q invalidated unexpectedly: %v", name, tok, err)
+		}
+	}
+}
+
 
 

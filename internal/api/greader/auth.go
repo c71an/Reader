@@ -58,6 +58,7 @@ func (h *Handler) ClientLogin(w http.ResponseWriter, r *http.Request) {
 	randBytes := make([]byte, 24)
 	_, _ = rand.Read(randBytes)
 	newToken := "reader_auth_" + hex.EncodeToString(randBytes)
+	_ = h.db.AddUserToken(user.ID, newToken, "reeder")
 	_ = h.db.UpdateUserToken(user.ID, newToken)
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")

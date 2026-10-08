@@ -2,6 +2,8 @@ package admin
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -53,9 +55,15 @@ func (h *AdminHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 为 Web 端分配专属独立的 Session Token，避免多设备/Reeder 互相挤下线
+	randBytes := make([]byte, 24)
+	_, _ = rand.Read(randBytes)
+	webToken := "web_session_" + hex.EncodeToString(randBytes)
+	_ = h.db.AddUserToken(user.ID, webToken, "web")
+
 	http.SetCookie(w, &http.Cookie{
 		Name:     "reader_token",
-		Value:    user.AuthToken,
+		Value:    webToken,
 		Path:     "/",
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
@@ -65,13 +73,18 @@ func (h *AdminHandler) Login(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":    true,
-		"auth_token": user.AuthToken,
+		"auth_token": webToken,
 		"username":   user.Username,
 	})
 }
 
 // 登出
 func (h *AdminHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("reader_token")
+	if err == nil && cookie.Value != "" {
+		_ = h.db.DeleteUserToken(cookie.Value)
+	}
+
 	http.SetCookie(w, &http.Cookie{
 		Name:     "reader_token",
 		Value:    "",
