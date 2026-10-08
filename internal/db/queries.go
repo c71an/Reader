@@ -174,6 +174,39 @@ func (d *DB) GetOrCreateCategory(name string) (*Category, error) {
 	return &c, nil
 }
 
+func (d *DB) GetCategoryByName(name string) (*Category, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil, nil
+	}
+	var c Category
+	err := d.QueryRow("SELECT id, name, sort_order, created_at FROM categories WHERE name = ?", name).
+		Scan(&c.ID, &c.Name, &c.SortOrder, &c.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
+func (d *DB) RenameCategory(oldName, newName string) error {
+	return d.UpdateCategoryByName(oldName, newName, 0)
+}
+
+func (d *DB) DeleteCategoryByName(name string) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil
+	}
+	var catID int64
+	err := d.QueryRow("SELECT id FROM categories WHERE name = ?", name).Scan(&catID)
+	if err != nil {
+		return nil
+	}
+	_, _ = d.Exec("UPDATE feeds SET category_id = NULL WHERE category_id = ?", catID)
+	_, err = d.Exec("DELETE FROM categories WHERE id = ?", catID)
+	return err
+}
+
 func (d *DB) UpdateCategoryByName(currentName, newName string, sortOrder int) error {
 	currentName = strings.TrimSpace(currentName)
 	newName = strings.TrimSpace(newName)

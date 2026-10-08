@@ -63,37 +63,66 @@ func main() {
 	// Google Reader API Handlers
 	greaderHandler := greader.NewHandler(database, f)
 
-	// Reeder 认证接口
-	r.Post("/accounts/ClientLogin", greaderHandler.ClientLogin)
-	r.Post("/accounts/ClientLogin/", greaderHandler.ClientLogin)
+	registerGReaderRoutes := func(router chi.Router) {
+		router.Get("/check/compatibility", greaderHandler.CompatibilityCheckHandler)
 
-	// Google Reader API 端点
-	r.Route("/reader/api/0", func(r chi.Router) {
-		r.Get("/token", greaderHandler.TokenHandler)
-		r.Post("/token", greaderHandler.TokenHandler)
+		// ClientLogin (兼容 GET 与 POST)
+		router.Post("/accounts/ClientLogin", greaderHandler.ClientLogin)
+		router.Get("/accounts/ClientLogin", greaderHandler.ClientLogin)
+		router.Post("/accounts/ClientLogin/", greaderHandler.ClientLogin)
+		router.Get("/accounts/ClientLogin/", greaderHandler.ClientLogin)
 
-		// 需要鉴权的接口组
-		r.Group(func(r chi.Router) {
-			r.Use(greaderHandler.AuthMiddleware)
+		// Google Reader API 端点
+		router.Route("/reader/api/0", func(r chi.Router) {
+			r.Get("/token", greaderHandler.TokenHandler)
+			r.Post("/token", greaderHandler.TokenHandler)
 
-			r.Get("/user-info", greaderHandler.UserInfoHandler)
-			r.Get("/subscription/list", greaderHandler.SubscriptionListHandler)
-			r.Post("/subscription/edit", greaderHandler.SubscriptionEditHandler)
-			r.Post("/subscription/quickadd", greaderHandler.QuickAddHandler)
-			r.Get("/subscription/quickadd", greaderHandler.QuickAddHandler)
-			r.Get("/tag/list", greaderHandler.TagListHandler)
-			r.Get("/unread-count", greaderHandler.UnreadCountHandler)
+			// 需要鉴权的接口组
+			r.Group(func(r chi.Router) {
+				r.Use(greaderHandler.AuthMiddleware)
 
-			// 文章流
-			r.Get("/stream/contents/*", greaderHandler.StreamContentsHandler)
-			r.Get("/stream/items/ids", greaderHandler.StreamItemIDsHandler)
-			r.Get("/stream/items/contents", greaderHandler.StreamItemsContentsHandler)
-			r.Post("/stream/items/contents", greaderHandler.StreamItemsContentsHandler)
+				r.Get("/user-info", greaderHandler.UserInfoHandler)
+				r.Get("/subscription/list", greaderHandler.SubscriptionListHandler)
+				r.Post("/subscription/edit", greaderHandler.SubscriptionEditHandler)
+				r.Post("/subscription/quickadd", greaderHandler.QuickAddHandler)
+				r.Get("/subscription/quickadd", greaderHandler.QuickAddHandler)
+				r.Get("/subscription/export", greaderHandler.SubscriptionExportHandler)
+				r.Get("/tag/list", greaderHandler.TagListHandler)
+				r.Get("/unread-count", greaderHandler.UnreadCountHandler)
 
-			// 状态标记
-			r.Post("/edit-tag", greaderHandler.EditTagHandler)
-			r.Post("/mark-all-as-read", greaderHandler.MarkAllAsReadHandler)
+				// 文章流
+				r.Get("/stream/contents", greaderHandler.StreamContentsHandler)
+				r.Get("/stream/contents/*", greaderHandler.StreamContentsHandler)
+				r.Get("/stream/items/ids", greaderHandler.StreamItemIDsHandler)
+				r.Get("/stream/items/contents", greaderHandler.StreamItemsContentsHandler)
+				r.Post("/stream/items/contents", greaderHandler.StreamItemsContentsHandler)
+
+				// 状态标记与标签管理
+				r.Post("/edit-tag", greaderHandler.EditTagHandler)
+				r.Post("/rename-tag", greaderHandler.RenameTagHandler)
+				r.Post("/tag/rename", greaderHandler.RenameTagHandler)
+				r.Post("/disable-tag", greaderHandler.DisableTagHandler)
+				r.Post("/tag/delete", greaderHandler.DisableTagHandler)
+				r.Post("/mark-all-as-read", greaderHandler.MarkAllAsReadHandler)
+			})
 		})
+	}
+
+	// 挂载根路径及 FreshRSS 兼容路径 (/api/greader.php 与 /greader.php)
+	registerGReaderRoutes(r)
+	r.Route("/api/greader.php", func(sub chi.Router) {
+		sub.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			_, _ = w.Write([]byte("OK"))
+		})
+		registerGReaderRoutes(sub)
+	})
+	r.Route("/greader.php", func(sub chi.Router) {
+		sub.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			_, _ = w.Write([]byte("OK"))
+		})
+		registerGReaderRoutes(sub)
 	})
 
 	// Web Admin API

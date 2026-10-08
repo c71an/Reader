@@ -482,5 +482,239 @@ func TestMultiDeviceTokensCoexist(t *testing.T) {
 	}
 }
 
+func TestFreshRSSCompatibility_HexAndDecimalIDs(t *testing.T) {
+	// 验证 "0000000000000010" 正确识别为 16 (0x10)，而不是十进制 10！
+	testCases := []struct {
+		input    string
+		expected int64
+	}{
+		{"0000000000000010", 16},
+		{"tag:google.com,2005:reader/item/0000000000000010", 16},
+		{"tag:google.com,2005:reader/item/0000000000000020", 32},
+		{"tag:google.com,2005:reader/item/000000000000000a", 10},
+		{"16", 16},
+		{"10", 10},
+		{"12345", 12345},
+	}
+
+	for _, tc := range testCases {
+		actual := parseArticleID(tc.input)
+		if actual != tc.expected {
+			t.Errorf("parseArticleID(%q) = %d; want %d", tc.input, actual, tc.expected)
+		}
+	}
+}
+
+func TestFreshRSSCompatibility_PaginationAndTimeFilter(t *testing.T) {
+	database, handler := setupTestDB(t)
+	user, _ := database.GetUserByUsername("testuser")
+
+	feed := &db.Feed{
+		Title:         "Pagination Feed",
+		FeedURL:       "https://page.test/feed",
+		ScheduleType:  "interval",
+		ScheduleValue: "60m",
+	}
+	_ = database.CreateFeed(feed)
+
+	now := time.Now().Truncate(time.Second)
+	var articles []*db.Article
+	for i := 1; i <= 5; i++ {
+		articles = append(articles, &db.Article{
+			FeedID:      feed.ID,
+			GUID:        fmt.Sprintf("page-item-%d", i),
+			Title:       fmt.Sprintf("Article %d", i),
+			URL:         fmt.Sprintf("https://page.test/%d", i),
+			PublishedAt: now.Add(time.Duration(i) * time.Minute),
+		})
+	}
+	_, err := database.SaveArticles(articles)
+	if err != nil {
+		t.Fatalf("SaveArticles failed: %v", err)
+	}
+
+	// 1. 获取第一页 (limit=2)
+	req1 := httptest.NewRequest(http.MethodGet, "/reader/api/0/stream/contents/user/-/state/com.google/reading-list?n=2", nil)
+	req1 = req1.WithContext(SetUserContext(req1.Context(), user))
+	rec1 := httptest.NewRecorder()
+	handler.StreamContentsHandler(rec1, req1)
+	if rec1.Code != http.StatusOK {
+		t.Fatalf("page 1 failed: %d", rec1.Code)
+	}
+
+	var resp1 StreamContentsResponse
+	_ = json.Unmarshal(rec1.Body.Bytes(), &resp1)
+	if len(resp1.Items) != 2 {
+		t.Fatalf("expected 2 items, got %d", len(resp1.Items))
+	}
+	if resp1.Continuation == "" {
+		t.Fatalf("expected non-empty continuation token for page 1")
+	}
+
+	// 2. 获取第二页 (带 continuation)
+	req2 := httptest.NewRequest(http.MethodGet, "/reader/api/0/stream/contents/user/-/state/com.google/reading-list?n=2&c="+resp1.Continuation, nil)
+	req2 = req2.WithContext(SetUserContext(req2.Context(), user))
+	rec2 := httptest.NewRecorder()
+	handler.StreamContentsHandler(rec2, req2)
+
+	var resp2 StreamContentsResponse
+	_ = json.Unmarshal(rec2.Body.Bytes(), &resp2)
+	if len(resp2.Items) != 2 {
+		t.Fatalf("expected 2 items in page 2, got %d", len(resp2.Items))
+	}
+
+	// 验证两页之间文章无重复
+	for _, it1 := range resp1.Items {
+		for _, it2 := range resp2.Items {
+			if it1.ID == it2.ID {
+				t.Errorf("duplicate item found across paginated responses: %s", it1.ID)
+			}
+		}
+	}
+
+	// 3. 测试 ot (起始时间过滤)
+	otUnix := now.Add(4 * time.Minute).Unix()
+	reqOt := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/reader/api/0/stream/contents/user/-/state/com.google/reading-list?ot=%d", otUnix), nil)
+	reqOt = reqOt.WithContext(SetUserContext(reqOt.Context(), user))
+	recOt := httptest.NewRecorder()
+	handler.StreamContentsHandler(recOt, reqOt)
+
+	var respOt StreamContentsResponse
+	_ = json.Unmarshal(recOt.Body.Bytes(), &respOt)
+	if len(respOt.Items) != 2 {
+		t.Errorf("expected 2 items with ot filter, got %d", len(respOt.Items))
+	}
+}
+
+func TestFreshRSSCompatibility_TagManagementAndMarkCategoryRead(t *testing.T) {
+	database, handler := setupTestDB(t)
+	user, _ := database.GetUserByUsername("testuser")
+
+	catTech, _ := database.GetOrCreateCategory("Technology")
+	catLife, _ := database.GetOrCreateCategory("Life")
+
+	feedTech := &db.Feed{
+		Title:         "Tech Feed",
+		FeedURL:       "https://tech.test/rss",
+		CategoryID:    &catTech.ID,
+		ScheduleType:  "interval",
+		ScheduleValue: "60m",
+	}
+	_ = database.CreateFeed(feedTech)
+
+	feedLife := &db.Feed{
+		Title:         "Life Feed",
+		FeedURL:       "https://life.test/rss",
+		CategoryID:    &catLife.ID,
+		ScheduleType:  "interval",
+		ScheduleValue: "60m",
+	}
+	_ = database.CreateFeed(feedLife)
+
+	// 分别写入 Tech 与 Life 文章
+	_, _ = database.SaveArticles([]*db.Article{
+		{FeedID: feedTech.ID, GUID: "tech-1", Title: "Tech 1", URL: "https://tech.test/1", PublishedAt: time.Now()},
+		{FeedID: feedLife.ID, GUID: "life-1", Title: "Life 1", URL: "https://life.test/1", PublishedAt: time.Now()},
+	})
+
+	// 1. 测试 rename-tag
+	formRename := url.Values{
+		"s":    {"user/-/label/Technology"},
+		"dest": {"user/-/label/ScienceAndTech"},
+	}
+	reqRename := httptest.NewRequest(http.MethodPost, "/reader/api/0/rename-tag", strings.NewReader(formRename.Encode()))
+	reqRename.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	reqRename = reqRename.WithContext(SetUserContext(reqRename.Context(), user))
+	recRename := httptest.NewRecorder()
+	handler.RenameTagHandler(recRename, reqRename)
+	if recRename.Code != http.StatusOK || recRename.Body.String() != "OK" {
+		t.Fatalf("RenameTagHandler failed: code=%d, body=%s", recRename.Code, recRename.Body.String())
+	}
+
+	renamedCat, _ := database.GetCategoryByName("ScienceAndTech")
+	if renamedCat == nil {
+		t.Fatalf("expected category to be renamed to ScienceAndTech")
+	}
+
+	// 2. 测试仅标记 ScienceAndTech 分类为全部已读 (关键修复：绝不能误将 Life 也标记为已读！)
+	formMarkCat := url.Values{
+		"s": {"user/-/label/ScienceAndTech"},
+	}
+	reqMarkCat := httptest.NewRequest(http.MethodPost, "/reader/api/0/mark-all-as-read", strings.NewReader(formMarkCat.Encode()))
+	reqMarkCat.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	reqMarkCat = reqMarkCat.WithContext(SetUserContext(reqMarkCat.Context(), user))
+	recMarkCat := httptest.NewRecorder()
+	handler.MarkAllAsReadHandler(recMarkCat, reqMarkCat)
+	if recMarkCat.Code != http.StatusOK || recMarkCat.Body.String() != "OK" {
+		t.Fatalf("MarkAllAsReadHandler for category failed: code=%d", recMarkCat.Code)
+	}
+
+	// 验证 Tech 文章已读，但 Life 文章仍然为未读！
+	unreadCounts, totalUnread, err := database.GetUnreadCounts(user.ID)
+	if err != nil {
+		t.Fatalf("GetUnreadCounts failed: %v", err)
+	}
+	if totalUnread != 1 {
+		t.Errorf("totalUnread = %d; want 1 (only Life article should be unread)", totalUnread)
+	}
+	for _, uc := range unreadCounts {
+		if uc.ID == fmt.Sprintf("feed/%d", feedTech.ID) && uc.Count != 0 {
+			t.Errorf("feedTech unread count = %d; want 0", uc.Count)
+		}
+		if uc.ID == fmt.Sprintf("feed/%d", feedLife.ID) && uc.Count != 1 {
+			t.Errorf("feedLife unread count = %d; want 1", uc.Count)
+		}
+	}
+
+	// 3. 测试 disable-tag (删除分类)
+	formDisable := url.Values{
+		"s": {"user/-/label/Life"},
+	}
+	reqDisable := httptest.NewRequest(http.MethodPost, "/reader/api/0/disable-tag", strings.NewReader(formDisable.Encode()))
+	reqDisable.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	reqDisable = reqDisable.WithContext(SetUserContext(reqDisable.Context(), user))
+	recDisable := httptest.NewRecorder()
+	handler.DisableTagHandler(recDisable, reqDisable)
+	if recDisable.Code != http.StatusOK || recDisable.Body.String() != "OK" {
+		t.Fatalf("DisableTagHandler failed: code=%d", recDisable.Code)
+	}
+
+	deletedCat, _ := database.GetCategoryByName("Life")
+	if deletedCat != nil {
+		t.Errorf("expected Life category to be deleted")
+	}
+
+	// 4. 测试 OPML 导出
+	reqExport := httptest.NewRequest(http.MethodGet, "/reader/api/0/subscription/export", nil)
+	reqExport = reqExport.WithContext(SetUserContext(reqExport.Context(), user))
+	recExport := httptest.NewRecorder()
+	handler.SubscriptionExportHandler(recExport, reqExport)
+	if recExport.Code != http.StatusOK {
+		t.Fatalf("SubscriptionExportHandler failed: code=%d", recExport.Code)
+	}
+	if !strings.Contains(recExport.Body.String(), "<opml") || !strings.Contains(recExport.Body.String(), "ScienceAndTech") {
+		t.Errorf("OPML export content mismatch: %s", recExport.Body.String())
+	}
+}
+
+func TestFreshRSSCompatibility_CompatibilityCheck(t *testing.T) {
+	_, handler := setupTestDB(t)
+	req := httptest.NewRequest(http.MethodGet, "/check/compatibility", nil)
+	rec := httptest.NewRecorder()
+	handler.CompatibilityCheckHandler(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("unauthenticated check/compatibility code = %d; want 401", rec.Code)
+	}
+
+	reqAuth := httptest.NewRequest(http.MethodGet, "/check/compatibility", nil)
+	reqAuth = reqAuth.WithContext(SetUserContext(reqAuth.Context(), &db.User{ID: 1, Username: "testuser"}))
+	recAuth := httptest.NewRecorder()
+	handler.CompatibilityCheckHandler(recAuth, reqAuth)
+	if recAuth.Code != http.StatusOK || recAuth.Body.String() != "PASS" {
+		t.Errorf("check/compatibility returned %d, body %q; want 200, PASS", recAuth.Code, recAuth.Body.String())
+	}
+}
+
+
 
 
