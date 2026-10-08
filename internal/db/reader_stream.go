@@ -24,6 +24,7 @@ type StreamItem struct {
 	ID           int64
 	FeedID       int64
 	FeedTitle    string
+	FeedSiteURL  string
 	CategoryName string
 	GUID         string
 	Title        string
@@ -169,7 +170,7 @@ func (d *DB) GetStreamItems(filter StreamQueryFilter) ([]*StreamItem, error) {
 	}
 
 	query := fmt.Sprintf(`
-		SELECT a.id, a.feed_id, f.title, COALESCE(c.name, ''), a.guid, a.title, a.url, a.content, a.author, a.published_at,
+		SELECT a.id, a.feed_id, f.title, COALESCE(f.site_url, ''), COALESCE(c.name, ''), a.guid, a.title, a.url, a.content, a.author, a.published_at,
 		       COALESCE(s.is_read, 0) as is_read, COALESCE(s.is_starred, 0) as is_starred
 		FROM articles a
 		JOIN feeds f ON a.feed_id = f.id
@@ -190,7 +191,7 @@ func (d *DB) GetStreamItems(filter StreamQueryFilter) ([]*StreamItem, error) {
 	for rows.Next() {
 		var item StreamItem
 		var isReadInt, isStarredInt int
-		if err := rows.Scan(&item.ID, &item.FeedID, &item.FeedTitle, &item.CategoryName, &item.GUID, &item.Title, &item.URL,
+		if err := rows.Scan(&item.ID, &item.FeedID, &item.FeedTitle, &item.FeedSiteURL, &item.CategoryName, &item.GUID, &item.Title, &item.URL,
 			&item.Content, &item.Author, &item.PublishedAt, &isReadInt, &isStarredInt); err != nil {
 			return nil, err
 		}

@@ -110,6 +110,14 @@ func main() {
 
 	// 挂载根路径及 FreshRSS 兼容路径 (/api/greader.php 与 /greader.php)
 	registerGReaderRoutes(r)
+	r.Get("/api/greader.php", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		_, _ = w.Write([]byte("OK"))
+	})
+	r.Get("/greader.php", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		_, _ = w.Write([]byte("OK"))
+	})
 	r.Route("/api/greader.php", func(sub chi.Router) {
 		sub.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/plain; charset=utf-8")

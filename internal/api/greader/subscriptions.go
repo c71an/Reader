@@ -63,9 +63,9 @@ func (h *Handler) UserInfoHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	_ = json.NewEncoder(w).Encode(UserInfoResponse{
-		UserID:        fmt.Sprintf("%d", user.ID),
+		UserID:        user.Username,
 		UserName:      user.Username,
-		UserProfileID: fmt.Sprintf("%d", user.ID),
+		UserProfileID: user.Username,
 		UserEmail:     user.Username,
 	})
 }

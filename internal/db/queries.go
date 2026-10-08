@@ -346,25 +346,36 @@ func (d *DB) GetUserByUsername(username string) (*User, error) {
 }
 
 func (d *DB) GetUserByToken(token string) (*User, error) {
+	token = strings.Trim(token, " \"'\r\n\t")
 	if token == "" {
 		return nil, sql.ErrNoRows
 	}
 
+	tokenWithoutUser := token
+	if idx := strings.Index(token, "/"); idx != -1 {
+		tokenWithoutUser = token[idx+1:]
+	}
+
 	var u User
-	// 1. 优先查 user_tokens 多设备会话表
+	// 1. 优先查 user_tokens 多设备会话表 (同时匹配包含用户名或不含用户名的 token)
 	err := d.QueryRow(`
 		SELECT u.id, u.username, u.password_hash, u.auth_token, u.created_at
 		FROM users u
 		JOIN user_tokens t ON u.id = t.user_id
-		WHERE t.token = ?
-	`, token).Scan(&u.ID, &u.Username, &u.PasswordHash, &u.AuthToken, &u.CreatedAt)
+		WHERE t.token = ? OR t.token = ?
+		LIMIT 1
+	`, token, tokenWithoutUser).Scan(&u.ID, &u.Username, &u.PasswordHash, &u.AuthToken, &u.CreatedAt)
 	if err == nil {
 		return &u, nil
 	}
 
 	// 2. 兜底兼容 users 表自身自带的 auth_token
-	err = d.QueryRow("SELECT id, username, password_hash, auth_token, created_at FROM users WHERE auth_token = ?", token).
-		Scan(&u.ID, &u.Username, &u.PasswordHash, &u.AuthToken, &u.CreatedAt)
+	err = d.QueryRow(`
+		SELECT id, username, password_hash, auth_token, created_at
+		FROM users
+		WHERE auth_token = ? OR auth_token = ?
+		LIMIT 1
+	`, token, tokenWithoutUser).Scan(&u.ID, &u.Username, &u.PasswordHash, &u.AuthToken, &u.CreatedAt)
 	if err != nil {
 		return nil, err
 	}

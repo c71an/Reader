@@ -26,6 +26,7 @@ type StreamContentsResponse struct {
 
 type StreamLink struct {
 	Href string `json:"href"`
+	Type string `json:"type,omitempty"`
 }
 
 type StreamItemOutput struct {
@@ -345,6 +346,11 @@ func formatStreamItems(items []*db.StreamItem) []StreamItemOutput {
 			originTitle = fmt.Sprintf("Feed %d", it.FeedID)
 		}
 
+		originHTMLURL := it.FeedSiteURL
+		if originHTMLURL == "" {
+			originHTMLURL = it.URL
+		}
+
 		out = append(out, StreamItemOutput{
 			ID:            tagItemHex,
 			CrawlTimeMsec: crawlMsec,
@@ -353,13 +359,13 @@ func formatStreamItems(items []*db.StreamItem) []StreamItemOutput {
 			Updated:       pubUnix,
 			Title:         it.Title,
 			PublishedUsec: pubUsec,
-			Alternate:     []StreamLink{{Href: it.URL}},
+			Alternate:     []StreamLink{{Href: it.URL, Type: "text/html"}},
 			Canonical:     []StreamLink{{Href: it.URL}},
 			Categories:    cats,
 			Origin: StreamOrigin{
 				StreamID: fmt.Sprintf("feed/%d", it.FeedID),
 				Title:    originTitle,
-				HTMLURL:  it.URL,
+				HTMLURL:  originHTMLURL,
 			},
 			Summary: contentBody,
 			Content: contentBody,

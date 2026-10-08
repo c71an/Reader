@@ -715,6 +715,85 @@ func TestFreshRSSCompatibility_CompatibilityCheck(t *testing.T) {
 	}
 }
 
+func TestReederArticleOpenAndAuthQuoting(t *testing.T) {
+	database, handler := setupTestDB(t)
+
+	// 1. ClientLogin 登录
+	formLogin := url.Values{
+		"Email":  {"testuser"},
+		"Passwd": {"testpass"},
+	}
+	reqLogin := httptest.NewRequest(http.MethodPost, "/accounts/ClientLogin", strings.NewReader(formLogin.Encode()))
+	reqLogin.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recLogin := httptest.NewRecorder()
+	handler.ClientLogin(recLogin, reqLogin)
+	if recLogin.Code != http.StatusOK {
+		t.Fatalf("login failed: %d", recLogin.Code)
+	}
+
+	authLine := ""
+	for _, l := range strings.Split(recLogin.Body.String(), "\n") {
+		if strings.HasPrefix(l, "Auth=") {
+			authLine = strings.TrimPrefix(l, "Auth=")
+			break
+		}
+	}
+	if authLine == "" {
+		t.Fatalf("auth line missing")
+	}
+
+	// 2. 模拟 Reeder 发送带双引号的 Authorization: GoogleLogin auth="testuser/token"
+	reqUserInfo := httptest.NewRequest(http.MethodGet, "/reader/api/0/user-info", nil)
+	reqUserInfo.Header.Set("Authorization", fmt.Sprintf(`GoogleLogin auth="%s"`, authLine))
+	recUserInfo := httptest.NewRecorder()
+
+	handler.AuthMiddleware(http.HandlerFunc(handler.UserInfoHandler)).ServeHTTP(recUserInfo, reqUserInfo)
+	if recUserInfo.Code != http.StatusOK {
+		t.Fatalf("quoted auth header failed: code=%d, body=%s", recUserInfo.Code, recUserInfo.Body.String())
+	}
+
+	var userResp UserInfoResponse
+	_ = json.Unmarshal(recUserInfo.Body.Bytes(), &userResp)
+	if userResp.UserID != "testuser" || userResp.UserName != "testuser" {
+		t.Errorf("unexpected user-info: %+v", userResp)
+	}
+
+	// 3. 模拟 Reeder 获取 Action Token
+	reqToken := httptest.NewRequest(http.MethodGet, "/reader/api/0/token", nil)
+	reqToken.Header.Set("Authorization", fmt.Sprintf(`GoogleLogin auth="%s"`, authLine))
+	recToken := httptest.NewRecorder()
+	handler.TokenHandler(recToken, reqToken)
+	if recToken.Code != http.StatusOK {
+		t.Fatalf("get token failed: %d", recToken.Code)
+	}
+	tokenReceived := strings.TrimSpace(recToken.Body.String())
+	if tokenReceived == "" {
+		t.Fatalf("token is empty")
+	}
+
+	// 4. 模拟 Reeder 打开文章时触发已读标记 (POST /reader/api/0/edit-tag 带 T token)
+	feed := &db.Feed{Title: "Feed", FeedURL: "https://f.test/rss"}
+	_ = database.CreateFeed(feed)
+	_, _ = database.SaveArticles([]*db.Article{{FeedID: feed.ID, GUID: "g1", Title: "T1", URL: "https://f.test/1", PublishedAt: time.Now()}})
+
+	formEditTag := url.Values{
+		"i": {"1"},
+		"a": {"user/-/state/com.google/read"},
+		"T": {tokenReceived},
+	}
+	reqEditTag := httptest.NewRequest(http.MethodPost, "/reader/api/0/edit-tag", strings.NewReader(formEditTag.Encode()))
+	reqEditTag.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	reqEditTag.Header.Set("Authorization", fmt.Sprintf(`GoogleLogin auth="%s"`, authLine))
+	recEditTag := httptest.NewRecorder()
+
+	handler.AuthMiddleware(http.HandlerFunc(handler.EditTagHandler)).ServeHTTP(recEditTag, reqEditTag)
+	if recEditTag.Code != http.StatusOK {
+		t.Fatalf("edit-tag upon opening article failed: code=%d, body=%s, header=%+v",
+			recEditTag.Code, recEditTag.Body.String(), recEditTag.Header())
+	}
+}
+
+
 
 
 
