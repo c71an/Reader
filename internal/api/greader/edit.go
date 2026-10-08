@@ -313,6 +313,7 @@ func extractCategoryName(tag string) string {
 }
 
 func parseArticleID(raw string) int64 {
+	raw = strings.TrimSpace(raw)
 	// 如果是 "tag:google.com,2005:reader/item/000000000000000a"
 	if idx := strings.LastIndex(raw, "/"); idx != -1 {
 		hexStr := raw[idx+1:]
@@ -320,8 +321,12 @@ func parseArticleID(raw string) int64 {
 			return val
 		}
 	}
-	// 纯数字 ID
+	// 纯十进制数字 ID
 	if val, err := strconv.ParseInt(raw, 10, 64); err == nil {
+		return val
+	}
+	// 纯十六进制 ID (如 "000000000000008a")
+	if val, err := strconv.ParseInt(raw, 16, 64); err == nil {
 		return val
 	}
 	return 0

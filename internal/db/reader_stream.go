@@ -18,17 +18,18 @@ type StreamQueryFilter struct {
 }
 
 type StreamItem struct {
-	ID          int64
-	FeedID      int64
-	FeedTitle   string
-	GUID        string
-	Title       string
-	URL         string
-	Content     string
-	Author      string
-	PublishedAt time.Time
-	IsRead      bool
-	IsStarred   bool
+	ID           int64
+	FeedID       int64
+	FeedTitle    string
+	CategoryName string
+	GUID         string
+	Title        string
+	URL          string
+	Content      string
+	Author       string
+	PublishedAt  time.Time
+	IsRead       bool
+	IsStarred    bool
 }
 
 // 查询文章流 (用于 Google Reader API stream/contents)
@@ -90,7 +91,7 @@ func (d *DB) GetStreamItems(filter StreamQueryFilter) ([]*StreamItem, error) {
 	}
 
 	query := fmt.Sprintf(`
-		SELECT a.id, a.feed_id, f.title, a.guid, a.title, a.url, a.content, a.author, a.published_at,
+		SELECT a.id, a.feed_id, f.title, COALESCE(c.name, ''), a.guid, a.title, a.url, a.content, a.author, a.published_at,
 		       COALESCE(s.is_read, 0) as is_read, COALESCE(s.is_starred, 0) as is_starred
 		FROM articles a
 		JOIN feeds f ON a.feed_id = f.id
@@ -111,7 +112,7 @@ func (d *DB) GetStreamItems(filter StreamQueryFilter) ([]*StreamItem, error) {
 	for rows.Next() {
 		var item StreamItem
 		var isReadInt, isStarredInt int
-		if err := rows.Scan(&item.ID, &item.FeedID, &item.FeedTitle, &item.GUID, &item.Title, &item.URL,
+		if err := rows.Scan(&item.ID, &item.FeedID, &item.FeedTitle, &item.CategoryName, &item.GUID, &item.Title, &item.URL,
 			&item.Content, &item.Author, &item.PublishedAt, &isReadInt, &isStarredInt); err != nil {
 			return nil, err
 		}
@@ -269,6 +270,30 @@ func (d *DB) GetUnreadCounts(userID int64) ([]UnreadCountItem, int, error) {
 			Count: count,
 		})
 		total += count
+	}
+
+	// 统计各个分类下的未读数
+	catRows, err := d.Query(`
+		SELECT c.name, COUNT(a.id)
+		FROM categories c
+		JOIN feeds f ON f.category_id = c.id
+		JOIN articles a ON a.feed_id = f.id
+		LEFT JOIN article_states s ON s.article_id = a.id AND s.user_id = ?
+		WHERE s.is_read IS NULL OR s.is_read = 0
+		GROUP BY c.name
+	`, userID)
+	if err == nil {
+		defer catRows.Close()
+		for catRows.Next() {
+			var catName string
+			var catCount int
+			if err := catRows.Scan(&catName, &catCount); err == nil && catName != "" {
+				result = append(result, UnreadCountItem{
+					ID:    fmt.Sprintf("user/-/label/%s", catName),
+					Count: catCount,
+				})
+			}
+		}
 	}
 
 	// 加上全部未读的 stream 统计

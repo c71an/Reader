@@ -2,12 +2,14 @@ package greader
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"reader/internal/db"
 )
@@ -290,5 +292,129 @@ func TestUnauthorizedRequests(t *testing.T) {
 		t.Errorf("EditTagHandler code = %d; want 401", recEdit.Code)
 	}
 }
+
+func TestNewArticleSyncDetails(t *testing.T) {
+	_, handler := setupTestDB(t)
+	user, err := handler.db.GetUserByUsername("testuser")
+	if err != nil {
+		t.Fatalf("failed to get user: %v", err)
+	}
+
+	cat, err := handler.db.GetOrCreateCategory("TechNews")
+	if err != nil {
+		t.Fatalf("failed to create category: %v", err)
+	}
+
+	feed := &db.Feed{
+		Title:         "Tech Blog",
+		FeedURL:       "https://tech.blog/rss",
+		CategoryID:    &cat.ID,
+		ScheduleType:  "interval",
+		ScheduleValue: "60m",
+	}
+	if err := handler.db.CreateFeed(feed); err != nil {
+		t.Fatalf("failed to create feed: %v", err)
+	}
+
+	// 插入测试文章
+	articles := []*db.Article{
+		{
+			FeedID:      feed.ID,
+			GUID:        "guid-101",
+			Title:       "Post 1",
+			URL:         "https://tech.blog/p/1",
+			Content:     "Hello tech world",
+			Author:      "Author A",
+			PublishedAt: time.Now(),
+		},
+	}
+	if _, err := handler.db.SaveArticles(articles); err != nil {
+		t.Fatalf("failed to save articles: %v", err)
+	}
+
+	// 1. 验证 stream/items/ids 返回 directStreamIds
+	reqIDs := httptest.NewRequest(http.MethodGet, "/reader/api/0/stream/items/ids?s=user/-/state/com.google/reading-list", nil)
+	reqIDs = reqIDs.WithContext(SetUserContext(reqIDs.Context(), user))
+	recIDs := httptest.NewRecorder()
+	handler.StreamItemIDsHandler(recIDs, reqIDs)
+	if recIDs.Code != http.StatusOK {
+		t.Fatalf("StreamItemIDsHandler code = %d; want 200", recIDs.Code)
+	}
+
+	var idsResp ItemIDsResponse
+	if err := json.Unmarshal(recIDs.Body.Bytes(), &idsResp); err != nil {
+		t.Fatalf("failed to unmarshal idsResp: %v", err)
+	}
+	if len(idsResp.ItemRefs) == 0 {
+		t.Fatalf("expected at least 1 itemRef, got 0")
+	}
+	firstRef := idsResp.ItemRefs[0]
+	if len(firstRef.DirectStreamIds) == 0 {
+		t.Fatalf("expected DirectStreamIds to be populated, got empty")
+	}
+	hasFeed := false
+	hasCategory := false
+	for _, s := range firstRef.DirectStreamIds {
+		if s == fmt.Sprintf("feed/%d", feed.ID) {
+			hasFeed = true
+		}
+		if s == "user/-/label/TechNews" {
+			hasCategory = true
+		}
+	}
+	if !hasFeed || !hasCategory {
+		t.Errorf("DirectStreamIds missing feed or category: %+v", firstRef.DirectStreamIds)
+	}
+
+	// 2. 验证 stream/contents 文章 categories 包含分类标签
+	reqStream := httptest.NewRequest(http.MethodGet, "/reader/api/0/stream/contents/user/-/state/com.google/reading-list", nil)
+	reqStream = reqStream.WithContext(SetUserContext(reqStream.Context(), user))
+	recStream := httptest.NewRecorder()
+	handler.StreamContentsHandler(recStream, reqStream)
+	if recStream.Code != http.StatusOK {
+		t.Fatalf("StreamContentsHandler code = %d; want 200", recStream.Code)
+	}
+
+	var streamResp StreamContentsResponse
+	if err := json.Unmarshal(recStream.Body.Bytes(), &streamResp); err != nil {
+		t.Fatalf("failed to unmarshal streamResp: %v", err)
+	}
+	if len(streamResp.Items) == 0 {
+		t.Fatalf("expected at least 1 item, got 0")
+	}
+	hasCatTag := false
+	for _, c := range streamResp.Items[0].Categories {
+		if c == "user/-/label/TechNews" {
+			hasCatTag = true
+		}
+	}
+	if !hasCatTag {
+		t.Errorf("expected item.Categories to contain 'user/-/label/TechNews', got %+v", streamResp.Items[0].Categories)
+	}
+
+	// 3. 验证 unread-count 包含分类未读数
+	reqUnread := httptest.NewRequest(http.MethodGet, "/reader/api/0/unread-count", nil)
+	reqUnread = reqUnread.WithContext(SetUserContext(reqUnread.Context(), user))
+	recUnread := httptest.NewRecorder()
+	handler.UnreadCountHandler(recUnread, reqUnread)
+	if recUnread.Code != http.StatusOK {
+		t.Fatalf("UnreadCountHandler code = %d; want 200", recUnread.Code)
+	}
+
+	var unreadResp UnreadCountResponse
+	if err := json.Unmarshal(recUnread.Body.Bytes(), &unreadResp); err != nil {
+		t.Fatalf("failed to unmarshal unreadResp: %v", err)
+	}
+	hasCatUnread := false
+	for _, uc := range unreadResp.UnreadCounts {
+		if uc.ID == "user/-/label/TechNews" && uc.Count == 1 {
+			hasCatUnread = true
+		}
+	}
+	if !hasCatUnread {
+		t.Errorf("expected unread counts to include 'user/-/label/TechNews' with count 1, got %+v", unreadResp.UnreadCounts)
+	}
+}
+
 
 

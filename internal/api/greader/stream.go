@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -61,8 +62,9 @@ type ItemIDsResponse struct {
 }
 
 type ItemRef struct {
-	ID            string `json:"id"`
-	TimestampUsec string `json:"timestampUsec"`
+	ID              string   `json:"id"`
+	TimestampUsec   string   `json:"timestampUsec"`
+	DirectStreamIds []string `json:"directStreamIds"`
 }
 
 // StreamContentsHandler 处理 GET /reader/api/0/stream/contents/*
@@ -86,6 +88,9 @@ func (h *Handler) StreamContentsHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	if streamID == "" {
 		streamID = "user/-/state/com.google/reading-list"
+	}
+	if unescaped, err := url.PathUnescape(streamID); err == nil && unescaped != "" {
+		streamID = unescaped
 	}
 
 	excludeTarget := r.URL.Query().Get("xt")
@@ -154,6 +159,9 @@ func (h *Handler) StreamItemIDsHandler(w http.ResponseWriter, r *http.Request) {
 	if streamID == "" {
 		streamID = "user/-/state/com.google/reading-list"
 	}
+	if unescaped, err := url.QueryUnescape(streamID); err == nil && unescaped != "" {
+		streamID = unescaped
+	}
 	excludeTarget := r.URL.Query().Get("xt")
 	limit := 1000
 
@@ -170,9 +178,14 @@ func (h *Handler) StreamItemIDsHandler(w http.ResponseWriter, r *http.Request) {
 
 	var refs []ItemRef
 	for _, it := range items {
+		directStreams := []string{fmt.Sprintf("feed/%d", it.FeedID)}
+		if it.CategoryName != "" {
+			directStreams = append(directStreams, fmt.Sprintf("user/-/label/%s", it.CategoryName))
+		}
 		refs = append(refs, ItemRef{
-			ID:            fmt.Sprintf("%d", it.ID),
-			TimestampUsec: fmt.Sprintf("%d", it.PublishedAt.UnixNano()/1000),
+			ID:              fmt.Sprintf("%d", it.ID),
+			TimestampUsec:   fmt.Sprintf("%d", it.PublishedAt.UnixNano()/1000),
+			DirectStreamIds: directStreams,
 		})
 	}
 
@@ -254,6 +267,9 @@ func formatStreamItems(items []*db.StreamItem) []StreamItemOutput {
 		}
 		if it.IsStarred {
 			cats = append(cats, "user/-/state/com.google/starred")
+		}
+		if it.CategoryName != "" {
+			cats = append(cats, fmt.Sprintf("user/-/label/%s", it.CategoryName))
 		}
 
 		pubUnix := it.PublishedAt.Unix()
