@@ -569,4 +569,76 @@ func (h *AdminHandler) BatchMarkArticlesRead(w http.ResponseWriter, r *http.Requ
 	})
 }
 
+// 获取当前用户的所有活跃设备 Token / 会话列表
+func (h *AdminHandler) GetSessions(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	currentCookie, _ := r.Cookie("reader_token")
+	currentToken := ""
+	if currentCookie != nil {
+		currentToken = currentCookie.Value
+	}
+
+	tokens, err := h.db.GetUserTokens(user.ID, currentToken)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(tokens)
+}
+
+// 注销除当前会话外的所有其他设备 / Token
+func (h *AdminHandler) RevokeOtherSessions(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	currentCookie, _ := r.Cookie("reader_token")
+	currentToken := ""
+	if currentCookie != nil {
+		currentToken = currentCookie.Value
+	}
+
+	if err := h.db.RevokeOtherUserTokens(user.ID, currentToken); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{"success": true})
+}
+
+// 注销指定设备 Token / 会话
+func (h *AdminHandler) RevokeSession(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	idStr := chi.URLParam(r, "id")
+	tokenID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil || tokenID <= 0 {
+		http.Error(w, "Invalid token ID", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.db.DeleteUserTokenByID(user.ID, tokenID); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{"success": true})
+}
+
+
 

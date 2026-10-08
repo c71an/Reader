@@ -383,7 +383,83 @@ func (d *DB) GetUserByToken(token string) (*User, error) {
 }
 
 func (d *DB) AddUserToken(userID int64, token, clientType string) error {
+	token = strings.Trim(token, " \"'\r\n\t")
+	if token == "" {
+		return nil
+	}
+
 	_, err := d.Exec("INSERT OR IGNORE INTO user_tokens (user_id, token, client_type) VALUES (?, ?, ?)", userID, token, clientType)
+	if err != nil {
+		return err
+	}
+
+	// 1. LRU 配额控制：每个用户同类客户端最多保留最近 5 个有效 Token，自动淘汰老旧会话
+	maxActive := 5
+	_, _ = d.Exec(`
+		DELETE FROM user_tokens
+		WHERE user_id = ? AND client_type = ? AND id NOT IN (
+			SELECT id FROM user_tokens
+			WHERE user_id = ? AND client_type = ?
+			ORDER BY id DESC LIMIT ?
+		)
+	`, userID, clientType, userID, clientType, maxActive)
+
+	// 2. 超期自动淘汰：清理创建超过 90 天的死 Token
+	_, _ = d.Exec(`DELETE FROM user_tokens WHERE created_at < datetime('now', '-90 days')`)
+
+	return nil
+}
+
+type UserTokenInfo struct {
+	ID         int64     `json:"id"`
+	ClientType string    `json:"client_type"`
+	CreatedAt  time.Time `json:"created_at"`
+	IsCurrent  bool      `json:"is_current"`
+}
+
+func (d *DB) GetUserTokens(userID int64, currentToken string) ([]UserTokenInfo, error) {
+	rows, err := d.Query(`
+		SELECT id, client_type, created_at, token
+		FROM user_tokens
+		WHERE user_id = ?
+		ORDER BY id DESC
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []UserTokenInfo
+	for rows.Next() {
+		var info UserTokenInfo
+		var tok string
+		if err := rows.Scan(&info.ID, &info.ClientType, &info.CreatedAt, &tok); err != nil {
+			return nil, err
+		}
+		if tok == currentToken || (currentToken != "" && strings.Contains(tok, currentToken)) {
+			info.IsCurrent = true
+		}
+		list = append(list, info)
+	}
+	return list, nil
+}
+
+func (d *DB) RevokeOtherUserTokens(userID int64, currentToken string) error {
+	currentToken = strings.Trim(currentToken, " \"'\r\n\t")
+	tokenWithoutUser := currentToken
+	if idx := strings.Index(currentToken, "/"); idx != -1 {
+		tokenWithoutUser = currentToken[idx+1:]
+	}
+
+	_, err := d.Exec(`
+		DELETE FROM user_tokens
+		WHERE user_id = ? AND token != ? AND token != ?
+	`, userID, currentToken, tokenWithoutUser)
+	return err
+}
+
+func (d *DB) DeleteUserTokenByID(userID, tokenID int64) error {
+	_, err := d.Exec("DELETE FROM user_tokens WHERE user_id = ? AND id = ?", userID, tokenID)
 	return err
 }
 

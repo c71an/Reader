@@ -793,6 +793,77 @@ func TestReederArticleOpenAndAuthQuoting(t *testing.T) {
 	}
 }
 
+func TestTokenQuotaLRU(t *testing.T) {
+	database, _ := setupTestDB(t)
+	user, err := database.GetUserByUsername("testuser")
+	if err != nil {
+		t.Fatalf("get testuser failed: %v", err)
+	}
+
+	// 连续插入 10 个 web session token
+	for i := 1; i <= 10; i++ {
+		err := database.AddUserToken(user.ID, fmt.Sprintf("web_test_token_%d", i), "web")
+		if err != nil {
+			t.Fatalf("AddUserToken failed: %v", err)
+		}
+	}
+
+	// 连续插入 10 个 greader token
+	for i := 1; i <= 10; i++ {
+		err := database.AddUserToken(user.ID, fmt.Sprintf("greader_test_token_%d", i), "greader")
+		if err != nil {
+			t.Fatalf("AddUserToken failed: %v", err)
+		}
+	}
+
+	tokens, err := database.GetUserTokens(user.ID, "web_test_token_10")
+	if err != nil {
+		t.Fatalf("GetUserTokens failed: %v", err)
+	}
+
+	webCount := 0
+	greaderCount := 0
+	for _, tok := range tokens {
+		if tok.ClientType == "web" {
+			webCount++
+		}
+		if tok.ClientType == "greader" {
+			greaderCount++
+		}
+	}
+
+	// 配额应被严格限制在 5 个以内，老的 token 已被自动淘汰
+	if webCount > 5 {
+		t.Errorf("webCount = %d; want <= 5", webCount)
+	}
+	if greaderCount > 5 {
+		t.Errorf("greaderCount = %d; want <= 5", greaderCount)
+	}
+
+	// 最老的 token (web_test_token_1) 应该已被淘汰
+	oldUser, _ := database.GetUserByToken("web_test_token_1")
+	if oldUser != nil {
+		t.Errorf("expected oldest token web_test_token_1 to be purged, but still found")
+	}
+
+	// 最新的 token (web_test_token_10) 必须仍然有效
+	newUser, _ := database.GetUserByToken("web_test_token_10")
+	if newUser == nil {
+		t.Errorf("expected newest token web_test_token_10 to exist, but not found")
+	}
+
+	// 测试一键注销其他设备
+	if err := database.RevokeOtherUserTokens(user.ID, "web_test_token_10"); err != nil {
+		t.Fatalf("RevokeOtherUserTokens failed: %v", err)
+	}
+
+	remainingTokens, _ := database.GetUserTokens(user.ID, "web_test_token_10")
+	if len(remainingTokens) != 1 || !remainingTokens[0].IsCurrent {
+		t.Errorf("expected exactly 1 remaining current token after revoke others, got: %+v", remainingTokens)
+	}
+}
+
+
 
 
 

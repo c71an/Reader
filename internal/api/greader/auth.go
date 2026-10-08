@@ -65,9 +65,8 @@ func (h *Handler) ClientLogin(w http.ResponseWriter, r *http.Request) {
 	newToken := "reader_auth_" + hex.EncodeToString(randBytes)
 	authVal := fmt.Sprintf("%s/%s", user.Username, newToken)
 
-	// 同时将纯 token 与 username/token 存入会话表，以双重兼容所有客户端实现
+	// 存入会话表 (单条记录，GetUserByToken 自动适配前缀，配合 LRU 自动限额)
 	_ = h.db.AddUserToken(user.ID, newToken, "greader")
-	_ = h.db.AddUserToken(user.ID, authVal, "greader")
 	_ = h.db.UpdateUserToken(user.ID, newToken)
 
 	// FreshRSS ClientLogin 格式: SID=username/token, LSID=null, Auth=username/token

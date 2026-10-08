@@ -154,6 +154,9 @@ func main() {
 			r.Post("/feeds/{id}/pause", adminHandler.ToggleFeedPause)
 			r.Get("/categories", adminHandler.GetCategories)
 			r.Post("/categories/update", adminHandler.UpdateCategory)
+			r.Get("/tokens", adminHandler.GetSessions)
+			r.Post("/tokens/revoke-others", adminHandler.RevokeOtherSessions)
+			r.Delete("/tokens/{id}", adminHandler.RevokeSession)
 		})
 	})
 
