@@ -541,13 +541,57 @@
         },
 
         async copyRawContent() {
-          if (!this.detailArticle || !this.detailArticle.content) return;
-          try {
-            await navigator.clipboard.writeText(this.detailArticle.content);
+          if (!this.detailArticle || !this.detailArticle.content) {
+            this.toast('正文内容为空', 'warning');
+            return;
+          }
+          const text = this.detailArticle.content;
+          let success = false;
+
+          // 1. 优先使用现代 Clipboard API (仅在 HTTPS 或 localhost 安全上下文中可用)
+          if (navigator.clipboard && window.isSecureContext) {
+            try {
+              await navigator.clipboard.writeText(text);
+              success = true;
+            } catch (_) {}
+          }
+
+          // 2. 降级方案：使用页面内弹窗现有的 textarea 选区执行 copy (兼容局域网 HTTP IP 访问)
+          if (!success) {
+            try {
+              const ta = (this.$refs && this.$refs.rawContentTextarea) ? this.$refs.rawContentTextarea : document.getElementById('rawContentTextarea');
+              if (ta) {
+                ta.focus();
+                ta.select();
+                ta.setSelectionRange(0, 99999999);
+                success = document.execCommand('copy');
+              }
+            } catch (_) {}
+          }
+
+          // 3. 兜底方案：动态创建临时 textarea 执行复制
+          if (!success) {
+            try {
+              const temp = document.createElement('textarea');
+              temp.value = text;
+              temp.setAttribute('readonly', '');
+              temp.style.position = 'fixed';
+              temp.style.left = '-9999px';
+              temp.style.top = '-9999px';
+              document.body.appendChild(temp);
+              temp.focus();
+              temp.select();
+              temp.setSelectionRange(0, 99999999);
+              success = document.execCommand('copy');
+              document.body.removeChild(temp);
+            } catch (_) {}
+          }
+
+          if (success) {
             this.copySuccess = true;
             this.toast('正文 HTML 已复制到剪贴板', 'success');
             setTimeout(() => { this.copySuccess = false; }, 2000);
-          } catch (_) {
+          } else {
             this.toast('复制失败，请手动全选复制', 'error');
           }
         },

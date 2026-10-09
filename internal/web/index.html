@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Reader - RSS 订阅管理控制台</title>
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="alternate icon" href="/favicon.ico">
   <!-- Tailwind CSS via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Alpine.js -->
@@ -974,6 +977,8 @@
         </div>
 
         <textarea readonly 
+                  id="rawContentTextarea"
+                  x-ref="rawContentTextarea"
                   class="w-full flex-1 min-h-[260px] sm:min-h-[380px] p-3 sm:p-4 bg-slate-950 text-emerald-400 font-mono text-xs rounded-xl border border-slate-800 focus:outline-none select-all resize-none leading-relaxed" 
                   x-text="detailArticle ? (detailArticle.content || '') : ''"
                   placeholder="无正文内容"></textarea>
