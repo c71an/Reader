@@ -608,6 +608,7 @@
           const lower = type.toLowerCase();
           if (lower === 'greader' || lower === 'reeder') return 'Reeder / Google Reader 客户端';
           if (lower === 'web') return 'Web 网页控制台';
+          if (lower === 'legacy') return '旧版本遗留会话 (Legacy)';
           return type;
         },
 
@@ -616,6 +617,7 @@
           const lower = type.toLowerCase();
           if (lower === 'web') return '💻';
           if (lower === 'greader' || lower === 'reeder') return '📱';
+          if (lower === 'legacy') return '🗝️';
           return '🔑';
         }
       };

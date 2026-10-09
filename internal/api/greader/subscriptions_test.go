@@ -863,8 +863,103 @@ func TestTokenQuotaLRU(t *testing.T) {
 	}
 }
 
+func TestRevokeOtherDevices_ImmediateInvalidationAndRestartSafety(t *testing.T) {
+	database, handler := setupTestDB(t)
 
+	user, err := database.GetUserByUsername("testuser")
+	if err != nil {
+		t.Fatalf("GetUserByUsername failed: %v", err)
+	}
 
+	webToken := "test_web_session_999"
+	reederToken := "reader_auth_reeder_888"
 
+	_ = database.AddUserToken(user.ID, webToken, "web")
+	_ = database.AddUserToken(user.ID, reederToken, "greader")
+	_ = database.UpdateUserToken(user.ID, reederToken) // 模拟登录时对 users.auth_token 的更新
 
+	// 1. 验证两者初始均有效
+	r1, _ := database.GetUserByToken(webToken)
+	r2, _ := database.GetUserByToken(reederToken)
+	if r1 == nil || r2 == nil {
+		t.Fatalf("expected both sessions to be valid initially")
+	}
 
+	// 2. 模拟 Reeder 访问接口：初始应返回 200 OK
+	req := httptest.NewRequest("GET", "/reader/api/0/subscription/list?output=json", nil)
+	req.Header.Set("Authorization", "GoogleLogin auth="+reederToken)
+	w := httptest.NewRecorder()
+	handler.AuthMiddleware(http.HandlerFunc(handler.SubscriptionListHandler)).ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected initial reeder request to be 200, got %d", w.Code)
+	}
+
+	// 3. Web 端执行一键注销其他设备
+	if err := database.RevokeOtherUserTokens(user.ID, webToken); err != nil {
+		t.Fatalf("RevokeOtherUserTokens failed: %v", err)
+	}
+
+	// 4. 关键验证：Reeder 的 Token 必须立即失效
+	invalidUser, _ := database.GetUserByToken(reederToken)
+	if invalidUser != nil {
+		t.Errorf("Reeder token should be invalidated immediately, but still got user: %+v", invalidUser)
+	}
+
+	// 5. 关键验证：Reeder 再次访问接口，必须返回 401 Unauthorized，且携带 Google-Bad-Token: true
+	w2 := httptest.NewRecorder()
+	handler.AuthMiddleware(http.HandlerFunc(handler.SubscriptionListHandler)).ServeHTTP(w2, req)
+	if w2.Code != http.StatusUnauthorized {
+		t.Errorf("expected revoked reeder request to return 401, got %d", w2.Code)
+	}
+	if w2.Header().Get("Google-Bad-Token") != "true" {
+		t.Errorf("expected Google-Bad-Token header on unauthorized response")
+	}
+
+	// 6. 验证 Web 端会话仍然有效
+	validWebUser, _ := database.GetUserByToken(webToken)
+	if validWebUser == nil {
+		t.Errorf("Web session should still be valid")
+	}
+
+	// 7. 模拟 Docker 重启（关闭并重新执行 InitDB）
+	dbPath := filepath.Join(t.TempDir(), "restart_test.db")
+	restartedDB, err := db.InitDB(dbPath, "testuser", "testpass")
+	if err != nil {
+		t.Fatalf("InitDB failed: %v", err)
+	}
+	defer restartedDB.Close()
+
+	u, _ := restartedDB.GetUserByUsername("testuser")
+	_ = restartedDB.AddUserToken(u.ID, webToken, "web")
+	_ = restartedDB.AddUserToken(u.ID, reederToken, "greader")
+	_ = restartedDB.RevokeOtherUserTokens(u.ID, webToken)
+
+	// 重启前验证只有 1 个 token
+	tokensBefore, _ := restartedDB.GetUserTokens(u.ID, webToken)
+	if len(tokensBefore) != 1 {
+		t.Fatalf("expected 1 token before restart, got %d", len(tokensBefore))
+	}
+
+	// 重新打开并初始化（模拟容器重启）
+	reopenedDB, err := db.InitDB(dbPath, "testuser", "testpass")
+	if err != nil {
+		t.Fatalf("reopened InitDB failed: %v", err)
+	}
+	defer reopenedDB.Close()
+
+	// 检查是否产生了 legacy token
+	tokensAfterRestart, err := reopenedDB.GetUserTokens(u.ID, webToken)
+	if err != nil {
+		t.Fatalf("GetUserTokens failed: %v", err)
+	}
+
+	for _, tok := range tokensAfterRestart {
+		if tok.ClientType == "legacy" {
+			t.Errorf("Found unexpected 'legacy' token after restart: %+v", tok)
+		}
+	}
+
+	if len(tokensAfterRestart) != 1 {
+		t.Errorf("expected exactly 1 token after restart, got %d: %+v", len(tokensAfterRestart), tokensAfterRestart)
+	}
+}

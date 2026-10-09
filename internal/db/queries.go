@@ -357,23 +357,12 @@ func (d *DB) GetUserByToken(token string) (*User, error) {
 	}
 
 	var u User
-	// 1. 优先查 user_tokens 多设备会话表 (同时匹配包含用户名或不含用户名的 token)
+	// 会话凭据以 user_tokens 多设备会话表为唯一标准 (同时匹配包含用户名或不含用户名的 token)
 	err := d.QueryRow(`
 		SELECT u.id, u.username, u.password_hash, u.auth_token, u.created_at
 		FROM users u
 		JOIN user_tokens t ON u.id = t.user_id
 		WHERE t.token = ? OR t.token = ?
-		LIMIT 1
-	`, token, tokenWithoutUser).Scan(&u.ID, &u.Username, &u.PasswordHash, &u.AuthToken, &u.CreatedAt)
-	if err == nil {
-		return &u, nil
-	}
-
-	// 2. 兜底兼容 users 表自身自带的 auth_token
-	err = d.QueryRow(`
-		SELECT id, username, password_hash, auth_token, created_at
-		FROM users
-		WHERE auth_token = ? OR auth_token = ?
 		LIMIT 1
 	`, token, tokenWithoutUser).Scan(&u.ID, &u.Username, &u.PasswordHash, &u.AuthToken, &u.CreatedAt)
 	if err != nil {
@@ -455,12 +444,31 @@ func (d *DB) RevokeOtherUserTokens(userID int64, currentToken string) error {
 		DELETE FROM user_tokens
 		WHERE user_id = ? AND token != ? AND token != ?
 	`, userID, currentToken, tokenWithoutUser)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// 同步将 users 表中的旧 auth_token 重置为当前保留的 token，杜绝残留死 token
+	if tokenWithoutUser != "" {
+		_, _ = d.Exec(`UPDATE users SET auth_token = ? WHERE id = ?`, tokenWithoutUser, userID)
+	}
+	return nil
 }
 
 func (d *DB) DeleteUserTokenByID(userID, tokenID int64) error {
+	var tok string
+	_ = d.QueryRow("SELECT token FROM user_tokens WHERE user_id = ? AND id = ?", userID, tokenID).Scan(&tok)
+
 	_, err := d.Exec("DELETE FROM user_tokens WHERE user_id = ? AND id = ?", userID, tokenID)
-	return err
+	if err != nil {
+		return err
+	}
+
+	if tok != "" {
+		_, _ = d.Exec("UPDATE users SET auth_token = '' WHERE id = ? AND (auth_token = ? OR auth_token LIKE ?)",
+			userID, tok, "%/"+tok)
+	}
+	return nil
 }
 
 func (d *DB) DeleteUserToken(token string) error {

@@ -171,7 +171,11 @@ func (d *DB) initSchema() error {
 		return err
 	}
 	_, _ = d.Exec("ALTER TABLE categories ADD COLUMN sort_order INTEGER DEFAULT 0;")
-	_, _ = d.Exec("INSERT OR IGNORE INTO user_tokens (user_id, token, client_type) SELECT id, auth_token, 'legacy' FROM users WHERE auth_token != '';")
+	var tokenCount int
+	_ = d.QueryRow("SELECT COUNT(*) FROM user_tokens").Scan(&tokenCount)
+	if tokenCount == 0 {
+		_, _ = d.Exec("INSERT OR IGNORE INTO user_tokens (user_id, token, client_type) SELECT id, auth_token, 'legacy' FROM users WHERE auth_token != '';")
+	}
 	return nil
 }
 
