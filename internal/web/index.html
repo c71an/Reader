@@ -68,6 +68,11 @@
           <span class="hidden sm:inline">添加订阅</span>
           <span class="sm:hidden ml-1">添加</span>
         </button>
+        <button @click="openTokensModal()" class="text-xs sm:text-sm text-slate-600 hover:text-indigo-600 font-medium px-2 py-1 rounded transition flex items-center" title="管理登录设备与 Token 会话">
+          <svg class="w-3.5 h-3.5 sm:mr-1 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+          <span class="hidden sm:inline">设备与会话</span>
+          <span class="sm:hidden">会话</span>
+        </button>
         <button @click="modals.clientInfo = true" class="text-xs sm:text-sm text-slate-600 hover:text-indigo-600 font-medium px-2 py-1 rounded transition" title="Reeder 客户端接入配置">
           <span class="hidden sm:inline">Reeder 接入指引</span>
           <span class="sm:hidden">指引</span>
@@ -648,8 +653,104 @@
         ℹ️ Reeder 会自动通过 <code>/accounts/ClientLogin</code> 完成认证并请求 <code>/reader/api/0/*</code> 接口，拉取所有分类文件夹、订阅源以及文章正文。
       </div>
 
-      <div class="flex justify-end">
+      <div class="flex items-center justify-between pt-2">
+        <button @click="modals.clientInfo = false; openTokensModal();" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium hover:underline flex items-center">
+          <span>管理已连接设备与 Token →</span>
+        </button>
         <button @click="modals.clientInfo = false" class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700">完成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 设备与 Token 会话管理弹窗 -->
+  <div x-show="modals.tokens" 
+       @keydown.escape.window="modals.tokens = false" 
+       @click.self="modals.tokens = false"
+       class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-xl max-w-2xl w-full p-5 sm:p-6 border border-slate-200 max-h-[92vh] flex flex-col">
+      <!-- 弹窗顶栏 -->
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div>
+          <div class="flex items-center space-x-2">
+            <h3 class="text-base sm:text-lg font-bold text-slate-900">设备与 Token 会话管理</h3>
+            <span class="text-xs px-2 py-0.5 rounded-full font-mono font-medium bg-indigo-50 text-indigo-700" x-text="'共 ' + tokensList.length + ' 个会话'"></span>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">管理已连接本系统的客户端授权凭证与活跃设备</p>
+        </div>
+        <button @click="modals.tokens = false" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <!-- 操作工具条 -->
+      <div class="py-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <button @click="loadTokens()" :disabled="loading.tokens" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition flex items-center">
+          <svg class="w-3.5 h-3.5 mr-1" :class="loading.tokens ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+          <span>刷新列表</span>
+        </button>
+
+        <button @click="revokeOtherTokens()" 
+                :disabled="loading.tokens || tokensList.filter(t => !t.is_current).length === 0"
+                class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 disabled:opacity-40 disabled:cursor-not-allowed text-rose-700 border border-rose-200 font-medium rounded-lg transition flex items-center shadow-2xs">
+          <svg class="w-3.5 h-3.5 mr-1 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+          <span>一键注销其他设备</span>
+          <span class="ml-1 text-[11px] opacity-80" x-text="'(' + tokensList.filter(t => !t.is_current).length + ')'"></span>
+        </button>
+      </div>
+
+      <!-- 设备列表容器 -->
+      <div class="flex-1 overflow-y-auto min-h-[160px] max-h-[380px] space-y-2.5 pr-0.5">
+        <template x-for="tok in tokensList" :key="tok.id">
+          <div class="p-3 sm:p-3.5 rounded-xl border transition flex items-center justify-between"
+               :class="tok.is_current ? 'bg-indigo-50/40 border-indigo-200' : 'bg-white border-slate-200 hover:border-slate-300'">
+            <div class="flex items-center space-x-3 min-w-0 mr-2">
+              <div class="w-9 h-9 rounded-lg flex items-center justify-center text-lg shrink-0"
+                   :class="tok.is_current ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'"
+                   x-text="getClientIcon(tok.client_type)">
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center space-x-2">
+                  <span class="font-bold text-sm text-slate-900 truncate" x-text="getClientTypeName(tok.client_type)"></span>
+                  <span class="px-1.5 py-0.2 rounded text-[10px] font-mono uppercase bg-slate-100 text-slate-600" x-text="tok.client_type"></span>
+                  <span x-show="tok.is_current" class="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800 shrink-0">当前设备 (本机)</span>
+                </div>
+                <div class="text-[11px] text-slate-500 font-mono mt-0.5 flex flex-wrap items-center gap-x-2.5">
+                  <span x-text="'Token #' + tok.id"></span>
+                  <span x-text="'授权时间: ' + formatTime(tok.created_at)"></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="shrink-0">
+              <span x-show="tok.is_current" class="text-xs text-emerald-600 font-medium px-2 py-1 bg-emerald-50 rounded border border-emerald-200">
+                在线
+              </span>
+              <button x-show="!tok.is_current" 
+                      @click="revokeToken(tok.id)" 
+                      class="px-2.5 py-1 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-md transition font-medium">
+                注销
+              </button>
+            </div>
+          </div>
+        </template>
+
+        <div x-show="tokensList.length === 0 && !loading.tokens" class="py-10 text-center text-slate-400 text-xs">
+          暂无活跃的设备会话记录
+        </div>
+        <div x-show="loading.tokens" class="py-10 text-center text-slate-400 text-xs">
+          ⏳ 正在加载设备会话信息...
+        </div>
+      </div>
+
+      <!-- 底部安全与防膨胀说明 -->
+      <div class="mt-4 pt-3 border-t border-slate-100 bg-slate-50 -mx-5 -mb-5 sm:-mx-6 sm:-mb-6 p-4 sm:px-6 rounded-b-2xl sm:rounded-b-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500">
+        <div class="flex items-start space-x-1.5 leading-relaxed text-[11px]">
+          <span class="text-indigo-600 font-bold shrink-0">🛡️ 安全策略:</span>
+          <span>系统采用 LRU 配额策略（同客户端最多保留 5 个会话）；超期 90 天未活跃的 Token 会被后台自动清理。</span>
+        </div>
+        <button @click="modals.tokens = false" class="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-md transition shrink-0 self-end sm:self-auto">
+          关闭
+        </button>
       </div>
     </div>
   </div>

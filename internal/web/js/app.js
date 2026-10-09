@@ -12,6 +12,7 @@
           add: false,
           edit: false,
           clientInfo: false,
+          tokens: false,
           db: false,
           content: false,
           stagger: false,
@@ -22,9 +23,11 @@
           dbAction: false,
           batch: false,
           stagger: false,
-          category: false
+          category: false,
+          tokens: false
         },
 
+        tokensList: [],
         detailArticle: null,
         copySuccess: false,
         toasts: [],
@@ -551,6 +554,69 @@
 
         formatTime(t) {
           return t ? new Date(t).toLocaleString() : '尚未抓取';
+        },
+
+        // Token 与活跃设备管理
+        async openTokensModal() {
+          this.modals.tokens = true;
+          await this.loadTokens();
+        },
+
+        async loadTokens() {
+          this.loading.tokens = true;
+          try {
+            const data = await this.api('/api/admin/tokens');
+            this.tokensList = Array.isArray(data) ? data : [];
+          } catch (e) {
+            this.toast('获取设备会话列表失败: ' + e.message, 'error');
+          } finally {
+            this.loading.tokens = false;
+          }
+        },
+
+        async revokeOtherTokens() {
+          if (!confirm('确定要注销除当前设备外的所有其他设备吗？\n其他客户端（如手机端 Reeder）将被立即踢出并需要重新登录。')) {
+            return;
+          }
+          this.loading.tokens = true;
+          try {
+            await this.api('/api/admin/tokens/revoke-others', { method: 'POST' });
+            this.toast('已成功注销其他所有设备会话', 'success');
+            await this.loadTokens();
+          } catch (e) {
+            this.toast('注销失败: ' + e.message, 'error');
+          } finally {
+            this.loading.tokens = false;
+          }
+        },
+
+        async revokeToken(id) {
+          if (!confirm('确定要注销此设备会话吗？该客户端将失去访问权限。')) {
+            return;
+          }
+          try {
+            await this.api(`/api/admin/tokens/${id}`, { method: 'DELETE' });
+            this.toast('设备会话已注销', 'success');
+            await this.loadTokens();
+          } catch (e) {
+            this.toast('注销失败: ' + e.message, 'error');
+          }
+        },
+
+        getClientTypeName(type) {
+          if (!type) return '通用客户端';
+          const lower = type.toLowerCase();
+          if (lower === 'greader' || lower === 'reeder') return 'Reeder / Google Reader 客户端';
+          if (lower === 'web') return 'Web 网页控制台';
+          return type;
+        },
+
+        getClientIcon(type) {
+          if (!type) return '🔑';
+          const lower = type.toLowerCase();
+          if (lower === 'web') return '💻';
+          if (lower === 'greader' || lower === 'reeder') return '📱';
+          return '🔑';
         }
       };
     }
