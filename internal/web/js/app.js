@@ -554,6 +554,44 @@
           }
         },
 
+        async copyText(text, successMsg = '已复制到剪贴板') {
+          if (!text) return;
+          let success = false;
+
+          // 1. 优先使用现代 Clipboard API (仅在 HTTPS 或 localhost 安全上下文中可用)
+          if (navigator.clipboard && window.isSecureContext) {
+            try {
+              await navigator.clipboard.writeText(text);
+              success = true;
+            } catch (_) {}
+          }
+
+          // 2. 降级方案：创建临时 textarea 执行复制 (兼容局域网 HTTP IP 访问)
+          if (!success) {
+            try {
+              const temp = document.createElement('textarea');
+              temp.value = text;
+              temp.setAttribute('readonly', '');
+              temp.style.position = 'fixed';
+              temp.style.left = '-9999px';
+              temp.style.top = '-9999px';
+              document.body.appendChild(temp);
+              temp.focus();
+              temp.select();
+              temp.setSelectionRange(0, 99999999);
+              success = document.execCommand('copy');
+              document.body.removeChild(temp);
+            } catch (_) {}
+          }
+
+          if (success) {
+            this.toast(successMsg, 'success');
+          } else {
+            this.toast('复制失败，请手动复制', 'error');
+          }
+          return success;
+        },
+
         // 正文查看与复制
         openContentDetail(article) {
           this.detailArticle = article;
