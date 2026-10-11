@@ -158,8 +158,8 @@ func TestStreamHandlers(t *testing.T) {
 	feed := &db.Feed{
 		Title:         "Stream Feed",
 		FeedURL:       "https://stream.example.com/rss",
-		ScheduleType:  "interval",
-		ScheduleValue: "60m",
+		ScheduleType:  "cron",
+		ScheduleValue: "0 8 * ~30m",
 	}
 	if err := database.CreateFeed(feed); err != nil {
 		t.Fatalf("CreateFeed failed: %v", err)
@@ -309,8 +309,8 @@ func TestNewArticleSyncDetails(t *testing.T) {
 		Title:         "Tech Blog",
 		FeedURL:       "https://tech.blog/rss",
 		CategoryID:    &cat.ID,
-		ScheduleType:  "interval",
-		ScheduleValue: "60m",
+		ScheduleType:  "cron",
+		ScheduleValue: "0 8 * ~30m",
 	}
 	if err := handler.db.CreateFeed(feed); err != nil {
 		t.Fatalf("failed to create feed: %v", err)
@@ -512,8 +512,8 @@ func TestFreshRSSCompatibility_PaginationAndTimeFilter(t *testing.T) {
 	feed := &db.Feed{
 		Title:         "Pagination Feed",
 		FeedURL:       "https://page.test/feed",
-		ScheduleType:  "interval",
-		ScheduleValue: "60m",
+		ScheduleType:  "cron",
+		ScheduleValue: "0 8 * ~30m",
 	}
 	_ = database.CreateFeed(feed)
 
@@ -597,8 +597,8 @@ func TestFreshRSSCompatibility_TagManagementAndMarkCategoryRead(t *testing.T) {
 		Title:         "Tech Feed",
 		FeedURL:       "https://tech.test/rss",
 		CategoryID:    &catTech.ID,
-		ScheduleType:  "interval",
-		ScheduleValue: "60m",
+		ScheduleType:  "cron",
+		ScheduleValue: "0 8 * ~30m",
 	}
 	_ = database.CreateFeed(feedTech)
 
@@ -606,8 +606,8 @@ func TestFreshRSSCompatibility_TagManagementAndMarkCategoryRead(t *testing.T) {
 		Title:         "Life Feed",
 		FeedURL:       "https://life.test/rss",
 		CategoryID:    &catLife.ID,
-		ScheduleType:  "interval",
-		ScheduleValue: "60m",
+		ScheduleType:  "cron",
+		ScheduleValue: "0 8 * ~30m",
 	}
 	_ = database.CreateFeed(feedLife)
 

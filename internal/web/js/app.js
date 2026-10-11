@@ -39,9 +39,9 @@
 
         staggerTargetName: '',
         staggerTargetFeeds: [],
-        staggerForm: { start_time: '08:00', window_minutes: 30 },
+        staggerForm: { start_time: '08:00', window_minutes: 30, week: '*' },
         categoryForm: { current_name: '', name: '', sort_order: 0 },
-        modalForm: { id: null, title: '', feed_url: '', category_name: '', schedule_type: 'daily_fixed', schedule_value: '08:00' },
+        modalForm: { id: null, title: '', feed_url: '', category_name: '', schedule_type: 'cron', schedule_value: '0 8 * ~30m' },
 
         init() {
           this.checkAuth();
@@ -124,7 +124,7 @@
           const groupsMap = {};
 
           for (const f of this.feeds) {
-            if (f.schedule_type === 'daily_fixed') dailyFixedCount++;
+            if (f.schedule_type === 'cron') dailyFixedCount++;
             else if (f.schedule_type === 'paused') pausedCount++;
             unreadTotal += (f.unread_count || 0);
 
@@ -236,7 +236,7 @@
             this.feeds.forEach(f => {
               if (targetIds.has(f.id)) {
                 backupMap.set(f.id, f.schedule_type);
-                f.schedule_type = action === 'pause' ? 'paused' : 'daily_fixed';
+                f.schedule_type = action === 'pause' ? 'paused' : 'cron';
               }
             });
             this.toast(action === 'pause' ? '已暂停所选订阅' : '已恢复所选订阅', 'success');
@@ -274,7 +274,7 @@
           if (!feeds || feeds.length === 0) return this.toast('请先选择订阅源', 'warning');
           this.staggerTargetFeeds = feeds;
           this.staggerTargetName = name || '订阅源';
-          this.staggerForm = { start_time: '08:00', window_minutes: 30 };
+          this.staggerForm = { start_time: '08:00', window_minutes: 30, week: '*' };
           this.modals.stagger = true;
         },
 
@@ -286,12 +286,15 @@
           const startH = parseInt(hStr, 10) || 8;
           const startM = parseInt(mStr, 10) || 0;
           const step = n > 1 ? (windowMin / n) : 0;
+          const week = this.staggerForm.week || '*';
 
           return this.staggerTargetFeeds.map((f, i) => {
             const totalMin = (startH * 60 + startM + Math.floor(i * step)) % 1440;
-            const h = String(Math.floor(totalMin / 60)).padStart(2, '0');
-            const m = String(totalMin % 60).padStart(2, '0');
-            return { id: f.id, title: f.title || f.feed_url, time: `${h}:${m}` };
+            const h = Math.floor(totalMin / 60);
+            const m = totalMin % 60;
+            const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+            const cronStr = `${m} ${h} ${week}`;
+            return { id: f.id, title: f.title || f.feed_url, time: timeStr, cron: cronStr };
           });
         },
 
@@ -309,14 +312,15 @@
               body: {
                 feed_ids: this.staggerTargetFeeds.map(f => f.id),
                 start_time: this.staggerForm.start_time || '08:00',
-                window_minutes: Number(this.staggerForm.window_minutes) || 30
+                window_minutes: Number(this.staggerForm.window_minutes) || 30,
+                week: this.staggerForm.week || '*'
               }
             });
             // 乐观同步本地分配计划时刻
-            const previewMap = new Map(this.staggerPreviewList.map(p => [p.id, p.time]));
+            const previewMap = new Map(this.staggerPreviewList.map(p => [p.id, p.cron]));
             this.feeds.forEach(f => {
               if (previewMap.has(f.id)) {
-                f.schedule_type = 'daily_fixed';
+                f.schedule_type = 'cron';
                 f.schedule_value = previewMap.get(f.id);
               }
             });
@@ -401,7 +405,7 @@
         closeModal() {
           this.modals.add = false;
           this.modals.edit = false;
-          this.modalForm = { id: null, title: '', feed_url: '', category_name: '', schedule_type: 'daily_fixed', schedule_value: '08:00' };
+          this.modalForm = { id: null, title: '', feed_url: '', category_name: '', schedule_type: 'cron', schedule_value: '0 8 * ~30m' };
         },
 
         async saveModal() {

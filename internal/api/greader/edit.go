@@ -370,8 +370,8 @@ func (h *Handler) subscribeOrUpdateFeed(feedURL, title string, categoryTags []st
 		Title:         title,
 		FeedURL:       feedURL,
 		CategoryID:    catID,
-		ScheduleType:  "interval",
-		ScheduleValue: "60m",
+		ScheduleType:  "cron",
+		ScheduleValue: "0 8 * ~30m",
 	}
 	if err := h.db.CreateFeed(newFeed); err != nil {
 		return nil, err

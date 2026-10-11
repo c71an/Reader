@@ -155,8 +155,8 @@ func (h *AdminHandler) CreateFeed(w http.ResponseWriter, r *http.Request) {
 		Title         string `json:"title"`
 		FeedURL       string `json:"feed_url"`
 		CategoryName  string `json:"category_name"`
-		ScheduleType  string `json:"schedule_type"`  // "daily_fixed" | "interval"
-		ScheduleValue string `json:"schedule_value"` // e.g. "08:00,18:30" or "60m"
+		ScheduleType  string `json:"schedule_type"`  // "cron" | "paused"
+		ScheduleValue string `json:"schedule_value"` // e.g. "0 8 * ~30m", "0 10 0"
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -169,15 +169,15 @@ func (h *AdminHandler) CreateFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.ScheduleType != "daily_fixed" && req.ScheduleType != "interval" && req.ScheduleType != "paused" {
-		req.ScheduleType = "daily_fixed"
+	if req.ScheduleType != "paused" {
+		req.ScheduleType = "cron"
 	}
 	if req.ScheduleValue == "" {
-		if req.ScheduleType == "daily_fixed" {
-			req.ScheduleValue = "08:00"
-		} else {
-			req.ScheduleValue = "60m"
-		}
+		req.ScheduleValue = "0 8 * ~30m"
+	}
+	if _, _, err := scheduler.ParseScheduleWithJitter(req.ScheduleValue); err != nil {
+		http.Error(w, fmt.Sprintf("invalid schedule: %v", err), http.StatusBadRequest)
+		return
 	}
 
 	var catID *int64
@@ -237,9 +237,17 @@ func (h *AdminHandler) UpdateFeed(w http.ResponseWriter, r *http.Request) {
 		feed.FeedURL = req.FeedURL
 	}
 	if req.ScheduleType != "" {
-		feed.ScheduleType = req.ScheduleType
+		if req.ScheduleType != "paused" {
+			feed.ScheduleType = "cron"
+		} else {
+			feed.ScheduleType = "paused"
+		}
 	}
 	if req.ScheduleValue != "" {
+		if _, _, err := scheduler.ParseScheduleWithJitter(req.ScheduleValue); err != nil {
+			http.Error(w, fmt.Sprintf("invalid schedule: %v", err), http.StatusBadRequest)
+			return
+		}
 		feed.ScheduleValue = req.ScheduleValue
 	}
 
@@ -302,9 +310,9 @@ func (h *AdminHandler) ToggleFeedPause(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if feed.ScheduleType == "paused" {
-		feed.ScheduleType = "daily_fixed"
+		feed.ScheduleType = "cron"
 		if feed.ScheduleValue == "" {
-			feed.ScheduleValue = "08:00"
+			feed.ScheduleValue = "0 8 * ~30m"
 		}
 	} else {
 		feed.ScheduleType = "paused"
@@ -343,9 +351,9 @@ func (h *AdminHandler) BatchAction(w http.ResponseWriter, r *http.Request) {
 			feed, err := h.db.GetFeedByID(feedID)
 			if err == nil && feed != nil {
 				if feed.ScheduleType == "paused" {
-					feed.ScheduleType = "daily_fixed"
+					feed.ScheduleType = "cron"
 					if feed.ScheduleValue == "" {
-						feed.ScheduleValue = "08:00"
+						feed.ScheduleValue = "0 8 * ~30m"
 					}
 					_ = h.db.UpdateFeed(feed)
 				}
@@ -375,6 +383,7 @@ func (h *AdminHandler) DistributeSchedule(w http.ResponseWriter, r *http.Request
 		FeedIDs       []int64 `json:"feed_ids"`
 		StartTime     string  `json:"start_time"`     // 格式如 "08:00"
 		WindowMinutes int     `json:"window_minutes"` // 窗口跨度分钟数，如 30, 60
+		Week          string  `json:"week"`           // 周期表达式，如 "*", "1-5", "0"
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid body", http.StatusBadRequest)
@@ -399,6 +408,11 @@ func (h *AdminHandler) DistributeSchedule(w http.ResponseWriter, r *http.Request
 		}
 	}
 
+	weekExpr := strings.TrimSpace(req.Week)
+	if weekExpr == "" {
+		weekExpr = "*"
+	}
+
 	window := req.WindowMinutes
 	if window <= 0 {
 		window = 30
@@ -421,10 +435,10 @@ func (h *AdminHandler) DistributeSchedule(w http.ResponseWriter, r *http.Request
 		totalMin := (startHour*60 + startMin + offsetMinutes) % 1440
 		targetHour := totalMin / 60
 		targetMin := totalMin % 60
-		timeStr := fmt.Sprintf("%02d:%02d", targetHour, targetMin)
+		cronStr := fmt.Sprintf("%d %d %s", targetMin, targetHour, weekExpr)
 
-		feed.ScheduleType = "daily_fixed"
-		feed.ScheduleValue = timeStr
+		feed.ScheduleType = "cron"
+		feed.ScheduleValue = cronStr
 		if err := h.db.UpdateFeed(feed); err == nil {
 			updatedList = append(updatedList, map[string]interface{}{
 				"id":             feed.ID,

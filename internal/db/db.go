@@ -38,8 +38,8 @@ type Feed struct {
 	CategoryID        *int64     `json:"category_id"`
 	CategoryName      string     `json:"category_name,omitempty"`
 	CategorySortOrder int        `json:"category_sort_order"`
-	ScheduleType      string     `json:"schedule_type"`  // "interval" 或 "daily_fixed"
-	ScheduleValue     string     `json:"schedule_value"` // "30m", "1h" 或 "08:00,18:30"
+	ScheduleType      string     `json:"schedule_type"`  // "cron" 或 "paused"
+	ScheduleValue     string     `json:"schedule_value"` // 如 "0 8 * ~30m", "0 10 0"
 	LastFetchedAt     *time.Time `json:"last_fetched_at"`
 	LastError         string     `json:"last_error"`
 	Etag              string     `json:"etag"`
@@ -115,8 +115,8 @@ func (d *DB) initSchema() error {
 		feed_url TEXT UNIQUE NOT NULL,
 		site_url TEXT DEFAULT '',
 		category_id INTEGER,
-		schedule_type TEXT NOT NULL DEFAULT 'interval',
-		schedule_value TEXT NOT NULL DEFAULT '60m',
+		schedule_type TEXT NOT NULL DEFAULT 'cron',
+		schedule_value TEXT NOT NULL DEFAULT '0 8 * ~30m',
 		last_fetched_at DATETIME,
 		last_error TEXT DEFAULT '',
 		etag TEXT DEFAULT '',
@@ -171,6 +171,8 @@ func (d *DB) initSchema() error {
 		return err
 	}
 	_, _ = d.Exec("ALTER TABLE categories ADD COLUMN sort_order INTEGER DEFAULT 0;")
+	// 将旧的 interval 或 daily_fixed 统一升级为 3段式带30分钟浮动 (暂停状态保持不变)
+	_, _ = d.Exec("UPDATE feeds SET schedule_type = 'cron', schedule_value = '0 8 * ~30m' WHERE schedule_type IN ('interval', 'daily_fixed');")
 	var tokenCount int
 	_ = d.QueryRow("SELECT COUNT(*) FROM user_tokens").Scan(&tokenCount)
 	if tokenCount == 0 {

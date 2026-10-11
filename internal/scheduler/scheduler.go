@@ -5,13 +5,18 @@ import (
 	"fmt"
 	"log"
 	"math/rand/v2"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/robfig/cron/v3"
+
 	"reader/internal/db"
 	"reader/internal/fetcher"
+)
+
+var threeFieldCronParser = cron.NewParser(
+	cron.Minute | cron.Hour | cron.Dow | cron.Descriptor,
 )
 
 type Scheduler struct {
@@ -73,7 +78,7 @@ func (s *Scheduler) checkAndFetchAll() {
 
 	now := time.Now()
 	for _, feed := range feeds {
-		if s.shouldFetch(feed, now) {
+		if should, maxJitter := s.shouldFetch(feed, now); should {
 			s.mu.Lock()
 			if s.isBusy[feed.ID] {
 				s.mu.Unlock()
@@ -84,10 +89,16 @@ func (s *Scheduler) checkAndFetchAll() {
 
 			fID := feed.ID
 			fTitle := feed.Title
-			go func() {
-				// 匹配到触发时间点时，给每个源加上 10 ~ 30 秒的随机延迟（Random Jitter），削峰打散请求
-				jitterSeconds := 10 + rand.IntN(21) // 10 ~ 30 秒
-				jitter := time.Duration(jitterSeconds) * time.Second
+			go func(feedJitter time.Duration) {
+				var jitter time.Duration
+				if feedJitter > 0 {
+					// 在 [0, feedJitter] 范围内生成随机延迟
+					jitter = time.Duration(rand.Int64N(int64(feedJitter)))
+				} else {
+					// 默认 10 ~ 30 秒的保底随机削峰 (Random Jitter)
+					jitterSeconds := 10 + rand.IntN(21)
+					jitter = time.Duration(jitterSeconds) * time.Second
+				}
 				log.Printf("[Scheduler] Feed [%d] %s matched trigger, applying %v random jitter...\n", fID, fTitle, jitter)
 
 				select {
@@ -100,7 +111,7 @@ func (s *Scheduler) checkAndFetchAll() {
 				}
 
 				s.doFetch(fID)
-			}()
+			}(maxJitter)
 		}
 	}
 }
@@ -144,11 +155,11 @@ func (s *Scheduler) doFetch(feedID int64) (int, error) {
 	return count, nil
 }
 
-// shouldFetch 核心判定函数：支持 daily_fixed (每天固定时间) 与 interval (间隔时间)，跳过 paused (暂停)
-func (s *Scheduler) shouldFetch(feed *db.Feed, now time.Time) bool {
+// shouldFetch 核心判定函数：支持 3 段式 Cron 调度，跳过 paused (暂停)
+func (s *Scheduler) shouldFetch(feed *db.Feed, now time.Time) (bool, time.Duration) {
 	// 如果订阅处于暂停状态，永不自动调度抓取
 	if feed.ScheduleType == "paused" {
-		return false
+		return false, 0
 	}
 
 	s.mu.Lock()
@@ -157,7 +168,7 @@ func (s *Scheduler) shouldFetch(feed *db.Feed, now time.Time) bool {
 	s.mu.Unlock()
 
 	if busy {
-		return false
+		return false, 0
 	}
 
 	lastTime := feed.CreatedAt
@@ -171,62 +182,79 @@ func (s *Scheduler) shouldFetch(feed *db.Feed, now time.Time) bool {
 		lastTime = now
 	}
 
-	// 添加订阅后不立即自动抓取，严格等待下一个固定或周期时间
-	switch feed.ScheduleType {
-	case "daily_fixed":
-		// 例如 "08:00" 或 "08:00,18:30"
-		return s.checkDailyFixed(feed.ScheduleValue, lastTime, now)
-	case "interval":
-		duration := parseInterval(feed.ScheduleValue)
-		return now.Sub(lastTime) >= duration
-	default:
-		return false
-	}
+	return s.checkCron(feed.ScheduleValue, lastTime, now)
 }
 
-// checkDailyFixed 检查是否满足每日固定时间触发条件
-// timesStr 格式如: "08:00", "09:30,21:00"
-func (s *Scheduler) checkDailyFixed(timesStr string, lastTime, now time.Time) bool {
-	if timesStr == "" {
-		timesStr = "08:00"
+// checkCron 检查 3 段式 Cron 是否到达触发时间
+func (s *Scheduler) checkCron(val string, lastTime, now time.Time) (bool, time.Duration) {
+	cronExpr, maxJitter, err := ParseScheduleWithJitter(val)
+	if err != nil {
+		// 校验未通过时使用安全默认值: 每天 8 点，浮动 30 分钟
+		cronExpr = "0 8 *"
+		maxJitter = 30 * time.Minute
 	}
-	targets := strings.Split(timesStr, ",")
 
-	todayStr := now.Format("2006-01-02")
-	for _, t := range targets {
-		t = strings.TrimSpace(t)
-		if t == "" {
-			continue
-		}
-		// 目标时间，例如 "2026-10-07 08:00"
-		targetDateTimeStr := fmt.Sprintf("%s %s", todayStr, t)
-		targetTime, err := time.ParseInLocation("2006-01-02 15:04", targetDateTimeStr, now.Location())
-		if err != nil {
-			continue
-		}
-
-		// 如果当前时间已经到了或过了 targetTime，并且上次抓取在 targetTime 之前
-		if !now.Before(targetTime) && lastTime.Before(targetTime) {
-			return true
-		}
+	sched, err := threeFieldCronParser.Parse(cronExpr)
+	if err != nil {
+		return false, 0
 	}
-	return false
+
+	// 只要当前时间 >= 上次抓取后的下一次计划时刻，即触发抓取
+	nextTime := sched.Next(lastTime)
+	if !now.Before(nextTime) {
+		return true, maxJitter
+	}
+	return false, 0
 }
 
-// parseInterval 解析如 "30m", "1h", "2h", "12h", 或纯数字(代表分钟)
-func parseInterval(val string) time.Duration {
-	val = strings.TrimSpace(strings.ToLower(val))
+// ParseScheduleWithJitter 解析并校验 3 段式 Cron 与可选浮动窗口
+// 格式: "分 时 周 [~浮动时长]"，例如 "0 8 * ~30m", "0 10 0", "0 8,18 *"
+func ParseScheduleWithJitter(val string) (cronExpr string, maxJitter time.Duration, err error) {
+	val = strings.TrimSpace(val)
 	if val == "" {
-		return 1 * time.Hour
+		val = "0 8 * ~30m"
 	}
-	d, err := time.ParseDuration(val)
-	if err == nil && d >= 5*time.Minute {
-		return d
+
+	// 兼容老数据格式：如果含有冒号 "08:00"，或纯时长无空格的 "60m"/"1h"
+	if strings.Contains(val, ":") || (!strings.Contains(val, " ") && (strings.HasSuffix(val, "m") || strings.HasSuffix(val, "h"))) {
+		val = "0 8 * ~30m"
 	}
-	// 如果是纯数字，按分钟算
-	if minutes, err := strconv.Atoi(val); err == nil && minutes > 0 {
-		return time.Duration(minutes) * time.Minute
+
+	parts := strings.Split(val, "~")
+	cronExpr = strings.TrimSpace(parts[0])
+
+	if len(parts) > 1 {
+		jitterStr := strings.TrimSpace(parts[1])
+		if d, parseErr := time.ParseDuration(jitterStr); parseErr == nil && d > 0 {
+			maxJitter = d
+		}
 	}
-	return 1 * time.Hour
+
+	// 禁用斜杠 / (步长/伪间隔)
+	if strings.Contains(cronExpr, "/") {
+		return "", 0, fmt.Errorf("日历时刻模式不支持 '/' 步长语法")
+	}
+
+	fields := strings.Fields(cronExpr)
+	if len(fields) < 2 || len(fields) > 3 {
+		return "", 0, fmt.Errorf("格式错误，请输入 3 段式：分 时 周 (如: 0 8 *)")
+	}
+
+	// 禁用第 1 位（分钟位）为 * (防止每分钟高频暴击)
+	if fields[0] == "*" {
+		return "", 0, fmt.Errorf("分钟位不能为 '*'，请指定具体的分钟（如: 0）")
+	}
+
+	// 若只提供了 2 段（如 "0 8"），自动补全为每天（"0 8 *"）
+	if len(fields) == 2 {
+		cronExpr = cronExpr + " *"
+	}
+
+	// 使用 cronParser 预解析验证语法有效性
+	if _, err := threeFieldCronParser.Parse(cronExpr); err != nil {
+		return "", 0, fmt.Errorf("无效的 3 段式表达式: %w", err)
+	}
+
+	return cronExpr, maxJitter, nil
 }
 
