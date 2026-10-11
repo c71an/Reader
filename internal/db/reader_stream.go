@@ -243,26 +243,6 @@ func (d *DB) GetStreamItemIDs(filter StreamQueryFilter) ([]*StreamItemIDRef, err
 	return list, nil
 }
 
-// 标记单篇文章已读/未读
-func (d *DB) MarkArticleRead(userID, articleID int64, read bool) error {
-	readInt := 0
-	var readAt *time.Time
-	if read {
-		readInt = 1
-		now := time.Now()
-		readAt = &now
-	}
-
-	_, err := d.Exec(`
-		INSERT INTO article_states (user_id, article_id, is_read, read_at)
-		VALUES (?, ?, ?, ?)
-		ON CONFLICT(user_id, article_id) DO UPDATE SET
-			is_read = excluded.is_read,
-			read_at = excluded.read_at
-	`, userID, articleID, readInt, readAt)
-	return err
-}
-
 // 批量标记文章已读/未读 (事务优化性能)
 func (d *DB) SetArticlesRead(userID int64, articleIDs []int64, isRead bool) error {
 	if len(articleIDs) == 0 {
@@ -300,22 +280,6 @@ func (d *DB) SetArticlesRead(userID int64, articleIDs []int64, isRead bool) erro
 		}
 	}
 	return tx.Commit()
-}
-
-// 标记单篇文章星标状态
-func (d *DB) MarkArticleStarred(userID, articleID int64, starred bool) error {
-	starredInt := 0
-	if starred {
-		starredInt = 1
-	}
-
-	_, err := d.Exec(`
-		INSERT INTO article_states (user_id, article_id, is_starred)
-		VALUES (?, ?, ?)
-		ON CONFLICT(user_id, article_id) DO UPDATE SET
-			is_starred = excluded.is_starred
-	`, userID, articleID, starredInt)
-	return err
 }
 
 // 批量标记文章星标状态 (事务优化性能)

@@ -170,7 +170,6 @@ func (d *DB) initSchema() error {
 	if err != nil {
 		return err
 	}
-	_, _ = d.Exec("ALTER TABLE categories ADD COLUMN sort_order INTEGER DEFAULT 0;")
 	var tokenCount int
 	_ = d.QueryRow("SELECT COUNT(*) FROM user_tokens").Scan(&tokenCount)
 	if tokenCount == 0 {

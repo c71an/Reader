@@ -4,8 +4,6 @@ import (
 	"database/sql"
 	"strings"
 	"time"
-
-	"golang.org/x/crypto/bcrypt"
 )
 
 // 订阅源 CRUD
@@ -478,14 +476,5 @@ func (d *DB) DeleteUserToken(token string) error {
 
 func (d *DB) UpdateUserToken(userID int64, token string) error {
 	_, err := d.Exec("UPDATE users SET auth_token = ? WHERE id = ?", token, userID)
-	return err
-}
-
-func (d *DB) UpdateUserPassword(userID int64, newPass string) error {
-	hash, err := bcrypt.GenerateFromPassword([]byte(newPass), bcrypt.DefaultCost)
-	if err != nil {
-		return err
-	}
-	_, err = d.Exec("UPDATE users SET password_hash = ? WHERE id = ?", string(hash), userID)
 	return err
 }
