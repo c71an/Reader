@@ -494,13 +494,48 @@
 
         <div>
           <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">所属分类文件夹 (输入新名字自动新建)</label>
-          <div class="relative">
-            <input type="text" list="categoryOptions" x-model="modalForm.category_name" placeholder="如：科技 / 资讯 / 日常（留空为未分类）" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
-            <datalist id="categoryOptions">
-              <template x-for="cat in computedData.categoryList" :key="cat.name">
-                <option :value="cat.name"></option>
+          <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+            <div class="flex items-center border border-slate-300 rounded-md focus-within:ring-1 focus-within:ring-indigo-500 focus-within:border-indigo-500 bg-white">
+              <input type="text" 
+                     x-model="modalForm.category_name" 
+                     @focus="open = true"
+                     placeholder="如：科技 / 资讯 / 日常（留空为未分类）" 
+                     class="w-full px-3 py-2 text-sm focus:outline-none bg-transparent">
+              <button type="button" 
+                      @click="open = !open" 
+                      class="px-2.5 py-2 text-slate-400 hover:text-slate-600 transition"
+                      title="展开分类列表">
+                <svg class="w-4 h-4 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </button>
+            </div>
+
+            <div x-show="open" 
+                 x-transition:enter="transition ease-out duration-100"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100"
+                 class="absolute left-0 top-full mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg py-1 z-50 max-h-48 overflow-y-auto">
+              <div class="px-3 py-1 text-[11px] font-semibold text-slate-400 uppercase border-b border-slate-100">
+                选择已有分类 (或直接输入)
+              </div>
+              <button type="button" 
+                      @click="modalForm.category_name = ''; open = false"
+                      class="w-full text-left px-3 py-1.5 text-xs text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 flex items-center justify-between transition"
+                      :class="!modalForm.category_name ? 'font-bold text-indigo-600 bg-indigo-50/50' : ''">
+                <span>📁 (未分类)</span>
+                <span x-show="!modalForm.category_name" class="text-indigo-600 text-xs">✓</span>
+              </button>
+              <template x-for="cat in computedData.categoryList.filter(c => c.name !== '未分类')" :key="cat.name">
+                <button type="button" 
+                        @click="modalForm.category_name = cat.name; open = false"
+                        class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 flex items-center justify-between transition"
+                        :class="modalForm.category_name === cat.name ? 'font-bold text-indigo-600 bg-indigo-50/50' : ''">
+                  <span class="truncate" x-text="'📁 ' + cat.name"></span>
+                  <span x-show="modalForm.category_name === cat.name" class="text-indigo-600 text-xs shrink-0 ml-1">✓</span>
+                </button>
               </template>
-            </datalist>
+            </div>
           </div>
         </div>
       </div>
@@ -779,16 +814,53 @@
             
             <span class="text-[11px] text-slate-400 font-mono shrink-0" x-text="'(id: ' + dbCurrentFeed.id + ')'"></span>
 
-            <!-- 分类 -->
-            <div class="flex items-center space-x-1.5 text-xs">
+            <!-- 分类 (下拉选择已有或直接输入) -->
+            <div class="flex items-center space-x-1.5 text-xs" x-data="{ open: false }">
               <span class="text-slate-400 text-[11px] shrink-0">分类:</span>
-              <div class="relative">
-                <input type="text" 
-                       list="categoryOptions" 
-                       x-model="dbEditForm.category_name" 
-                       placeholder="未分类" 
-                       title="所属分类文件夹"
-                       class="text-xs text-slate-700 border border-slate-200 hover:border-slate-300 focus:border-indigo-500 rounded px-2 py-0.5 w-28 sm:w-36 bg-white transition">
+              <div class="relative w-36 sm:w-44" @click.outside="open = false">
+                <div class="w-full flex items-center border border-slate-200 hover:border-slate-300 focus-within:border-indigo-500 rounded-md bg-white transition shadow-2xs">
+                  <input type="text" 
+                         x-model="dbEditForm.category_name" 
+                         @focus="open = true"
+                         placeholder="未分类" 
+                         title="可直接输入新分类或点击右侧箭头选择已有分类"
+                         class="w-full text-xs text-slate-700 px-2 py-1 focus:outline-none bg-transparent">
+                  <button type="button" 
+                          @click="open = !open" 
+                          class="px-1.5 py-1 text-slate-400 hover:text-slate-600 transition shrink-0"
+                          title="展开所有已有分类">
+                    <svg class="w-3.5 h-3.5 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                  </button>
+                </div>
+
+                <!-- 下拉浮层：与输入框左右对齐 (w-full left-0 right-0) -->
+                <div x-show="open" 
+                     x-transition:enter="transition ease-out duration-100"
+                     x-transition:enter-start="opacity-0 scale-95"
+                     x-transition:enter-end="opacity-100 scale-100"
+                     class="absolute left-0 right-0 top-full mt-1 w-full bg-white border border-slate-200 rounded-md shadow-lg py-1 z-50 max-h-48 overflow-y-auto">
+                  <div class="px-2.5 py-1 text-[10px] font-semibold text-slate-400 uppercase border-b border-slate-100">
+                    选择已有分类 (或直接输入)
+                  </div>
+                  <button type="button" 
+                          @click="dbEditForm.category_name = ''; open = false"
+                          class="w-full text-left px-2.5 py-1.5 text-xs text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 flex items-center justify-between transition"
+                          :class="!dbEditForm.category_name ? 'font-bold text-indigo-600 bg-indigo-50/50' : ''">
+                    <span>📁 (未分类)</span>
+                    <span x-show="!dbEditForm.category_name" class="text-indigo-600 text-xs">✓</span>
+                  </button>
+                  <template x-for="cat in computedData.categoryList.filter(c => c.name !== '未分类')" :key="cat.name">
+                    <button type="button" 
+                            @click="dbEditForm.category_name = cat.name; open = false"
+                            class="w-full text-left px-2.5 py-1.5 text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 flex items-center justify-between transition"
+                            :class="dbEditForm.category_name === cat.name ? 'font-bold text-indigo-600 bg-indigo-50/50' : ''">
+                      <span class="truncate" x-text="'📁 ' + cat.name"></span>
+                      <span x-show="dbEditForm.category_name === cat.name" class="text-indigo-600 text-xs shrink-0 ml-1">✓</span>
+                    </button>
+                  </template>
+                </div>
               </div>
             </div>
           </div>
