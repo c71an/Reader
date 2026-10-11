@@ -39,7 +39,7 @@
 
         staggerTargetName: '',
         staggerTargetFeeds: [],
-        staggerForm: { start_time: '08:00', window_minutes: 30, week: '*' },
+        staggerForm: { start_time: '08:00', window_minutes: 0, jitter: '', days: [0, 1, 2, 3, 4, 5, 6] },
         categoryForm: { current_name: '', name: '', sort_order: 0 },
         modalForm: { id: null, title: '', feed_url: '', category_name: '', schedule_type: 'cron', schedule_value: '0 8 * ~30m' },
 
@@ -269,42 +269,65 @@
           }
         },
 
-        // 错峰时间分配
+        // 批量时间分配
         openStaggerModal(feeds, name) {
           if (!feeds || feeds.length === 0) return this.toast('请先选择订阅源', 'warning');
           this.staggerTargetFeeds = feeds;
           this.staggerTargetName = name || '订阅源';
-          this.staggerForm = { start_time: '08:00', window_minutes: 30, week: '*' };
+          this.staggerForm = {
+            start_time: '08:00',
+            window_minutes: 0,
+            jitter: '',
+            days: [0, 1, 2, 3, 4, 5, 6]
+          };
           this.modals.stagger = true;
+        },
+
+        get staggerWeekExpr() {
+          const days = (this.staggerForm.days || []).map(Number).sort((a, b) => a - b);
+          if (days.length === 0 || days.length === 7) return '*';
+          // 连续 1 到 5 为工作日简写
+          if (days.length === 5 && days[0] === 1 && days[1] === 2 && days[2] === 3 && days[3] === 4 && days[4] === 5) {
+            return '1-5';
+          }
+          return days.join(',');
         },
 
         get staggerPreviewList() {
           const n = this.staggerTargetFeeds.length;
           if (n === 0) return [];
-          const windowMin = Number(this.staggerForm.window_minutes) || 30;
+          const windowMin = Number(this.staggerForm.window_minutes) || 0;
           const [hStr, mStr] = (this.staggerForm.start_time || '08:00').split(':');
           const startH = parseInt(hStr, 10) || 8;
           const startM = parseInt(mStr, 10) || 0;
-          const step = n > 1 ? (windowMin / n) : 0;
-          const week = this.staggerForm.week || '*';
+          const step = (n > 1 && windowMin > 0) ? (windowMin / n) : 0;
+          const week = this.staggerWeekExpr;
+          const jitter = (this.staggerForm.jitter || '').trim();
 
           return this.staggerTargetFeeds.map((f, i) => {
             const totalMin = (startH * 60 + startM + Math.floor(i * step)) % 1440;
             const h = Math.floor(totalMin / 60);
             const m = totalMin % 60;
             const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-            const cronStr = `${m} ${h} ${week}`;
+            let cronStr = `${m} ${h} ${week}`;
+            if (jitter) {
+              cronStr += ` ~${jitter}`;
+            }
             return { id: f.id, title: f.title || f.feed_url, time: timeStr, cron: cronStr };
           });
         },
 
         get staggerAverageStep() {
           const n = this.staggerTargetFeeds.length;
-          return n <= 1 ? 0 : ((Number(this.staggerForm.window_minutes) || 30) / n).toFixed(1);
+          const windowMin = Number(this.staggerForm.window_minutes) || 0;
+          return (n <= 1 || windowMin <= 0) ? 0 : (windowMin / n).toFixed(1);
         },
 
         async saveStaggerSchedule() {
           if (this.staggerTargetFeeds.length === 0) return;
+          if (!this.staggerForm.days || this.staggerForm.days.length === 0) {
+            return this.toast('请至少勾选一天生效周期', 'warning');
+          }
           this.loading.stagger = true;
           try {
             await this.api('/api/admin/feeds/distribute-schedule', {
@@ -312,8 +335,9 @@
               body: {
                 feed_ids: this.staggerTargetFeeds.map(f => f.id),
                 start_time: this.staggerForm.start_time || '08:00',
-                window_minutes: Number(this.staggerForm.window_minutes) || 30,
-                week: this.staggerForm.week || '*'
+                window_minutes: Number(this.staggerForm.window_minutes) || 0,
+                week: this.staggerWeekExpr,
+                jitter: (this.staggerForm.jitter || '').trim()
               }
             });
             // 乐观同步本地分配计划时刻
@@ -325,9 +349,9 @@
               }
             });
             this.modals.stagger = false;
-            this.toast('错峰时间分配已应用', 'success');
+            this.toast('时间分配已应用', 'success');
           } catch (e) {
-            this.toast('错峰时间分配失败: ' + e.message, 'error');
+            this.toast('时间分配失败: ' + e.message, 'error');
           } finally {
             this.loading.stagger = false;
           }

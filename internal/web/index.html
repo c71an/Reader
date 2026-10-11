@@ -192,17 +192,17 @@
         </div>
       </div>
 
-      <!-- 错峰分配 -->
+      <!-- 时间分配 -->
       <div class="relative group shrink-0">
         <button @click="openStaggerModal(getSelectedFeeds(), '已选订阅')" :disabled="loading.batch"
                 class="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl text-slate-600 hover:text-indigo-600 hover:bg-slate-100 active:scale-95 transition disabled:opacity-40"
-                title="错峰分配">
+                title="时间分配">
           <svg class="w-4.5 h-4.5 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
         </button>
         <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center pointer-events-none z-50">
-          <span class="px-2 py-1 bg-slate-900 text-white text-[11px] font-medium rounded-md whitespace-nowrap shadow-md">错峰分配</span>
+          <span class="px-2 py-1 bg-slate-900 text-white text-[11px] font-medium rounded-md whitespace-nowrap shadow-md">时间分配</span>
           <span class="w-2 h-1 border-x-4 border-x-transparent border-t-4 border-t-slate-900"></span>
         </div>
       </div>
@@ -529,7 +529,7 @@
     <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-xl max-w-lg w-full p-5 sm:p-6 border border-slate-200 max-h-[92vh] overflow-y-auto">
       <div class="flex items-center justify-between mb-4">
         <div>
-          <h3 class="text-lg font-bold text-slate-900">自动交错分配拉取时间 (错峰调度)</h3>
+          <h3 class="text-lg font-bold text-slate-900">批量分配拉取时间 (时间分配)</h3>
           <p class="text-xs text-slate-500 mt-0.5" x-text="'针对：' + staggerTargetName + '（共 ' + staggerTargetFeeds.length + ' 个源）'"></p>
         </div>
         <button @click="modals.stagger = false" class="text-slate-400 hover:text-slate-600 p-1">
@@ -544,26 +544,37 @@
             <input type="text" x-model="staggerForm.start_time" placeholder="08:00" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono focus:ring-indigo-500 focus:border-indigo-500">
           </div>
           <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">时间跨度 / 窗口 (分钟)</label>
-            <input type="number" x-model.number="staggerForm.window_minutes" min="5" max="720" placeholder="30" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono focus:ring-indigo-500 focus:border-indigo-500">
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-xs font-semibold text-slate-700 uppercase">时间跨度 / 窗口 (分钟)</label>
+              <span class="text-[10px] text-slate-400">设为 0 则时间相同</span>
+            </div>
+            <input type="number" x-model.number="staggerForm.window_minutes" min="0" max="720" placeholder="0" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono focus:ring-indigo-500 focus:border-indigo-500">
           </div>
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">生效周期</label>
-          <div class="grid grid-cols-3 gap-2">
-            <label class="flex items-center justify-center p-2 border rounded-md cursor-pointer text-xs transition" :class="staggerForm.week === '*' ? 'border-indigo-600 bg-indigo-50/60 font-semibold text-indigo-900' : 'border-slate-200 text-slate-700'">
-              <input type="radio" value="*" x-model="staggerForm.week" class="sr-only">
-              <span>每天 (*)</span>
-            </label>
-            <label class="flex items-center justify-center p-2 border rounded-md cursor-pointer text-xs transition" :class="staggerForm.week === '1-5' ? 'border-indigo-600 bg-indigo-50/60 font-semibold text-indigo-900' : 'border-slate-200 text-slate-700'">
-              <input type="radio" value="1-5" x-model="staggerForm.week" class="sr-only">
-              <span>工作日 (1-5)</span>
-            </label>
-            <label class="flex items-center justify-center p-2 border rounded-md cursor-pointer text-xs transition" :class="staggerForm.week === '0' ? 'border-indigo-600 bg-indigo-50/60 font-semibold text-indigo-900' : 'border-slate-200 text-slate-700'">
-              <input type="radio" value="0" x-model="staggerForm.week" class="sr-only">
-              <span>周日周刊 (0)</span>
-            </label>
+          <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">随机浮动时长 (可选)</label>
+          <input type="text" x-model="staggerForm.jitter" placeholder="如 30m, 1h (留空则不设置)" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono focus:ring-indigo-500 focus:border-indigo-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 uppercase mb-2">生效周期 (星期)</label>
+          <div class="grid grid-cols-4 sm:grid-cols-7 gap-1.5 sm:gap-2">
+            <template x-for="day in [
+              { label: '周日', val: 0 },
+              { label: '周一', val: 1 },
+              { label: '周二', val: 2 },
+              { label: '周三', val: 3 },
+              { label: '周四', val: 4 },
+              { label: '周五', val: 5 },
+              { label: '周六', val: 6 }
+            ]" :key="day.val">
+              <label class="flex items-center justify-center gap-1.5 p-2 rounded-lg border cursor-pointer text-xs transition select-none"
+                     :class="staggerForm.days.includes(day.val) ? 'border-indigo-600 bg-indigo-50/70 font-semibold text-indigo-900' : 'border-slate-200 text-slate-600 hover:bg-slate-50'">
+                <input type="checkbox" :value="day.val" x-model="staggerForm.days" class="rounded text-indigo-600 focus:ring-indigo-500">
+                <span x-text="day.label"></span>
+              </label>
+            </template>
           </div>
         </div>
 
@@ -578,8 +589,8 @@
             </template>
           </div>
           <div class="text-[11px] text-slate-400 mt-1.5 flex items-center justify-between">
-            <span>💡 配合内置的 10~30 秒 Random Jitter，有效杜绝瞬时并发</span>
-            <span x-text="'平均间隔 ~' + staggerAverageStep + ' 分钟'"></span>
+            <span x-text="staggerForm.jitter ? '💡 系统将在触发时间起于 ' + staggerForm.jitter + ' 窗口内随机延迟抓取' : '💡 配合内置的 10~30 秒 Random Jitter，有效杜绝瞬时并发'"></span>
+            <span x-text="staggerForm.window_minutes > 0 ? ('平均间隔 ~' + staggerAverageStep + ' 分钟') : '所有源时间相同'"></span>
           </div>
         </div>
       </div>
@@ -587,7 +598,7 @@
       <div class="mt-6 flex justify-end space-x-3">
         <button @click="modals.stagger = false" class="px-4 py-2 border border-slate-300 rounded-md text-sm text-slate-700 hover:bg-slate-50 transition">取消</button>
         <button @click="saveStaggerSchedule()" :disabled="loading.stagger || staggerTargetFeeds.length === 0" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-md text-sm font-medium transition flex items-center">
-          <span x-text="loading.stagger ? '正在分配...' : '确认应用分配'"></span>
+          <span x-text="loading.stagger ? '正在分配...' : '确认分配时间'"></span>
         </button>
       </div>
     </div>

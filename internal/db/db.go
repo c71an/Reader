@@ -171,8 +171,6 @@ func (d *DB) initSchema() error {
 		return err
 	}
 	_, _ = d.Exec("ALTER TABLE categories ADD COLUMN sort_order INTEGER DEFAULT 0;")
-	// 将旧的 interval 或 daily_fixed 统一升级为 3段式带30分钟浮动 (暂停状态保持不变)
-	_, _ = d.Exec("UPDATE feeds SET schedule_type = 'cron', schedule_value = '0 8 * ~30m' WHERE schedule_type IN ('interval', 'daily_fixed');")
 	var tokenCount int
 	_ = d.QueryRow("SELECT COUNT(*) FROM user_tokens").Scan(&tokenCount)
 	if tokenCount == 0 {
