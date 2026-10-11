@@ -59,10 +59,7 @@
         <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-sm">
           R
         </div>
-        <div>
-          <h1 class="font-bold text-base sm:text-lg text-slate-900 tracking-tight leading-none">Reader</h1>
-          <span class="hidden sm:inline text-xs text-slate-500 font-mono">SQLite + Reeder API + RSSHub</span>
-        </div>
+        <h1 class="font-bold text-base sm:text-lg text-slate-900 tracking-tight leading-none">Reader</h1>
       </div>
 
       <div class="flex items-center space-x-2 sm:space-x-4" x-show="isLoggedIn">
@@ -288,8 +285,6 @@
               <div class="flex items-center space-x-1.5 sm:space-x-2 min-w-0 truncate">
                 <span class="text-base shrink-0">📁</span>
                 <span class="font-bold text-slate-900 text-sm sm:text-base truncate" x-text="group.categoryName"></span>
-                <span class="inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded-full text-[11px] sm:text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 shrink-0" 
-                      x-text="group.feeds.length + ' 源'"></span>
                 <span x-show="group.unreadTotal > 0" 
                       class="inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded-full text-[11px] sm:text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 shrink-0" 
                       x-text="group.unreadTotal + ' 未读'"></span>
@@ -689,10 +684,7 @@
         ℹ️ Reeder 会自动通过 <code>/accounts/ClientLogin</code> 完成认证并请求 <code>/reader/api/0/*</code> 接口，拉取所有分类文件夹、订阅源以及文章正文。
       </div>
 
-      <div class="flex items-center justify-between pt-2">
-        <button @click="modals.clientInfo = false; openTokensModal();" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium hover:underline flex items-center">
-          <span>管理已连接设备与 Token →</span>
-        </button>
+      <div class="flex items-center justify-end pt-2">
         <button @click="modals.clientInfo = false" class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700">完成</button>
       </div>
     </div>
