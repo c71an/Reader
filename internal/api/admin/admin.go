@@ -380,11 +380,11 @@ func (h *AdminHandler) BatchAction(w http.ResponseWriter, r *http.Request) {
 // 批量时间分配 (Distribute Schedule)
 func (h *AdminHandler) DistributeSchedule(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		FeedIDs       []int64 `json:"feed_ids"`
-		StartTime     string  `json:"start_time"`     // 格式如 "08:00"
-		WindowMinutes int     `json:"window_minutes"` // 窗口跨度分钟数，支持 0
-		Week          string  `json:"week"`           // 周期表达式，如 "*", "1-5", "0,6"
-		Jitter        string  `json:"jitter"`         // 浮动时长，如 "30m", "1h", 留空则无
+		FeedIDs         []int64 `json:"feed_ids"`
+		StartTime       string  `json:"start_time"`       // 格式如 "08:00"
+		IntervalMinutes int     `json:"interval_minutes"` // 递增步长间隔(分钟)，如 0, 1, 2
+		Week            string  `json:"week"`             // 周期表达式，如 "*", "1-5", "0,6"
+		Jitter          string  `json:"jitter"`           // 浮动时长，如 "30m", 留空则无
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid body", http.StatusBadRequest)
@@ -414,17 +414,12 @@ func (h *AdminHandler) DistributeSchedule(w http.ResponseWriter, r *http.Request
 		weekExpr = "*"
 	}
 
-	window := req.WindowMinutes
-	if window < 0 {
-		window = 0
+	interval := req.IntervalMinutes
+	if interval < 0 {
+		interval = 0
 	}
 
 	n := len(req.FeedIDs)
-	var step float64
-	if n > 1 && window > 0 {
-		step = float64(window) / float64(n)
-	}
-
 	jitter := strings.TrimSpace(req.Jitter)
 
 	updatedList := make([]map[string]interface{}, 0, n)
@@ -434,7 +429,7 @@ func (h *AdminHandler) DistributeSchedule(w http.ResponseWriter, r *http.Request
 			continue
 		}
 
-		offsetMinutes := int(float64(i) * step)
+		offsetMinutes := i * interval
 		totalMin := (startHour*60 + startMin + offsetMinutes) % 1440
 		targetHour := totalMin / 60
 		targetMin := totalMin % 60

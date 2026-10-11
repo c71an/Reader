@@ -39,7 +39,7 @@
 
         staggerTargetName: '',
         staggerTargetFeeds: [],
-        staggerForm: { start_time: '08:00', window_minutes: 0, jitter: '', days: [0, 1, 2, 3, 4, 5, 6] },
+        staggerForm: { start_time: '08:00', interval_minutes: 30, jitter: '30m', days: [0, 1, 2, 3, 4, 5, 6] },
         categoryForm: { current_name: '', name: '', sort_order: 0 },
         modalForm: { id: null, title: '', feed_url: '', category_name: '', schedule_type: 'cron', schedule_value: '0 8 * ~30m' },
 
@@ -276,8 +276,8 @@
           this.staggerTargetName = name || '订阅源';
           this.staggerForm = {
             start_time: '08:00',
-            window_minutes: 0,
-            jitter: '',
+            interval_minutes: 30,
+            jitter: '30m',
             days: [0, 1, 2, 3, 4, 5, 6]
           };
           this.modals.stagger = true;
@@ -296,16 +296,15 @@
         get staggerPreviewList() {
           const n = this.staggerTargetFeeds.length;
           if (n === 0) return [];
-          const windowMin = Number(this.staggerForm.window_minutes) || 0;
+          const interval = Math.max(0, Number(this.staggerForm.interval_minutes) || 0);
           const [hStr, mStr] = (this.staggerForm.start_time || '08:00').split(':');
           const startH = parseInt(hStr, 10) || 8;
           const startM = parseInt(mStr, 10) || 0;
-          const step = (n > 1 && windowMin > 0) ? (windowMin / n) : 0;
           const week = this.staggerWeekExpr;
           const jitter = (this.staggerForm.jitter || '').trim();
 
           return this.staggerTargetFeeds.map((f, i) => {
-            const totalMin = (startH * 60 + startM + Math.floor(i * step)) % 1440;
+            const totalMin = (startH * 60 + startM + i * interval) % 1440;
             const h = Math.floor(totalMin / 60);
             const m = totalMin % 60;
             const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
@@ -315,12 +314,6 @@
             }
             return { id: f.id, title: f.title || f.feed_url, time: timeStr, cron: cronStr };
           });
-        },
-
-        get staggerAverageStep() {
-          const n = this.staggerTargetFeeds.length;
-          const windowMin = Number(this.staggerForm.window_minutes) || 0;
-          return (n <= 1 || windowMin <= 0) ? 0 : (windowMin / n).toFixed(1);
         },
 
         async saveStaggerSchedule() {
@@ -335,7 +328,7 @@
               body: {
                 feed_ids: this.staggerTargetFeeds.map(f => f.id),
                 start_time: this.staggerForm.start_time || '08:00',
-                window_minutes: Number(this.staggerForm.window_minutes) || 0,
+                interval_minutes: Math.max(0, Number(this.staggerForm.interval_minutes) || 0),
                 week: this.staggerWeekExpr,
                 jitter: (this.staggerForm.jitter || '').trim()
               }
