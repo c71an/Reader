@@ -10,7 +10,6 @@
         // 1. 状态收纳 (统一集中管理弹窗和异步加载状态)
         modals: {
           add: false,
-          edit: false,
           clientInfo: false,
           tokens: false,
           db: false,
@@ -32,6 +31,7 @@
         copySuccess: false,
         toasts: [],
         dbCurrentFeed: {},
+        dbEditForm: { title: '', feed_url: '', category_name: '' },
         dbArticles: [],
         dbArticlesTotal: 0,
         selectedArticleIds: [],
@@ -41,7 +41,7 @@
         staggerTargetFeeds: [],
         staggerForm: { start_time: '08:00', interval_minutes: 30, jitter: '30m', days: [0, 1, 2, 3, 4, 5, 6] },
         categoryForm: { current_name: '', name: '', sort_order: 0 },
-        modalForm: { id: null, title: '', feed_url: '', category_name: '', schedule_type: 'cron', schedule_value: '0 8 * ~30m' },
+        modalForm: { title: '', feed_url: '', category_name: '' },
 
         init() {
           this.checkAuth();
@@ -208,13 +208,6 @@
 
         toggleSelectAll() {
           this.toggleAll(this.selectedFeedIds, this.feeds);
-        },
-
-        editSelectedFeed() {
-          if (this.selectedFeedIds.length === 1) {
-            const feed = this.feeds.find(f => f.id === this.selectedFeedIds[0]);
-            if (feed) this.openEditModal(feed);
-          }
         },
 
         getSelectedFeeds() {
@@ -406,42 +399,77 @@
           this.computedData.categoryList.forEach(c => { this.collapsedGroups[c.name] = collapse; });
         },
 
-        // 订阅表单弹窗
-        openEditModal(feed) {
-          this.modalForm = {
-            id: feed.id,
-            title: feed.title,
-            feed_url: feed.feed_url,
-            category_name: feed.category_name || '',
-            schedule_type: feed.schedule_type,
-            schedule_value: feed.schedule_value
-          };
-          this.modals.edit = true;
-        },
-
-        closeModal() {
+        // 添加新订阅弹窗
+        closeAddModal() {
           this.modals.add = false;
-          this.modals.edit = false;
-          this.modalForm = { id: null, title: '', feed_url: '', category_name: '', schedule_type: 'cron', schedule_value: '0 8 * ~30m' };
+          this.modalForm = { title: '', feed_url: '', category_name: '' };
         },
 
-        async saveModal() {
+        async saveAddFeed() {
           if (!this.modalForm.feed_url) return this.toast('请输入源地址', 'warning');
           try {
-            const isEdit = this.modals.edit && this.modalForm.id;
-            const url = isEdit ? `/api/admin/feeds/${this.modalForm.id}` : '/api/admin/feeds';
-            await this.api(url, { method: isEdit ? 'PUT' : 'POST', body: this.modalForm });
-            this.closeModal();
-            this.toast(isEdit ? '订阅已更新' : '订阅已添加', 'success');
+            await this.api('/api/admin/feeds', { method: 'POST', body: this.modalForm });
+            this.closeAddModal();
+            this.toast('订阅已添加', 'success');
             await this.loadFeeds();
           } catch (e) {
-            this.toast('保存失败: ' + e.message, 'error');
+            this.toast('添加失败: ' + e.message, 'error');
           }
         },
 
-        // 文章数据库查看
+        // 行内调度策略快速更新 (留空为暂停)
+        async updateFeedSchedule(feed, rawValue) {
+          const val = (rawValue || '').trim();
+          const oldType = feed.schedule_type;
+          const oldValue = feed.schedule_value;
+
+          // 1. 如果留空，则表示暂停
+          if (!val) {
+            if (oldType === 'paused') return;
+            feed.schedule_type = 'paused';
+            try {
+              await this.api(`/api/admin/feeds/${feed.id}`, {
+                method: 'PUT',
+                body: { schedule_type: 'paused' }
+              });
+              this.toast(`「${feed.title || feed.feed_url}」已暂停抓取`, 'info');
+            } catch (e) {
+              feed.schedule_type = oldType;
+              feed.schedule_value = oldValue;
+              this.toast('暂停失败: ' + e.message, 'error');
+              await this.loadFeeds();
+            }
+            return;
+          }
+
+          // 2. 如果不为空，视为 cron 调度
+          if (oldType === 'cron' && oldValue === val) return;
+
+          feed.schedule_type = 'cron';
+          feed.schedule_value = val;
+
+          try {
+            await this.api(`/api/admin/feeds/${feed.id}`, {
+              method: 'PUT',
+              body: { schedule_type: 'cron', schedule_value: val }
+            });
+            this.toast(`「${feed.title || feed.feed_url}」调度已更新为: ${val}`, 'success');
+          } catch (e) {
+            feed.schedule_type = oldType;
+            feed.schedule_value = oldValue;
+            this.toast('更新调度失败: ' + e.message, 'error');
+            await this.loadFeeds();
+          }
+        },
+
+        // 文章与订阅源信息查看/编辑 (合并窗口)
         async openDbView(feed) {
           this.dbCurrentFeed = feed;
+          this.dbEditForm = {
+            title: feed.title || '',
+            feed_url: feed.feed_url || '',
+            category_name: feed.category_name || ''
+          };
           this.dbArticles = [];
           this.dbArticlesTotal = 0;
           this.selectedArticleIds = [];
@@ -456,6 +484,35 @@
             this.toast('读取数据库记录失败: ' + e.message, 'error');
           } finally {
             this.loading.db = false;
+          }
+        },
+
+        isDbFeedModified() {
+          if (!this.dbCurrentFeed) return false;
+          return (this.dbEditForm.title !== (this.dbCurrentFeed.title || '')) ||
+                 (this.dbEditForm.feed_url !== (this.dbCurrentFeed.feed_url || '')) ||
+                 (this.dbEditForm.category_name !== (this.dbCurrentFeed.category_name || ''));
+        },
+
+        async saveFeedSettingsInDbView() {
+          if (!this.dbCurrentFeed) return;
+          if (!this.dbEditForm.feed_url) return this.toast('源地址不能为空', 'warning');
+          try {
+            await this.api(`/api/admin/feeds/${this.dbCurrentFeed.id}`, {
+              method: 'PUT',
+              body: {
+                title: this.dbEditForm.title,
+                feed_url: this.dbEditForm.feed_url,
+                category_name: this.dbEditForm.category_name
+              }
+            });
+            this.dbCurrentFeed.title = this.dbEditForm.title;
+            this.dbCurrentFeed.feed_url = this.dbEditForm.feed_url;
+            this.dbCurrentFeed.category_name = this.dbEditForm.category_name;
+            this.toast('订阅源配置已保存', 'success');
+            await this.loadFeeds();
+          } catch (e) {
+            this.toast('保存配置失败: ' + e.message, 'error');
           }
         },
 

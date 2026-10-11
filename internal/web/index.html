@@ -238,21 +238,6 @@
         </div>
       </div>
 
-      <!-- 编辑 (单选时显示) -->
-      <div x-show="selectedFeedIds.length === 1" class="relative group shrink-0">
-        <button @click="editSelectedFeed()" :disabled="loading.batch"
-                class="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl text-slate-600 hover:text-indigo-600 hover:bg-slate-100 active:scale-95 transition disabled:opacity-40"
-                title="编辑订阅">
-          <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-          </svg>
-        </button>
-        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center pointer-events-none z-50">
-          <span class="px-2 py-1 bg-slate-900 text-white text-[11px] font-medium rounded-md whitespace-nowrap shadow-md">编辑订阅</span>
-          <span class="w-2 h-1 border-x-4 border-x-transparent border-t-4 border-t-slate-900"></span>
-        </div>
-      </div>
-
       <!-- 删除按钮 -->
       <div class="relative group shrink-0">
         <button @click="runBatchAction('delete')" :disabled="loading.batch"
@@ -367,13 +352,17 @@
                           </button>
                         </div>
                       </td>
-                      <td class="w-44 px-4 py-3.5 whitespace-nowrap overflow-hidden">
-                        <span x-show="feed.schedule_type === 'cron'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                          调度: <span class="font-mono ml-1" x-text="feed.schedule_value"></span>
-                        </span>
-                        <span x-show="feed.schedule_type === 'paused'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-300">
-                          ⏸ 已暂停
-                        </span>
+                      <td class="w-44 px-3 py-2 whitespace-nowrap overflow-hidden" @click.stop>
+                        <input type="text"
+                               :value="feed.schedule_type === 'paused' ? '' : (feed.schedule_value || '')"
+                               @change="updateFeedSchedule(feed, $event.target.value)"
+                               @keydown.enter="$event.target.blur()"
+                               placeholder="已暂停"
+                               title="回车或失焦保存，留空为暂停"
+                               class="w-full px-2.5 py-1 text-xs font-mono rounded-md border transition focus:outline-none focus:ring-1"
+                               :class="feed.schedule_type === 'paused' 
+                                 ? 'border-dashed border-slate-300 text-slate-400 bg-slate-50/70 placeholder-slate-400 focus:border-indigo-400 focus:ring-indigo-300 focus:bg-white focus:text-slate-800' 
+                                 : 'border-slate-200 text-indigo-700 bg-indigo-50/30 hover:border-slate-300 focus:border-indigo-500 focus:ring-indigo-400 focus:bg-white'">
                       </td>
                       <td class="w-16 px-3 py-3.5 text-center">
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
@@ -442,15 +431,22 @@
                     </div>
 
                     <!-- 调度策略与时间徽章 -->
-                    <div class="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
-                      <span x-show="feed.schedule_type === 'cron'" class="inline-flex items-center px-1.5 py-0.5 rounded font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                        调度: <span class="font-mono ml-0.5" x-text="feed.schedule_value"></span>
-                      </span>
-                      <span x-show="feed.schedule_type === 'paused'" class="inline-flex items-center px-1.5 py-0.5 rounded font-semibold bg-slate-100 text-slate-600 border border-slate-300">
-                        ⏸ 暂停
-                      </span>
+                    <div class="mt-2 flex items-center justify-between gap-2 text-[11px]" @click.stop>
+                      <div class="flex items-center space-x-1.5 min-w-0">
+                        <span class="text-slate-400 text-[10px] shrink-0 font-medium">调度:</span>
+                        <input type="text"
+                               :value="feed.schedule_type === 'paused' ? '' : (feed.schedule_value || '')"
+                               @change="updateFeedSchedule(feed, $event.target.value)"
+                               @keydown.enter="$event.target.blur()"
+                               placeholder="已暂停"
+                               title="回车或失焦保存，留空为暂停"
+                               class="w-32 px-1.5 py-0.5 text-[11px] font-mono rounded border transition focus:outline-none focus:ring-1"
+                               :class="feed.schedule_type === 'paused' 
+                                 ? 'border-dashed border-slate-300 text-slate-400 bg-slate-50 placeholder-slate-400 focus:border-indigo-400 focus:bg-white focus:text-slate-800' 
+                                 : 'border-slate-200 text-indigo-700 bg-indigo-50/40 focus:border-indigo-500 focus:bg-white'">
+                      </div>
 
-                      <span class="text-slate-400 font-mono text-[10px] ml-auto shrink-0" x-text="formatTime(feed.last_fetched_at)"></span>
+                      <span class="text-slate-400 font-mono text-[10px] shrink-0 ml-auto" x-text="formatTime(feed.last_fetched_at)"></span>
                     </div>
 
                     <!-- 错误状态提示 -->
@@ -471,13 +467,13 @@
     </div>
   </main>
 
-  <!-- 添加/编辑订阅弹窗 -->
-  <div x-show="modals.add || modals.edit" 
-       @keydown.escape.window="closeModal()" 
-       @click.self="closeModal()"
+  <!-- 添加新订阅弹窗 -->
+  <div x-show="modals.add" 
+       @keydown.escape.window="closeAddModal()" 
+       @click.self="closeAddModal()"
        class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-xl max-w-lg w-full p-5 sm:p-6 border border-slate-200 max-h-[92vh] overflow-y-auto">
-      <h3 class="text-lg font-bold text-slate-900 mb-4" x-text="modals.edit ? '修改订阅与拉取计划' : '添加新订阅 (支持 RSSHub)'"></h3>
+      <h3 class="text-lg font-bold text-slate-900 mb-4">添加新订阅 (支持 RSSHub)</h3>
       
       <div class="space-y-4">
         <div>
@@ -507,32 +503,11 @@
             </datalist>
           </div>
         </div>
-
-        <div class="border-t border-slate-100 pt-3">
-          <div class="flex items-center justify-between mb-1.5">
-            <label class="block text-xs font-semibold text-slate-700 uppercase">3 段式拉取策略 (分 时 周 [~浮动])</label>
-            <label class="flex items-center gap-1.5 cursor-pointer text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-              <input type="checkbox" :checked="modalForm.schedule_type === 'paused'" @change="modalForm.schedule_type = $event.target.checked ? 'paused' : 'cron'" class="text-amber-600 rounded">
-              <span>暂停抓取</span>
-            </label>
-          </div>
-          
-          <div x-show="modalForm.schedule_type !== 'paused'">
-            <input type="text" x-model="modalForm.schedule_value" placeholder="0 8 * ~30m" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono focus:ring-indigo-500 focus:border-indigo-500">
-            <div class="text-[11px] text-slate-500 mt-1.5">
-              💡 格式为 <code>分 时 周</code>，尾部可用 <code>~30m</code> 或 <code>~48h</code> 指定随机浮动窗口 (防爬防封)。
-            </div>
-          </div>
-
-          <div x-show="modalForm.schedule_type === 'paused'" class="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
-            ⏸ 订阅保存后处于暂停状态，后台调度器不会自动调度拉取，可在列表随时点击恢复。
-          </div>
-        </div>
       </div>
 
       <div class="mt-6 flex justify-end space-x-3">
-        <button @click="closeModal()" class="px-4 py-2 border border-slate-300 rounded-md text-sm text-slate-700 hover:bg-slate-50 transition">取消</button>
-        <button @click="saveModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition">保存</button>
+        <button @click="closeAddModal()" class="px-4 py-2 border border-slate-300 rounded-md text-sm text-slate-700 hover:bg-slate-50 transition">取消</button>
+        <button @click="saveAddFeed()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition">添加订阅</button>
       </div>
     </div>
   </div>
@@ -787,22 +762,63 @@
        @click.self="modals.db = false"
        class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl max-w-7xl w-full h-[94vh] sm:max-h-[92vh] flex flex-col border border-slate-200 overflow-hidden">
-      <!-- 弹窗顶栏 -->
-      <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-        <div class="min-w-0 pr-2">
-          <div class="flex items-center space-x-1.5 sm:space-x-2">
-            <span class="text-[10px] sm:text-xs font-mono font-semibold px-1.5 sm:px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 shrink-0">articles</span>
-            <h3 class="text-sm sm:text-base font-bold text-slate-900 truncate" x-text="'源: ' + dbCurrentFeed.title"></h3>
-            <span class="text-[11px] text-slate-500 font-mono shrink-0" x-text="'(id: ' + dbCurrentFeed.id + ')'"></span>
+      <!-- 弹窗顶栏 (源配置与统计) -->
+      <div class="px-4 sm:px-6 py-3 sm:py-3.5 border-b border-slate-200 bg-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-2.5 sm:gap-3">
+        <div class="min-w-0 flex-1 space-y-2">
+          <!-- 标题与所属分类与 ID -->
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-[10px] sm:text-xs font-mono font-semibold px-1.5 sm:px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 shrink-0">源配置</span>
+            
+            <div class="flex items-center space-x-1 min-w-0 flex-1 sm:flex-initial">
+              <input type="text" 
+                     x-model="dbEditForm.title" 
+                     placeholder="订阅源自定义标题" 
+                     title="可直接修改自定义标题"
+                     class="font-bold text-slate-900 text-sm sm:text-base border border-slate-200 hover:border-slate-300 focus:border-indigo-500 rounded px-2 py-0.5 bg-white transition w-full sm:w-72">
+            </div>
+            
+            <span class="text-[11px] text-slate-400 font-mono shrink-0" x-text="'(id: ' + dbCurrentFeed.id + ')'"></span>
+
+            <!-- 分类 -->
+            <div class="flex items-center space-x-1.5 text-xs">
+              <span class="text-slate-400 text-[11px] shrink-0">分类:</span>
+              <div class="relative">
+                <input type="text" 
+                       list="categoryOptions" 
+                       x-model="dbEditForm.category_name" 
+                       placeholder="未分类" 
+                       title="所属分类文件夹"
+                       class="text-xs text-slate-700 border border-slate-200 hover:border-slate-300 focus:border-indigo-500 rounded px-2 py-0.5 w-28 sm:w-36 bg-white transition">
+              </div>
+            </div>
           </div>
-          <div class="flex items-center space-x-1.5 mt-0.5">
-            <div class="text-[11px] sm:text-xs text-slate-500 font-mono truncate max-w-2xl" x-text="dbCurrentFeed.feed_url"></div>
-            <button type="button" @click.stop="copyText(dbCurrentFeed.feed_url, '订阅链接已复制')" class="text-slate-400 hover:text-indigo-600 shrink-0 p-0.5 rounded hover:bg-slate-200 transition" title="复制订阅链接">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+
+          <!-- 源地址与操作 -->
+          <div class="flex flex-wrap items-center gap-2 text-xs">
+            <div class="flex items-center space-x-1.5 min-w-0 max-w-full">
+              <span class="text-slate-400 text-[11px] shrink-0">源地址:</span>
+              <input type="text" 
+                     x-model="dbEditForm.feed_url" 
+                     title="源地址 (Feed URL / RSSHub)"
+                     class="font-mono text-[11px] text-slate-600 border border-slate-200 rounded px-2 py-0.5 w-60 sm:w-96 focus:outline-none focus:border-indigo-500 bg-white transition truncate">
+              <button type="button" @click.stop="copyText(dbEditForm.feed_url, '订阅链接已复制')" class="text-slate-400 hover:text-indigo-600 shrink-0 p-1 rounded hover:bg-slate-200 transition" title="复制订阅链接">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+              </button>
+              <a x-show="dbCurrentFeed.site_url" :href="dbCurrentFeed.site_url" target="_blank" class="text-slate-400 hover:text-indigo-600 shrink-0 p-1 rounded hover:bg-slate-200 transition" title="打开网站主页">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+              </a>
+            </div>
+
+            <!-- 有改动时高亮保存按钮 -->
+            <button x-show="isDbFeedModified()" 
+                    @click="saveFeedSettingsInDbView()" 
+                    class="px-2.5 py-0.5 rounded text-[11px] font-medium bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition flex items-center space-x-1 animate-pulse">
+              <span>✓ 保存修改</span>
             </button>
           </div>
         </div>
-        <div class="flex items-center space-x-2 sm:space-x-3 shrink-0">
+
+        <div class="flex items-center space-x-2 sm:space-x-3 shrink-0 self-end md:self-start mt-1 md:mt-0">
           <span class="text-[11px] sm:text-xs font-semibold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-slate-200 text-slate-700" x-text="'共 ' + dbArticlesTotal + ' 条'"></span>
           <button @click="modals.db = false" class="text-slate-400 hover:text-slate-600 rounded-lg p-1.5 transition">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>

@@ -219,11 +219,11 @@ func (h *AdminHandler) UpdateFeed(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		Title         string `json:"title"`
-		FeedURL       string `json:"feed_url"`
-		CategoryName  string `json:"category_name"`
-		ScheduleType  string `json:"schedule_type"`
-		ScheduleValue string `json:"schedule_value"`
+		Title         string  `json:"title"`
+		FeedURL       string  `json:"feed_url"`
+		CategoryName  *string `json:"category_name"`
+		ScheduleType  string  `json:"schedule_type"`
+		ScheduleValue string  `json:"schedule_value"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -251,10 +251,15 @@ func (h *AdminHandler) UpdateFeed(w http.ResponseWriter, r *http.Request) {
 		feed.ScheduleValue = req.ScheduleValue
 	}
 
-	if req.CategoryName != "" {
-		cat, err := h.db.GetOrCreateCategory(strings.TrimSpace(req.CategoryName))
-		if err == nil && cat != nil {
-			feed.CategoryID = &cat.ID
+	if req.CategoryName != nil {
+		trimmed := strings.TrimSpace(*req.CategoryName)
+		if trimmed == "" {
+			feed.CategoryID = nil
+		} else {
+			cat, err := h.db.GetOrCreateCategory(trimmed)
+			if err == nil && cat != nil {
+				feed.CategoryID = &cat.ID
+			}
 		}
 	}
 
