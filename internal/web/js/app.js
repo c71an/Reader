@@ -860,7 +860,23 @@
           if (!content) return '<p class="text-slate-400">（无正文内容）</p>';
           let html = content;
 
-          // 为所有图片自动注入防盗链穿透与懒加载
+          // 1. 过滤废弃的旧 HTML 行内属性: bgcolor, color, background
+          html = html.replace(/\s+(bgcolor|color)\s*=\s*(["'][^"']*["']|[^\s>]+)/gi, '');
+
+          // 2. 清洗内联 style 属性：丢弃字号大小(font-size)、颜色(color)、背景(background/background-color/image)、字体族(font-family)
+          html = html.replace(/\s+style=(["'])([\s\S]*?)\1/gi, (match, quote, styleContent) => {
+            const decls = styleContent.split(';');
+            const filtered = decls.filter(d => {
+              const trimmed = d.trim().toLowerCase();
+              if (!trimmed) return false;
+              const prop = trimmed.split(':')[0].trim();
+              return !['color', 'background', 'background-color', 'background-image', 'font-size', 'font-family'].includes(prop);
+            });
+            if (filtered.length === 0) return '';
+            return ' style=' + quote + filtered.join('; ').trim() + quote;
+          });
+
+          // 3. 为所有图片自动注入防盗链穿透与懒加载
           html = html.replace(/<img\b([^>]*?)>/gi, (match, attrs) => {
             if (!attrs.includes('referrerpolicy')) {
               attrs += ' referrerpolicy="no-referrer"';
@@ -871,7 +887,7 @@
             return `<img ${attrs}>`;
           });
 
-          // 为所有视频自动注入 playsinline 与 controls，防止移动端打断全屏
+          // 4. 为所有视频自动注入 playsinline 与 controls，防止移动端打断全屏
           html = html.replace(/<video\b([^>]*?)>/gi, (match, attrs) => {
             if (!attrs.includes('playsinline')) {
               attrs += ' playsinline webkit-playsinline';

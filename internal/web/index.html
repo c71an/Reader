@@ -53,6 +53,16 @@
     /* 阅读器正文富文本排版样式优化 */
     .reader-content {
       word-break: break-word;
+      font-size: 1rem;
+      line-height: 1.75;
+    }
+    /* 强制重置正文内所有子元素的字体族与背景色，防止外部网页内联样式在深色模式下露出白色背景块 */
+    .reader-content * {
+      font-family: inherit !important;
+    }
+    .reader-content *:not(a):not(code):not(pre):not(kbd):not(mark) {
+      background-color: transparent !important;
+      background: transparent !important;
     }
     .reader-content img {
       max-width: 100%;
