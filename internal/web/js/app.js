@@ -19,6 +19,7 @@
         readerIndex: -1,
 
         // 1. 状态收纳 (统一集中管理弹窗和异步加载状态)
+        menuOpen: false,
         modals: {
           add: false,
           clientInfo: false,
