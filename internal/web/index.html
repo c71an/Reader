@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="referrer" content="no-referrer">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Reader - RSS 阅读与管理</title>
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
@@ -37,13 +37,18 @@
     [x-cloak] { display: none !important; }
     html {
       color-scheme: light;
+      overflow-x: hidden;
+      width: 100%;
     }
     html.dark {
       color-scheme: dark;
     }
-    /* 优化移动端手势与触控体验：不限制 html/body 原生滚动动量，使 iOS Safari 能够自然触发地址栏胶囊悬浮 */
-    html, body {
+    /* 优化移动端手势与触控体验：防止水平位移撑大视口导致 Safari 自动缩小 */
+    body {
       -webkit-tap-highlight-color: transparent;
+      overflow-x: hidden;
+      width: 100%;
+      position: relative;
     }
     button, a, select, input {
       touch-action: manipulation;
@@ -743,12 +748,12 @@
     </div>
   </main>
 
-  <!-- 添加新订阅弹窗 -->
+  <!-- 添加新订阅弹窗 (全平台垂直居中，避免贴底被 iOS Safari 胶囊底栏遮挡) -->
   <div x-show="modals.add" 
        @keydown.escape.window="closeAddModal()" 
        @click.self="closeAddModal()"
-       class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-    <div class="bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-xl shadow-xl max-w-lg w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 overflow-visible">
+       class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-xl shadow-2xl max-w-lg w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 overflow-visible my-auto">
       <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100 mb-4">添加新订阅 (支持 RSSHub)</h3>
       
       <div class="space-y-4">
@@ -827,8 +832,8 @@
   <div x-show="modals.stagger" 
        @keydown.escape.window="modals.stagger = false" 
        @click.self="modals.stagger = false"
-       class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-    <div class="bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-xl shadow-xl max-w-lg w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 max-h-[92vh] overflow-y-auto">
+       class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-xl shadow-2xl max-w-lg w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 max-h-[90vh] overflow-y-auto my-auto">
       <div class="flex items-center justify-between mb-4">
         <div>
           <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100">批量分配拉取时间 (时间分配)</h3>
@@ -910,8 +915,8 @@
   <div x-show="modals.category" 
        @keydown.escape.window="modals.category = false" 
        @click.self="modals.category = false"
-       class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-    <div class="bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-xl shadow-xl max-w-md w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 max-h-[92vh] overflow-y-auto">
+       class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-xl shadow-2xl max-w-md w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 max-h-[90vh] overflow-y-auto my-auto">
       <div class="flex items-center justify-between mb-4">
         <div>
           <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100">文件夹设置</h3>
@@ -949,8 +954,8 @@
   <div x-show="modals.clientInfo" 
        @keydown.escape.window="modals.clientInfo = false" 
        @click.self="modals.clientInfo = false"
-       class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-    <div class="bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-xl shadow-xl max-w-lg w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 max-h-[92vh] overflow-y-auto">
+       class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-xl shadow-2xl max-w-lg w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 max-h-[90vh] overflow-y-auto my-auto">
       <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100 mb-2">Reeder 客户端连接配置</h3>
       <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Reeder 完美原生支持 Google Reader API 规范，请在 Reeder 中直接添加账号：</p>
       
@@ -975,8 +980,8 @@
   <div x-show="modals.tokens" 
        @keydown.escape.window="modals.tokens = false" 
        @click.self="modals.tokens = false"
-       class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-    <div class="bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-xl shadow-xl max-w-2xl w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 max-h-[92vh] flex flex-col">
+       class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-xl shadow-2xl max-w-2xl w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 max-h-[90vh] flex flex-col my-auto">
       <!-- 弹窗顶栏 -->
       <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
         <div>
@@ -1068,8 +1073,8 @@
   <div x-show="modals.db" 
        @keydown.escape.window="modals.db = false" 
        @click.self="modals.db = false"
-       class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
-    <div class="bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl max-w-7xl w-full h-[94vh] sm:max-h-[92vh] flex flex-col border border-slate-200 dark:border-slate-800 overflow-hidden">
+       class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-7xl w-full h-[90vh] sm:max-h-[92vh] flex flex-col border border-slate-200 dark:border-slate-800 overflow-hidden my-auto">
       <!-- 弹窗顶栏 (源配置与统计) -->
       <div class="relative z-20 px-4 sm:px-6 py-3 sm:py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90 flex flex-col md:flex-row md:items-center justify-between gap-2.5 sm:gap-3">
         <div class="min-w-0 flex-1 space-y-2">
@@ -1341,8 +1346,8 @@
        @keydown.escape.window="modals.content = false" 
        @click.self="modals.content = false"
        style="z-index: 9999;"
-       class="fixed inset-0 overflow-y-auto bg-slate-950/75 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
-    <div class="bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl max-w-4xl w-full h-[92vh] sm:max-h-[88vh] flex flex-col border border-slate-200 dark:border-slate-800 overflow-hidden">
+       class="fixed inset-0 overflow-y-auto bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-4xl w-full h-[90vh] sm:max-h-[88vh] flex flex-col border border-slate-200 dark:border-slate-800 overflow-hidden my-auto">
       <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex items-center justify-between">
         <div class="min-w-0 pr-2">
           <div class="flex items-center space-x-2">
@@ -1386,11 +1391,12 @@
   <div x-show="modals.reader" 
        x-cloak
        @keydown.escape.window="closeReader()" 
-       class="min-h-screen bg-white dark:bg-slate-900 transition-transform duration-150"
-       :style="readerSwipeX > 0 ? `transform: translateX(${readerSwipeX}px); transition: none;` : (readerClosing ? 'transform: translateX(100%); transition: transform 0.2s ease-out;' : '')"
-       @touchstart="handleReaderTouchStart($event)"
-       @touchmove="handleReaderTouchMove($event)"
-       @touchend="handleReaderTouchEnd($event)">
+       class="w-full max-w-full overflow-x-hidden min-h-screen">
+    <div class="min-h-screen w-full max-w-full bg-white dark:bg-slate-900 transition-transform duration-150"
+         :style="readerSwipeX > 0 ? `transform: translateX(${readerSwipeX}px); transition: none;` : (readerClosing ? 'transform: translateX(100%); transition: transform 0.2s ease-out;' : '')"
+         @touchstart="handleReaderTouchStart($event)"
+         @touchmove="handleReaderTouchMove($event)"
+         @touchend="handleReaderTouchEnd($event)">
 
     <!-- 详情页专属吸顶顶栏 -->
     <div class="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 h-14 sm:h-16 shadow-2xs">
@@ -1461,8 +1467,8 @@
       <!-- 物理底部留白块：让 Safari 悬浮地址栏无论处于何种状态都绝不遮挡最后一行正文 -->
       <div class="w-full shrink-0 pointer-events-none" style="height: calc(env(safe-area-inset-bottom, 0px) + 6rem);"></div>
     </div>
-
   </div>
+</div>
 
   <!-- 前端核心应用逻辑 -->
   <script src="js/app.js"></script>

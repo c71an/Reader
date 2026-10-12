@@ -1118,7 +1118,10 @@
 
           // 仅当向右滑动且水平位移明显大于垂直位移时触发滑动返回视觉反馈
           if (dx > 10 && Math.abs(dx) > Math.abs(dy) * 1.2) {
-            this.readerSwipeX = Math.max(0, dx);
+            if (e.cancelable) {
+              e.preventDefault();
+            }
+            this.readerSwipeX = Math.min(window.innerWidth || 500, Math.max(0, dx));
           } else if (dx < 0) {
             this.readerSwipeX = 0;
           }
