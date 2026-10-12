@@ -1,12 +1,23 @@
     function readerApp() {
       return {
         isLoggedIn: false,
+        currentTab: localStorage.getItem('reader_tab') || 'timeline',
         feeds: [],
         collapsedGroups: {},
         selectedCategory: 'all',
         profile: { username: '', auth_token: '' },
         loginForm: { username: 'admin', password: '' },
         
+        // 时间线流状态
+        timelineItems: [],
+        timelineContinuation: 0,
+        timelineHasMore: true,
+        timelineLoading: false,
+        timelineFilter: 'all', // 'all' | 'unread' | 'starred'
+        timelineSelectedCategory: 'all',
+        readerArticle: null,
+        readerIndex: -1,
+
         // 1. 状态收纳 (统一集中管理弹窗和异步加载状态)
         modals: {
           add: false,
@@ -15,7 +26,8 @@
           db: false,
           content: false,
           stagger: false,
-          category: false
+          category: false,
+          reader: false
         },
         loading: {
           db: false,
@@ -45,6 +57,16 @@
 
         init() {
           this.checkAuth();
+          window.addEventListener('keydown', (e) => {
+            if (!this.modals.reader) return;
+            if (e.key === 'ArrowRight' || e.key === 'j' || e.key === 'J') {
+              this.nextArticle();
+            } else if (e.key === 'ArrowLeft' || e.key === 'k' || e.key === 'K') {
+              this.prevArticle();
+            } else if (e.key === 'Escape') {
+              this.closeReader();
+            }
+          });
         },
 
         // 全局 Toast 提示通知
@@ -83,6 +105,8 @@
             this.profile = await this.api('/api/admin/profile');
             this.isLoggedIn = true;
             this.loadFeeds();
+            this.initTimelineObserver();
+            this.loadTimeline(true);
           } catch (_) {
             this.isLoggedIn = false;
           }
@@ -735,6 +759,308 @@
           if (lower === 'greader' || lower === 'reeder') return '📱';
           if (lower === 'legacy') return '🗝️';
           return '🔑';
+        },
+
+        // ==================== 时间线流核心逻辑 ====================
+
+        get timelineGroups() {
+          const groups = [];
+          let currentGroup = null;
+
+          for (const item of this.timelineItems) {
+            const dateHeader = this.formatDateHeader(item.published_at);
+            if (!currentGroup || currentGroup.date !== dateHeader) {
+              currentGroup = {
+                date: dateHeader,
+                items: []
+              };
+              groups.push(currentGroup);
+            }
+            currentGroup.items.push(item);
+          }
+          return groups;
+        },
+
+        formatDateHeader(dateStr) {
+          if (!dateStr) return 'EARLIER';
+          const d = new Date(dateStr);
+          if (isNaN(d.getTime())) return 'EARLIER';
+
+          const dayNames = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+          const monthNames = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+
+          return `${dayNames[d.getDay()]}, ${monthNames[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+        },
+
+        formatItemTime(dateStr) {
+          if (!dateStr) return '';
+          const d = new Date(dateStr);
+          if (isNaN(d.getTime())) return '';
+          const h = String(d.getHours()).padStart(2, '0');
+          const m = String(d.getMinutes()).padStart(2, '0');
+          return `${h}:${m}`;
+        },
+
+        formatReadableTime(dateStr) {
+          if (!dateStr) return '';
+          const d = new Date(dateStr);
+          if (isNaN(d.getTime())) return dateStr;
+          return d.toLocaleString('zh-CN', { hour12: false });
+        },
+
+        processTimelineItem(item) {
+          const content = item.content || '';
+          let thumbnail = '';
+          let isLive = false;
+
+          // 识别 Live 图：包含 [Live Photo] 关键词、video 标签或视频扩展名
+          if (content.includes('[Live Photo]') || content.includes('<video') || content.includes('.mp4') || content.includes('.mov')) {
+            isLive = true;
+          }
+
+          // 提取首图作为右侧缩略图
+          const imgMatch = content.match(/<img[^>]+src=["']([^"']+)["']/i);
+          if (imgMatch && imgMatch[1]) {
+            thumbnail = imgMatch[1];
+          } else {
+            const posterMatch = content.match(/<video[^>]+poster=["']([^"']+)["']/i);
+            if (posterMatch && posterMatch[1]) {
+              thumbnail = posterMatch[1];
+            }
+          }
+
+          // 提取纯文本摘要
+          let text = content.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+                            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+                            .replace(/<[^>]+>/g, ' ')
+                            .replace(/&nbsp;/g, ' ')
+                            .replace(/&amp;/g, '&')
+                            .replace(/&lt;/g, '<')
+                            .replace(/&gt;/g, '>')
+                            .replace(/&quot;/g, '"')
+                            .replace(/&#39;/g, "'")
+                            .replace(/\s+/g, ' ')
+                            .trim();
+
+          item._thumbnail = thumbnail;
+          item._isLive = isLive;
+          item._snippet = text.slice(0, 180);
+          return item;
+        },
+
+        formatReaderHtml(content) {
+          if (!content) return '<p class="text-slate-400">（无正文内容）</p>';
+          let html = content;
+
+          // 为所有图片自动注入防盗链穿透与懒加载
+          html = html.replace(/<img\b([^>]*?)>/gi, (match, attrs) => {
+            if (!attrs.includes('referrerpolicy')) {
+              attrs += ' referrerpolicy="no-referrer"';
+            }
+            if (!attrs.includes('loading')) {
+              attrs += ' loading="lazy"';
+            }
+            return `<img ${attrs}>`;
+          });
+
+          // 为所有视频自动注入 playsinline 与 controls，防止移动端打断全屏
+          html = html.replace(/<video\b([^>]*?)>/gi, (match, attrs) => {
+            if (!attrs.includes('playsinline')) {
+              attrs += ' playsinline webkit-playsinline';
+            }
+            if (!attrs.includes('controls')) {
+              attrs += ' controls';
+            }
+            return `<video ${attrs}>`;
+          });
+
+          return html;
+        },
+
+        setTab(tab) {
+          this.currentTab = tab;
+          localStorage.setItem('reader_tab', tab);
+          if (tab === 'timeline') {
+            if (this.timelineItems.length === 0) {
+              this.loadTimeline(true);
+            }
+            this.initTimelineObserver();
+          }
+        },
+
+        setTimelineFilter(filter) {
+          this.timelineFilter = filter;
+          this.loadTimeline(true);
+        },
+
+        async loadTimeline(reset = false) {
+          if (this.timelineLoading) return;
+          if (!reset && !this.timelineHasMore) return;
+
+          if (reset) {
+            this.timelineContinuation = 0;
+            this.timelineHasMore = true;
+            this.timelineItems = [];
+          }
+
+          this.timelineLoading = true;
+          try {
+            const params = new URLSearchParams();
+            params.set('limit', '30');
+            if (this.timelineContinuation) {
+              params.set('continuation', String(this.timelineContinuation));
+            }
+
+            if (this.timelineFilter === 'unread') {
+              params.set('unread_only', 'true');
+            } else if (this.timelineFilter === 'starred') {
+              params.set('starred_only', 'true');
+            }
+
+            if (this.timelineSelectedCategory !== 'all') {
+              params.set('stream_id', `user/-/label/${this.timelineSelectedCategory}`);
+            } else {
+              params.set('stream_id', 'user/-/state/com.google/reading-list');
+            }
+
+            const data = await this.api(`/api/admin/timeline?${params.toString()}`);
+            const newItems = (data.items || []).map(it => this.processTimelineItem(it));
+
+            if (reset) {
+              this.timelineItems = newItems;
+            } else {
+              this.timelineItems.push(...newItems);
+            }
+
+            if (data.continuation && newItems.length >= 30) {
+              this.timelineContinuation = data.continuation;
+              this.timelineHasMore = true;
+            } else {
+              this.timelineContinuation = 0;
+              this.timelineHasMore = false;
+            }
+          } catch (e) {
+            this.toast('加载时间线失败: ' + e.message, 'error');
+          } finally {
+            this.timelineLoading = false;
+          }
+        },
+
+        initTimelineObserver() {
+          this.$nextTick(() => {
+            const sentinel = document.getElementById('timelineSentinel');
+            if (!sentinel || sentinel._observed) return;
+            sentinel._observed = true;
+            const observer = new IntersectionObserver((entries) => {
+              if (entries[0].isIntersecting && !this.timelineLoading && this.timelineHasMore && this.currentTab === 'timeline') {
+                this.loadTimeline(false);
+              }
+            }, { rootMargin: '300px' });
+            observer.observe(sentinel);
+          });
+        },
+
+        openReader(article) {
+          this.readerArticle = article;
+          this.readerIndex = this.timelineItems.findIndex(it => it.id === article.id);
+          this.modals.reader = true;
+
+          // 自动标记已读
+          if (!article.is_read) {
+            article.is_read = true;
+            this.api('/api/admin/articles/batch-read', {
+              method: 'POST',
+              body: { article_ids: [article.id], is_read: true }
+            }).catch(() => {});
+
+            // 同步订阅源未读统计
+            const f = this.feeds.find(feed => feed.id === article.feed_id);
+            if (f && f.unread_count > 0) f.unread_count--;
+          }
+        },
+
+        closeReader() {
+          this.modals.reader = false;
+          this.readerArticle = null;
+          this.readerIndex = -1;
+        },
+
+        prevArticle() {
+          if (this.readerIndex > 0) {
+            this.openReader(this.timelineItems[this.readerIndex - 1]);
+          }
+        },
+
+        nextArticle() {
+          if (this.readerIndex < this.timelineItems.length - 1) {
+            this.openReader(this.timelineItems[this.readerIndex + 1]);
+          } else if (this.timelineHasMore && !this.timelineLoading) {
+            this.loadTimeline(false).then(() => {
+              if (this.readerIndex < this.timelineItems.length - 1) {
+                this.openReader(this.timelineItems[this.readerIndex + 1]);
+              }
+            });
+          }
+        },
+
+        async toggleReaderArticleStar() {
+          if (!this.readerArticle) return;
+          const nextStarred = !this.readerArticle.is_starred;
+          this.readerArticle.is_starred = nextStarred;
+          try {
+            await this.api('/api/admin/articles/batch-star', {
+              method: 'POST',
+              body: { article_ids: [this.readerArticle.id], is_starred: nextStarred }
+            });
+            this.toast(nextStarred ? '已添加标星收藏' : '已取消标星', 'success');
+          } catch (e) {
+            this.readerArticle.is_starred = !nextStarred;
+            this.toast('操作失败: ' + e.message, 'error');
+          }
+        },
+
+        async toggleReaderArticleRead() {
+          if (!this.readerArticle) return;
+          const nextRead = !this.readerArticle.is_read;
+          this.readerArticle.is_read = nextRead;
+          try {
+            await this.api('/api/admin/articles/batch-read', {
+              method: 'POST',
+              body: { article_ids: [this.readerArticle.id], is_read: nextRead }
+            });
+            const f = this.feeds.find(feed => feed.id === this.readerArticle.feed_id);
+            if (f && f.unread_count !== undefined) {
+              f.unread_count = Math.max(0, f.unread_count + (nextRead ? -1 : 1));
+            }
+            this.toast(nextRead ? '已设为已读' : '已恢复为未读', 'success');
+          } catch (e) {
+            this.readerArticle.is_read = !nextRead;
+            this.toast('操作失败: ' + e.message, 'error');
+          }
+        },
+
+        async markAllTimelineRead() {
+          if (!confirm('确定要将当前时间线的所有文章标记为已读吗？')) {
+            return;
+          }
+          let streamId = 'user/-/state/com.google/reading-list';
+          if (this.timelineSelectedCategory !== 'all') {
+            streamId = `user/-/label/${this.timelineSelectedCategory}`;
+          }
+          try {
+            await this.api('/api/admin/articles/mark-all-read', {
+              method: 'POST',
+              body: { stream_id: streamId }
+            });
+            this.timelineItems.forEach(it => { it.is_read = true; });
+            await this.loadFeeds();
+            this.toast('已全部标记为已读', 'success');
+            if (this.timelineFilter === 'unread') {
+              this.loadTimeline(true);
+            }
+          } catch (e) {
+            this.toast('操作失败: ' + e.message, 'error');
+          }
         }
       };
     }

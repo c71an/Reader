@@ -21,19 +21,19 @@ type StreamQueryFilter struct {
 }
 
 type StreamItem struct {
-	ID           int64
-	FeedID       int64
-	FeedTitle    string
-	FeedSiteURL  string
-	CategoryName string
-	GUID         string
-	Title        string
-	URL          string
-	Content      string
-	Author       string
-	PublishedAt  time.Time
-	IsRead       bool
-	IsStarred    bool
+	ID           int64     `json:"id"`
+	FeedID       int64     `json:"feed_id"`
+	FeedTitle    string    `json:"feed_title"`
+	FeedSiteURL  string    `json:"feed_site_url"`
+	CategoryName string    `json:"category_name"`
+	GUID         string    `json:"guid"`
+	Title        string    `json:"title"`
+	URL          string    `json:"url"`
+	Content      string    `json:"content"`
+	Author       string    `json:"author"`
+	PublishedAt  time.Time `json:"published_at"`
+	IsRead       bool      `json:"is_read"`
+	IsStarred    bool      `json:"is_starred"`
 }
 
 type StreamItemIDRef struct {

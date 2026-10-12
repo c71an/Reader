@@ -2,8 +2,9 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
+  <meta name="referrer" content="no-referrer">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Reader - RSS 订阅管理控制台</title>
+  <title>Reader - RSS 阅读与管理</title>
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="alternate icon" href="/favicon.ico">
@@ -48,6 +49,47 @@
     /* 隐藏横向滚动条但保持顺畅滚动 */
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* 阅读器正文富文本排版样式优化 */
+    .reader-content {
+      word-break: break-word;
+    }
+    .reader-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 0.75rem;
+      margin: 1.25rem auto;
+      display: block;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    }
+    .reader-content video {
+      max-width: 100%;
+      max-height: 520px;
+      border-radius: 0.75rem;
+      margin: 1.25rem auto;
+      display: block;
+      background-color: #000;
+    }
+    .reader-content p {
+      margin-bottom: 1rem;
+      line-height: 1.75;
+    }
+    .reader-content a {
+      color: #6366f1;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    .reader-content blockquote {
+      border-left: 3px solid #cbd5e1;
+      padding-left: 1rem;
+      color: #64748b;
+      margin: 1.25rem 0;
+      font-style: italic;
+    }
+    .dark .reader-content blockquote {
+      border-left-color: #475569;
+      color: #94a3b8;
+    }
   </style>
 </head>
 <body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 antialiased min-h-screen transition-colors duration-150" x-data="readerApp()" x-cloak>
@@ -82,11 +124,30 @@
   <!-- 顶部导航栏 -->
   <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 shadow-sm transition-colors">
     <div class="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
-      <div class="flex items-center space-x-2.5 sm:space-x-3">
-        <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-sm">
-          R
+      <div class="flex items-center space-x-3 sm:space-x-6">
+        <div class="flex items-center space-x-2.5 sm:space-x-3 cursor-pointer" @click="setTab('timeline')">
+          <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-sm">
+            R
+          </div>
+          <h1 class="font-bold text-base sm:text-lg text-slate-900 dark:text-white tracking-tight leading-none hidden sm:block">Reader</h1>
         </div>
-        <h1 class="font-bold text-base sm:text-lg text-slate-900 dark:text-white tracking-tight leading-none">Reader</h1>
+
+        <!-- 页面视图切换 Tab -->
+        <nav class="flex items-center space-x-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl" x-show="isLoggedIn">
+          <button @click="setTab('timeline')"
+                  class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition"
+                  :class="currentTab === 'timeline' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'">
+            <span>📰 时间线</span>
+            <span x-show="computedData.unreadTotal > 0" 
+                  class="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-500 text-white" 
+                  x-text="computedData.unreadTotal > 99 ? '99+' : computedData.unreadTotal"></span>
+          </button>
+          <button @click="setTab('manage')"
+                  class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition"
+                  :class="currentTab === 'manage' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'">
+            <span>⚙️ 订阅管理</span>
+          </button>
+        </nav>
       </div>
 
       <div class="flex items-center space-x-2 sm:space-x-4" x-show="isLoggedIn">
@@ -131,12 +192,155 @@
 
   <!-- 主内容区 -->
   <main x-show="isLoggedIn" class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
-    <!-- 统计卡片与提示 (移动端 2x2 紧凑网格，桌面端 4 列) -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-5 mb-5 sm:mb-8">
-      <div class="bg-white dark:bg-slate-900 p-3 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-        <div class="text-[11px] sm:text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5 sm:mb-1">全部订阅源</div>
-        <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white" x-text="computedData.totalFeeds">0</div>
+
+    <!-- 1. 事件流时间线阅读主视图 (默认主页) -->
+    <div x-show="currentTab === 'timeline'" class="max-w-3xl mx-auto">
+      
+      <!-- 顶栏快速操作与过滤 -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-3 border-b border-slate-200/80 dark:border-slate-800/80">
+        <!-- 左侧状态切换 -->
+        <div class="flex items-center space-x-1.5 overflow-x-auto py-0.5 no-scrollbar">
+          <button @click="setTimelineFilter('all')"
+                  class="px-3 py-1 rounded-full text-xs font-medium transition shrink-0"
+                  :class="timelineFilter === 'all' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'">
+            全部
+          </button>
+          <button @click="setTimelineFilter('unread')"
+                  class="px-3 py-1 rounded-full text-xs font-medium transition shrink-0 flex items-center space-x-1"
+                  :class="timelineFilter === 'unread' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'">
+            <span>仅未读</span>
+            <span x-show="computedData.unreadTotal > 0" 
+                  class="px-1.5 py-0.2 rounded-full text-[10px] font-bold"
+                  :class="timelineFilter === 'unread' ? 'bg-indigo-500 text-white' : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'" 
+                  x-text="computedData.unreadTotal"></span>
+          </button>
+          <button @click="setTimelineFilter('starred')"
+                  class="px-3 py-1 rounded-full text-xs font-medium transition shrink-0 flex items-center space-x-1"
+                  :class="timelineFilter === 'starred' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'">
+            <span>★ 标星</span>
+          </button>
+
+          <!-- 文件夹过滤 -->
+          <div class="h-4 w-px bg-slate-200 dark:bg-slate-800 mx-1 shrink-0"></div>
+          <select x-model="timelineSelectedCategory" @change="loadTimeline(true)"
+                  class="px-2.5 py-1 text-xs rounded-full bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 shrink-0">
+            <option value="all">所有分类文件夹</option>
+            <template x-for="cat in computedData.categoryList" :key="cat.name">
+              <option :value="cat.name" x-text="cat.name"></option>
+            </template>
+          </select>
+        </div>
+
+        <!-- 右侧操作栏 (全部标记已读 / 刷新) -->
+        <div class="flex items-center space-x-2 shrink-0 self-end sm:self-auto">
+          <button @click="loadTimeline(true)" :disabled="timelineLoading"
+                  class="px-2.5 py-1 text-xs text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg transition flex items-center space-x-1 shadow-2xs"
+                  title="刷新时间线">
+            <svg class="w-3.5 h-3.5" :class="timelineLoading ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            <span>刷新</span>
+          </button>
+          <button @click="markAllTimelineRead()"
+                  class="px-2.5 py-1 text-xs text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg transition flex items-center space-x-1 shadow-2xs"
+                  title="标记全部为已读">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+            <span>全标已读</span>
+          </button>
+        </div>
       </div>
+
+      <!-- 时间线主体流 (按日期分组呈现，对齐设计) -->
+      <div class="space-y-6">
+        <template x-for="group in timelineGroups" :key="group.date">
+          <div>
+            <!-- 日期分节标题 (如 TUESDAY, OCTOBER 6, 2026) -->
+            <div class="sticky top-14 sm:top-16 z-20 py-2 bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-md mb-1">
+              <h3 class="text-xs font-bold tracking-wider text-slate-400 dark:text-slate-500 uppercase select-none" x-text="group.date"></h3>
+            </div>
+
+            <!-- 组内文章卡片列表 -->
+            <div class="space-y-1">
+              <template x-for="item in group.items" :key="item.id">
+                <div @click="openReader(item)"
+                     class="group p-3 sm:p-3.5 rounded-xl hover:bg-white dark:hover:bg-slate-900 transition cursor-pointer border-b border-slate-100 dark:border-slate-800/60 last:border-b-0 hover:shadow-xs">
+                  
+                  <!-- 顶信息：Feed 名称 + 发布时刻 -->
+                  <div class="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500 mb-1">
+                    <div class="flex items-center space-x-1.5 truncate pr-2">
+                      <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="item.is_read ? 'bg-transparent' : 'bg-indigo-600 dark:bg-indigo-400'"></span>
+                      <span class="font-medium text-slate-500 dark:text-slate-400 truncate" x-text="item.feed_title"></span>
+                    </div>
+                    <div class="flex items-center space-x-2 shrink-0">
+                      <span x-show="item.is_starred" class="text-amber-500 text-xs">★</span>
+                      <span class="font-mono text-[11px]" x-text="formatItemTime(item.published_at)"></span>
+                    </div>
+                  </div>
+
+                  <!-- 主体：左标题/摘要 + 右正方形缩略图 -->
+                  <div class="flex items-start justify-between gap-3 sm:gap-4">
+                    <div class="flex-1 min-w-0">
+                      <h4 class="text-sm sm:text-base leading-snug line-clamp-2 transition-colors select-none"
+                          :class="item.is_read ? 'font-normal text-slate-600 dark:text-slate-400' : 'font-semibold text-slate-900 dark:text-slate-100'"
+                          x-text="item.title || item._snippet"></h4>
+                      <p x-show="item.title && item._snippet" 
+                         class="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-1 leading-relaxed select-none" 
+                         x-text="item._snippet"></p>
+                    </div>
+
+                    <!-- 右侧正方形缩略图 -->
+                    <template x-if="item._thumbnail">
+                      <div class="relative w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden shrink-0 bg-slate-200 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60">
+                        <img :src="item._thumbnail" 
+                             loading="lazy" 
+                             referrerpolicy="no-referrer" 
+                             class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                             @error="$event.target.style.display='none'">
+                        <!-- Live 图徽章 -->
+                        <span x-show="item._isLive" 
+                              class="absolute top-1 right-1 bg-black/75 backdrop-blur-xs text-white text-[9px] font-bold px-1.5 py-0.5 rounded leading-none flex items-center space-x-0.5 shadow-xs">
+                          <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+                          <span>LIVE</span>
+                        </span>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- 空列表状态 -->
+      <div x-show="timelineItems.length === 0 && !timelineLoading" class="py-16 text-center text-slate-400 dark:text-slate-500">
+        <div class="text-4xl mb-3">☕</div>
+        <div class="text-sm font-medium text-slate-600 dark:text-slate-300">暂无文章</div>
+        <div class="text-xs text-slate-400 mt-1">没有匹配的文章，或者所有订阅内容均已标记为已读</div>
+      </div>
+
+      <!-- 滚动加载哨兵 Sentinel -->
+      <div id="timelineSentinel" class="py-8 text-center text-xs text-slate-400 dark:text-slate-500">
+        <div x-show="timelineLoading" class="flex items-center justify-center space-x-2">
+          <svg class="animate-spin h-4 w-4 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+          <span>正在加载更多文章...</span>
+        </div>
+        <div x-show="!timelineLoading && !timelineHasMore && timelineItems.length > 0">
+          已加载全部文章 · 休息一下吧
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 2. 订阅管理控制台视图 -->
+    <div x-show="currentTab === 'manage'">
+      <!-- 统计卡片与提示 (移动端 2x2 紧凑网格，桌面端 4 列) -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-5 mb-5 sm:mb-8">
+        <div class="bg-white dark:bg-slate-900 p-3 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div class="text-[11px] sm:text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5 sm:mb-1">全部订阅源</div>
+          <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white" x-text="computedData.totalFeeds">0</div>
+        </div>
       <div class="bg-white dark:bg-slate-900 p-3 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <div class="text-[11px] sm:text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5 sm:mb-1">分类文件夹数</div>
         <div class="text-2xl sm:text-3xl font-extrabold text-indigo-600 dark:text-indigo-400" x-text="computedData.categoryList.length">0</div>
@@ -485,6 +689,7 @@
         <div class="text-3xl mb-2">📭</div>
         暂无订阅，点击右上角 “添加订阅” 开始配置（支持输入分类文件夹与每日固定抓取）
       </div>
+    </div>
     </div>
   </main>
 
@@ -1124,6 +1329,90 @@
           关闭
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- 3. 文章沉浸式阅读器模态框/抽屉 (支持上下篇、星标、已读、Live图与图片防盗链) -->
+  <div x-show="modals.reader" 
+       x-cloak
+       @keydown.escape.window="closeReader()" 
+       style="z-index: 9998;"
+       class="fixed inset-0 overflow-y-auto bg-slate-950/75 backdrop-blur-xs flex justify-center items-start sm:p-4 md:p-6"
+       x-transition:enter="transition ease-out duration-200"
+       x-transition:enter-start="opacity-0"
+       x-transition:enter-end="opacity-100"
+       x-transition:leave="transition ease-in duration-150"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0">
+
+    <div class="bg-white dark:bg-slate-900 w-full max-w-3xl min-h-screen sm:min-h-0 sm:rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col my-0 sm:my-4 overflow-hidden"
+         @click.outside="closeReader()">
+      
+      <!-- 顶栏工具条 (常驻固定) -->
+      <div class="sticky top-0 z-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 h-14 flex items-center justify-between">
+        <!-- 左侧返回与订阅源信息 -->
+        <div class="flex items-center space-x-2 truncate pr-2">
+          <button @click="closeReader()" class="p-1.5 -ml-1 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg transition" title="返回列表 (Esc)">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+          </button>
+          <div class="truncate">
+            <span class="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate" x-text="readerArticle ? readerArticle.feed_title : ''"></span>
+          </div>
+        </div>
+
+        <!-- 右侧操作栏 (星标 / 未读切换 / 原文直达 / 上下篇) -->
+        <div class="flex items-center space-x-1 sm:space-x-1.5">
+          <!-- 上一篇 -->
+          <button @click="prevArticle()" :disabled="readerIndex <= 0" 
+                  class="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 disabled:opacity-30 rounded-lg transition" title="上一篇 (← 或 K)">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+          </button>
+          <!-- 下一篇 -->
+          <button @click="nextArticle()" :disabled="readerIndex >= timelineItems.length - 1 && !timelineHasMore" 
+                  class="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 disabled:opacity-30 rounded-lg transition" title="下一篇 (→ 或 J)">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+          </button>
+          <div class="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1"></div>
+          <!-- 标星 -->
+          <button @click="toggleReaderArticleStar()" 
+                  class="p-1.5 rounded-lg transition"
+                  :class="readerArticle && readerArticle.is_starred ? 'text-amber-500' : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'" title="标星收藏">
+            <svg class="w-4 h-4" :fill="readerArticle && readerArticle.is_starred ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
+            </svg>
+          </button>
+          <!-- 标记已读/未读 -->
+          <button @click="toggleReaderArticleRead()" 
+                  class="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg transition" 
+                  :title="readerArticle && readerArticle.is_read ? '设为未读' : '设为已读'">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          </button>
+          <!-- 打开原文 -->
+          <a :href="readerArticle ? readerArticle.url : '#'" target="_blank" rel="noopener noreferrer" 
+             class="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg transition" title="在原网打开">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+          </a>
+        </div>
+      </div>
+
+      <!-- 文章主体内容 -->
+      <div class="px-5 sm:px-8 py-6 overflow-y-auto flex-1">
+        <!-- 标题 -->
+        <h2 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white leading-tight mb-2 select-text" x-text="readerArticle ? readerArticle.title : ''"></h2>
+
+        <!-- 元信息 -->
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400 dark:text-slate-500 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+          <span class="font-medium text-indigo-600 dark:text-indigo-400" x-text="readerArticle ? readerArticle.feed_title : ''"></span>
+          <span x-show="readerArticle && readerArticle.author" x-text="'作者: ' + readerArticle.author"></span>
+          <span x-text="readerArticle ? formatReadableTime(readerArticle.published_at) : ''"></span>
+        </div>
+
+        <!-- 正文富文本 HTML (支持图片防盗链、Live 图短视频等) -->
+        <div class="reader-content text-slate-800 dark:text-slate-200 leading-relaxed text-sm sm:text-base select-text"
+             x-html="readerArticle ? formatReaderHtml(readerArticle.content) : ''">
+        </div>
+      </div>
+
     </div>
   </div>
 

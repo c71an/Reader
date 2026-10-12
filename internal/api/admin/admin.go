@@ -665,5 +665,139 @@ func (h *AdminHandler) RevokeSession(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{"success": true})
 }
 
+// 获取时间线文章流
+func (h *AdminHandler) GetTimeline(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
+	limit := 30
+	if lStr := r.URL.Query().Get("limit"); lStr != "" {
+		if l, err := strconv.Atoi(lStr); err == nil && l > 0 && l <= 100 {
+			limit = l
+		}
+	}
 
+	var continuation int64
+	if cStr := r.URL.Query().Get("continuation"); cStr != "" {
+		if c, err := strconv.ParseInt(cStr, 10, 64); err == nil && c > 0 {
+			continuation = c
+		}
+	}
+
+	streamID := strings.TrimSpace(r.URL.Query().Get("stream_id"))
+	if streamID == "" {
+		streamID = "user/-/state/com.google/reading-list"
+	}
+
+	filter := db.StreamQueryFilter{
+		UserID:       user.ID,
+		StreamID:     streamID,
+		Limit:        limit,
+		Continuation: continuation,
+	}
+
+	if r.URL.Query().Get("unread_only") == "true" {
+		filter.ExcludeTarget = "user/-/state/com.google/read"
+	}
+	if r.URL.Query().Get("starred_only") == "true" {
+		filter.FilterTarget = "user/-/state/com.google/starred"
+	}
+
+	items, err := h.db.GetStreamItems(filter)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if items == nil {
+		items = []*db.StreamItem{}
+	}
+
+	var nextContinuation int64
+	if len(items) == limit {
+		nextContinuation = items[len(items)-1].ID
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"items":        items,
+		"continuation": nextContinuation,
+		"limit":        limit,
+	})
+}
+
+// 批量设置文章星标状态
+func (h *AdminHandler) BatchMarkArticlesStarred(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req struct {
+		ArticleIDs []int64 `json:"article_ids"`
+		IsStarred  bool    `json:"is_starred"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid body", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.db.SetArticlesStarred(user.ID, req.ArticleIDs, req.IsStarred); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":    true,
+		"affected":   len(req.ArticleIDs),
+		"is_starred": req.IsStarred,
+	})
+}
+
+// 一键标记全流为已读
+func (h *AdminHandler) MarkAllTimelineRead(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req struct {
+		StreamID string `json:"stream_id"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&req)
+
+	sID := strings.TrimSpace(req.StreamID)
+	nowTs := time.Now().Unix()
+
+	var err error
+	if strings.HasPrefix(sID, "feed/") {
+		feedTarget := strings.TrimPrefix(sID, "feed/")
+		if id, pErr := strconv.ParseInt(feedTarget, 10, 64); pErr == nil && id > 0 {
+			err = h.db.MarkFeedAllRead(user.ID, id, nowTs)
+		}
+	} else if idx := strings.Index(sID, "/label/"); idx != -1 {
+		categoryName := strings.TrimSpace(sID[idx+len("/label/"):])
+		cat, cErr := h.db.GetCategoryByName(categoryName)
+		if cErr == nil && cat != nil {
+			err = h.db.MarkCategoryAllRead(user.ID, cat.ID, nowTs)
+		}
+	} else {
+		err = h.db.MarkAllArticlesRead(user.ID, nowTs)
+	}
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+	})
+}
