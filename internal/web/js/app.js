@@ -1070,7 +1070,9 @@
           this.modals.reader = true;
 
           // 平滑重置到页面顶端并聚焦
-          window.scrollTo(0, 0);
+          this.$nextTick(() => {
+            window.scrollTo({ top: 0, behavior: 'instant' });
+          });
 
           // 自动标记已读
           if (!article.is_read) {
@@ -1089,14 +1091,17 @@
         closeReader() {
           if (this.readerClosing) return;
           this.readerClosing = true;
+          const targetPos = this.timelineScrollPos || 0;
           setTimeout(() => {
             this.modals.reader = false;
             this.readerArticle = null;
             this.readerIndex = -1;
             this.readerSwipeX = 0;
             this.readerClosing = false;
-            // 无缝恢复列表滚动高度
-            window.scrollTo(0, this.timelineScrollPos || 0);
+            // 无缝恢复列表滚动高度（等待 DOM 重新激活挂载后执行）
+            this.$nextTick(() => {
+              window.scrollTo({ top: targetPos, behavior: 'instant' });
+            });
           }, 180);
         },
 
