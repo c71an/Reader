@@ -48,10 +48,16 @@
     }
     /* 适配 iOS Safari / Chrome 动态底部地址栏与安全区域 (Safe Area Inset) */
     .pb-safe {
-      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 5rem) !important;
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 5.5rem) !important;
     }
     .pb-safe-modal {
-      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 3rem) !important;
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 7rem) !important;
+    }
+
+    /* 阅读器滑动返回触控优化 */
+    .reader-sheet {
+      touch-action: pan-y pinch-zoom;
+      will-change: transform;
     }
 
     /* 阅读器正文富文本排版样式优化 */
@@ -1374,12 +1380,12 @@
     </div>
   </div>
 
-  <!-- 3. 文章沉浸式阅读器模态框/抽屉 (支持上下篇、星标、已读、Live图与图片防盗链) -->
+  <!-- 3. 文章沉浸式阅读器模态框/抽屉 (支持左右滑动返回、上下篇、星标、已读、Live图与图片防盗链) -->
   <div x-show="modals.reader" 
        x-cloak
        @keydown.escape.window="closeReader()" 
        style="z-index: 9998;"
-       class="fixed inset-0 overflow-y-auto bg-slate-950/75 backdrop-blur-xs flex justify-center items-start sm:p-4 md:p-6"
+       class="fixed inset-0 bg-slate-950/75 backdrop-blur-xs flex justify-center items-stretch sm:items-start sm:p-4 md:p-6 overflow-hidden select-none"
        x-transition:enter="transition ease-out duration-200"
        x-transition:enter-start="opacity-0"
        x-transition:enter-end="opacity-100"
@@ -1387,7 +1393,11 @@
        x-transition:leave-start="opacity-100"
        x-transition:leave-end="opacity-0">
 
-    <div class="bg-white dark:bg-slate-900 w-full max-w-3xl min-h-screen sm:min-h-0 sm:rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col my-0 sm:my-4 overflow-hidden"
+    <div class="reader-sheet bg-white dark:bg-slate-900 w-full max-w-3xl h-[100dvh] sm:h-auto sm:max-h-[92vh] sm:rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col my-0 sm:my-auto overflow-hidden transition-transform duration-150"
+         :style="readerSwipeX > 0 ? `transform: translateX(${readerSwipeX}px); transition: none;` : (readerClosing ? 'transform: translateX(100%); transition: transform 0.2s ease-out;' : '')"
+         @touchstart="handleReaderTouchStart($event)"
+         @touchmove="handleReaderTouchMove($event)"
+         @touchend="handleReaderTouchEnd($event)"
          @click.outside="closeReader()">
       
       <!-- 顶栏工具条 (常驻固定) -->

@@ -17,6 +17,11 @@
         timelineSelectedCategory: 'all',
         readerArticle: null,
         readerIndex: -1,
+        readerSwipeX: 0,
+        readerClosing: false,
+        _touchStartX: 0,
+        _touchStartY: 0,
+        _touchActive: false,
 
         // 1. 状态收纳 (统一集中管理弹窗和异步加载状态)
         menuOpen: false,
@@ -1025,6 +1030,8 @@
         openReader(article) {
           this.readerArticle = article;
           this.readerIndex = this.timelineItems.findIndex(it => it.id === article.id);
+          this.readerSwipeX = 0;
+          this.readerClosing = false;
           this.modals.reader = true;
 
           // 自动标记已读
@@ -1042,9 +1049,50 @@
         },
 
         closeReader() {
-          this.modals.reader = false;
-          this.readerArticle = null;
-          this.readerIndex = -1;
+          if (this.readerClosing) return;
+          this.readerClosing = true;
+          setTimeout(() => {
+            this.modals.reader = false;
+            this.readerArticle = null;
+            this.readerIndex = -1;
+            this.readerSwipeX = 0;
+            this.readerClosing = false;
+          }, 180);
+        },
+
+        // 文章详情页滑动返回手势 (左向右滑)
+        handleReaderTouchStart(e) {
+          if (!e.touches || e.touches.length !== 1) return;
+          const touch = e.touches[0];
+          this._touchStartX = touch.clientX;
+          this._touchStartY = touch.clientY;
+          this._touchActive = true;
+          this.readerSwipeX = 0;
+        },
+
+        handleReaderTouchMove(e) {
+          if (!this._touchActive || !e.touches || e.touches.length !== 1) return;
+          const touch = e.touches[0];
+          const dx = touch.clientX - this._touchStartX;
+          const dy = touch.clientY - this._touchStartY;
+
+          // 仅当向右滑动且水平位移明显大于垂直位移时触发滑动返回视觉反馈
+          if (dx > 10 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+            this.readerSwipeX = Math.max(0, dx);
+          } else if (dx < 0) {
+            this.readerSwipeX = 0;
+          }
+        },
+
+        handleReaderTouchEnd(e) {
+          if (!this._touchActive) return;
+          this._touchActive = false;
+          // 若右滑超过 85px，执行平滑关闭；否则回弹归位
+          if (this.readerSwipeX > 85) {
+            this.closeReader();
+          } else {
+            this.readerSwipeX = 0;
+          }
         },
 
         prevArticle() {
