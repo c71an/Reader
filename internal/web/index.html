@@ -342,7 +342,7 @@
                              loading="lazy" 
                              referrerpolicy="no-referrer" 
                              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                             @error="$event.target.style.display='none'">
+                             @error="item._thumbnail = ''; $event.target.closest('.relative')?.remove()">
                       </div>
                     </template>
                   </div>

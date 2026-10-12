@@ -847,14 +847,31 @@
                    s.includes('1x1');
           };
 
+          // URL 相对路径自动补全辅助函数
+          const resolveUrl = (rawSrc, baseUrl) => {
+            if (!rawSrc) return '';
+            const trimmed = rawSrc.trim();
+            if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:') || trimmed.startsWith('//')) {
+              if (trimmed.startsWith('//')) return 'https:' + trimmed;
+              return trimmed;
+            }
+            if (!baseUrl) return trimmed;
+            try {
+              return new URL(trimmed, baseUrl).href;
+            } catch (_) {
+              return trimmed;
+            }
+          };
+
           const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
           let match;
           let firstFallbackImg = '';
           while ((match = imgRegex.exec(content)) !== null) {
-            const src = match[1];
-            if (!firstFallbackImg) firstFallbackImg = src;
-            if (!isEmoticonOrAvatar(src)) {
-              thumbnail = src;
+            const rawSrc = match[1];
+            const fullSrc = resolveUrl(rawSrc, item.url);
+            if (!firstFallbackImg) firstFallbackImg = fullSrc;
+            if (!isEmoticonOrAvatar(rawSrc)) {
+              thumbnail = fullSrc;
               break;
             }
           }
@@ -863,7 +880,7 @@
           if (!thumbnail) {
             const posterMatch = content.match(/<video[^>]+poster=["']([^"']+)["']/i);
             if (posterMatch && posterMatch[1] && !isEmoticonOrAvatar(posterMatch[1])) {
-              thumbnail = posterMatch[1];
+              thumbnail = resolveUrl(posterMatch[1], item.url);
             } else if (firstFallbackImg) {
               thumbnail = firstFallbackImg;
             }
@@ -908,7 +925,8 @@
             return ' style=' + quote + filtered.join('; ').trim() + quote;
           });
 
-          // 3. 清洗 <img> 标签上的硬编码 style 中的 width/height 以及固定宽高属性，防止外力挤压导致失真
+          // 3. 清洗 <img> 标签上的硬编码 style 中的 width/height 以及固定宽高属性，并自动补全相对路径
+          const articleBaseUrl = this.readerArticle ? this.readerArticle.url : '';
           html = html.replace(/<img\b([^>]*?)>/gi, (match, attrs) => {
             // 清洗 style 里的 width/height
             let newAttrs = attrs.replace(/\s+style=(["'])([\s\S]*?)\1/gi, (sMatch, quote, styleContent) => {
@@ -920,6 +938,20 @@
               if (filtered.length === 0) return '';
               return ' style=' + quote + filtered.join('; ').trim() + quote;
             });
+
+            // 补全相对路径
+            if (articleBaseUrl) {
+              newAttrs = newAttrs.replace(/\s+src=(["'])([\s\S]*?)\1/gi, (srcMatch, quote, srcVal) => {
+                const trimmed = srcVal.trim();
+                if (trimmed && !trimmed.startsWith('http://') && !trimmed.startsWith('https://') && !trimmed.startsWith('data:') && !trimmed.startsWith('//')) {
+                  try {
+                    const resolved = new URL(trimmed, articleBaseUrl).href;
+                    return ` src=${quote}${resolved}${quote}`;
+                  } catch (_) {}
+                }
+                return srcMatch;
+              });
+            }
 
             if (!newAttrs.includes('referrerpolicy')) {
               newAttrs += ' referrerpolicy="no-referrer"';
