@@ -1092,14 +1092,27 @@
           if (this.readerClosing) return;
           this.readerClosing = true;
           const targetPos = this.timelineScrollPos || 0;
+          const activeArticleId = this.readerArticle ? this.readerArticle.id : null;
+
           setTimeout(() => {
             this.modals.reader = false;
             this.readerArticle = null;
             this.readerIndex = -1;
             this.readerSwipeX = 0;
             this.readerClosing = false;
-            // 无缝恢复列表滚动高度（等待 DOM 重新激活挂载后执行）
+
+            // 无缝恢复列表位置：优先将刚阅读完毕的卡片平滑定位至视口舒适区 (避开底栏遮挡危险区)
             this.$nextTick(() => {
+              if (activeArticleId) {
+                const cardEl = document.getElementById('article-card-' + activeArticleId);
+                if (cardEl) {
+                  // 计算卡片距离顶部的偏移，预留约 80px 顶栏空间，让卡片舒适地停留在视口上部 15%~25%
+                  const cardTop = cardEl.getBoundingClientRect().top + window.scrollY;
+                  const idealScrollY = Math.max(0, cardTop - 80);
+                  window.scrollTo({ top: idealScrollY, behavior: 'instant' });
+                  return;
+                }
+              }
               window.scrollTo({ top: targetPos, behavior: 'instant' });
             });
           }, 180);

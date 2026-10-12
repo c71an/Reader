@@ -41,19 +41,20 @@
     html.dark {
       color-scheme: dark;
     }
-    /* 优化移动端手势与触控体验：不限制 html/body 原生滚动动量，使 iOS Safari 能够自然联动缩放地址栏并自适应底栏高度 */
+    /* 优化移动端手势与触控体验：优先适配 iOS Safari 原生动量与系统字体栈 */
     html, body {
       -webkit-tap-highlight-color: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
     }
     button, a, select, input {
       touch-action: manipulation;
     }
     /* 适配 iOS Safari / Chrome 动态底部地址栏与安全区域 (Safe Area Inset) */
     .pb-safe {
-      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 6rem) !important;
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 7.5rem) !important;
     }
     .pb-safe-modal {
-      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 7rem) !important;
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 7.5rem) !important;
     }
 
     /* 阅读器滑动返回触控优化与 iOS 原生惯性滚动 */
@@ -307,15 +308,16 @@
         <template x-for="group in timelineGroups" :key="group.date">
           <div>
             <!-- 日期分节标题 (如 TUESDAY, OCTOBER 6, 2026) -->
-            <div class="sticky top-14 sm:top-16 z-20 py-2 bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-md mb-1">
+            <div class="py-2.5 px-1 mb-1 sm:sticky sm:top-16 z-10 bg-slate-50/95 dark:bg-slate-950/95 sm:backdrop-blur-md">
               <h3 class="text-xs font-bold tracking-wider text-slate-400 dark:text-slate-500 uppercase select-none" x-text="group.date"></h3>
             </div>
 
             <!-- 组内文章卡片列表 -->
             <div class="space-y-1">
               <template x-for="item in group.items" :key="item.id">
-                <div @click="openReader(item)"
-                     class="group p-3 sm:p-3.5 rounded-xl hover:bg-white dark:hover:bg-slate-900 transition cursor-pointer border-b border-slate-100 dark:border-slate-800/60 last:border-b-0 hover:shadow-xs">
+                <div :id="'article-card-' + item.id"
+                     @click="openReader(item)"
+                     class="group p-3.5 sm:p-4 rounded-xl hover:bg-white dark:hover:bg-slate-900 transition cursor-pointer border-b border-slate-100 dark:border-slate-800/60 last:border-b-0 hover:shadow-xs active:bg-slate-100/70 dark:active:bg-slate-800/50">
                   
                   <!-- 顶信息：Feed 名称 + 发布时刻 -->
                   <div class="flex items-center justify-between text-xs sm:text-sm text-slate-400 dark:text-slate-500 mb-1.5">
@@ -378,7 +380,7 @@
           已加载全部文章 · 休息一下吧
         </div>
         <!-- 物理底部占位块：确保时间线最末端卡片完全滑出 iOS Safari 悬浮胶囊之上 -->
-        <div class="w-full shrink-0 pointer-events-none" style="height: calc(env(safe-area-inset-bottom, 0px) + 6.5rem);"></div>
+        <div class="w-full shrink-0 pointer-events-none" style="height: calc(env(safe-area-inset-bottom, 0px) + 7.5rem);"></div>
       </div>
 
     </div>
@@ -1460,7 +1462,7 @@
       </div>
 
       <!-- 物理底部留白块：让 Safari 悬浮地址栏无论处于何种状态都绝不遮挡最后一行正文 -->
-      <div class="w-full shrink-0 pointer-events-none" style="height: calc(env(safe-area-inset-bottom, 0px) + 6rem);"></div>
+      <div class="w-full shrink-0 pointer-events-none" style="height: calc(env(safe-area-inset-bottom, 0px) + 7.5rem);"></div>
     </div>
   </div>
 </div>
