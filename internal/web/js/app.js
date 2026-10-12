@@ -764,20 +764,28 @@
         // ==================== 时间线流核心逻辑 ====================
 
         get timelineGroups() {
-          const groups = [];
-          let currentGroup = null;
-
+          const dateMap = new Map();
           for (const item of this.timelineItems) {
             const dateHeader = this.formatDateHeader(item.published_at);
-            if (!currentGroup || currentGroup.date !== dateHeader) {
-              currentGroup = {
+            if (!dateMap.has(dateHeader)) {
+              dateMap.set(dateHeader, {
                 date: dateHeader,
+                rawDate: new Date(item.published_at).getTime() || 0,
                 items: []
-              };
-              groups.push(currentGroup);
+              });
             }
-            currentGroup.items.push(item);
+            dateMap.get(dateHeader).items.push(item);
           }
+
+          const groups = Array.from(dateMap.values());
+          // 严格按日期从最新到最早降序排列
+          groups.sort((a, b) => b.rawDate - a.rawDate);
+
+          // 组内文章也按发布时间倒序排列
+          for (const group of groups) {
+            group.items.sort((a, b) => (new Date(b.published_at).getTime() || 0) - (new Date(a.published_at).getTime() || 0));
+          }
+
           return groups;
         },
 
@@ -947,7 +955,7 @@
         },
 
         initTimelineObserver() {
-          this.$nextTick(() => {
+          setTimeout(() => {
             const sentinel = document.getElementById('timelineSentinel');
             if (!sentinel || sentinel._observed) return;
             sentinel._observed = true;
@@ -957,7 +965,7 @@
               }
             }, { rootMargin: '300px' });
             observer.observe(sentinel);
-          });
+          }, 100);
         },
 
         openReader(article) {
