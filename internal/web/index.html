@@ -46,9 +46,13 @@
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
     }
-    /* 隐藏横向滚动条但保持顺畅滚动 */
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    /* 适配 iOS Safari / Chrome 动态底部地址栏与安全区域 (Safe Area Inset) */
+    .pb-safe {
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 5rem) !important;
+    }
+    .pb-safe-modal {
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 3rem) !important;
+    }
 
     /* 阅读器正文富文本排版样式优化 */
     .reader-content {
@@ -235,7 +239,7 @@
   </div>
 
   <!-- 主内容区 -->
-  <main x-show="isLoggedIn" class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
+  <main x-show="isLoggedIn" class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 pb-safe">
 
     <!-- 1. 事件流时间线阅读主视图 (默认主页) -->
     <div x-show="currentTab === 'timeline'" class="max-w-3xl mx-auto">
@@ -308,31 +312,31 @@
                      class="group p-3 sm:p-3.5 rounded-xl hover:bg-white dark:hover:bg-slate-900 transition cursor-pointer border-b border-slate-100 dark:border-slate-800/60 last:border-b-0 hover:shadow-xs">
                   
                   <!-- 顶信息：Feed 名称 + 发布时刻 -->
-                  <div class="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500 mb-1">
+                  <div class="flex items-center justify-between text-xs sm:text-sm text-slate-400 dark:text-slate-500 mb-1.5">
                     <div class="flex items-center space-x-1.5 truncate pr-2 min-w-0">
-                      <span class="font-medium text-slate-500 dark:text-slate-400 truncate" x-text="item.feed_title"></span>
+                      <span class="font-medium text-slate-600 dark:text-slate-300 truncate" x-text="item.feed_title"></span>
                       <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="item.is_read ? 'hidden' : 'bg-indigo-600 dark:bg-indigo-400'"></span>
                     </div>
                     <div class="flex items-center space-x-2 shrink-0">
-                      <span x-show="item.is_starred" class="text-amber-500 text-xs">★</span>
-                      <span class="font-mono text-[11px]" x-text="formatItemTime(item.published_at)"></span>
+                      <span x-show="item.is_starred" class="text-amber-500 text-sm">★</span>
+                      <span class="font-mono text-xs text-slate-400 dark:text-slate-500" x-text="formatItemTime(item.published_at)"></span>
                     </div>
                   </div>
 
                   <!-- 主体：左标题/摘要 + 右正方形缩略图 -->
                   <div class="flex items-start justify-between gap-3 sm:gap-4">
                     <div class="flex-1 min-w-0">
-                      <h4 class="text-sm sm:text-base leading-snug line-clamp-2 transition-colors select-none"
+                      <h4 class="text-base sm:text-lg leading-snug line-clamp-2 transition-colors select-none"
                           :class="item.is_read ? 'font-normal text-slate-600 dark:text-slate-400' : 'font-semibold text-slate-900 dark:text-slate-100'"
                           x-text="item.title || item._snippet"></h4>
                       <p x-show="item.title && item._snippet" 
-                         class="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-1 leading-relaxed select-none" 
+                         class="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mt-1.5 leading-relaxed select-none" 
                          x-text="item._snippet"></p>
                     </div>
 
                     <!-- 右侧正方形缩略图 -->
                     <template x-if="item._thumbnail">
-                      <div class="relative w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden shrink-0 bg-slate-200 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60">
+                      <div class="relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden shrink-0 bg-slate-200 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60">
                         <img :src="item._thumbnail" 
                              loading="lazy" 
                              referrerpolicy="no-referrer" 
@@ -1434,7 +1438,7 @@
       </div>
 
       <!-- 文章主体内容 -->
-      <div class="px-5 sm:px-8 py-6 overflow-y-auto flex-1">
+      <div class="px-5 sm:px-8 py-6 pb-safe-modal overflow-y-auto flex-1">
         <!-- 标题 -->
         <h2 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white leading-tight mb-2 select-text" x-text="readerArticle ? readerArticle.title : ''"></h2>
 
