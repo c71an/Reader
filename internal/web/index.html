@@ -279,9 +279,9 @@
                   
                   <!-- 顶信息：Feed 名称 + 发布时刻 -->
                   <div class="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500 mb-1">
-                    <div class="flex items-center space-x-1.5 truncate pr-2">
-                      <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="item.is_read ? 'bg-transparent' : 'bg-indigo-600 dark:bg-indigo-400'"></span>
+                    <div class="flex items-center space-x-1.5 truncate pr-2 min-w-0">
                       <span class="font-medium text-slate-500 dark:text-slate-400 truncate" x-text="item.feed_title"></span>
+                      <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="item.is_read ? 'hidden' : 'bg-indigo-600 dark:bg-indigo-400'"></span>
                     </div>
                     <div class="flex items-center space-x-2 shrink-0">
                       <span x-show="item.is_starred" class="text-amber-500 text-xs">★</span>
