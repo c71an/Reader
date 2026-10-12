@@ -65,16 +65,20 @@
       background: transparent !important;
     }
     .reader-content img {
-      max-width: 100%;
-      height: auto;
+      max-width: 100% !important;
+      height: auto !important;
+      width: auto !important;
+      object-fit: contain;
       border-radius: 0.75rem;
       margin: 1.25rem auto;
       display: block;
       box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
     }
     .reader-content video {
-      max-width: 100%;
+      max-width: 100% !important;
+      height: auto !important;
       max-height: 520px;
+      object-fit: contain;
       border-radius: 0.75rem;
       margin: 1.25rem auto;
       display: block;
@@ -304,12 +308,6 @@
                              referrerpolicy="no-referrer" 
                              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                              @error="$event.target.style.display='none'">
-                        <!-- Live 图徽章 -->
-                        <span x-show="item._isLive" 
-                              class="absolute top-1 right-1 bg-black/75 backdrop-blur-xs text-white text-[9px] font-bold px-1.5 py-0.5 rounded leading-none flex items-center space-x-0.5 shadow-xs">
-                          <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
-                          <span>LIVE</span>
-                        </span>
                       </div>
                     </template>
                   </div>

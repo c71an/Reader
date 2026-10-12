@@ -826,14 +826,40 @@
             isLive = true;
           }
 
-          // 提取首图作为右侧缩略图
-          const imgMatch = content.match(/<img[^>]+src=["']([^"']+)["']/i);
-          if (imgMatch && imgMatch[1]) {
-            thumbnail = imgMatch[1];
-          } else {
+          // 提取首图作为右侧缩略图：过滤掉表情包、头像与透明占位图，确保选出真正的正文配图
+          const isEmoticonOrAvatar = (src) => {
+            if (!src) return true;
+            const s = src.toLowerCase();
+            return s.includes('/emoticon/') ||
+                   s.includes('sinaimg.cn/m/emoticon') ||
+                   s.includes('weibo.cn/emoticon') ||
+                   s.includes('/emote/') ||
+                   s.includes('/emoji') ||
+                   s.includes('emoji') ||
+                   s.includes('/avatar/') ||
+                   s.includes('data:image/gif;base64,r0lgodlhaqab') ||
+                   s.includes('1x1');
+          };
+
+          const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
+          let match;
+          let firstFallbackImg = '';
+          while ((match = imgRegex.exec(content)) !== null) {
+            const src = match[1];
+            if (!firstFallbackImg) firstFallbackImg = src;
+            if (!isEmoticonOrAvatar(src)) {
+              thumbnail = src;
+              break;
+            }
+          }
+
+          // 若未匹配到有效正文图片，检查视频封面 (Weibo Live Photo poster 等)
+          if (!thumbnail) {
             const posterMatch = content.match(/<video[^>]+poster=["']([^"']+)["']/i);
-            if (posterMatch && posterMatch[1]) {
+            if (posterMatch && posterMatch[1] && !isEmoticonOrAvatar(posterMatch[1])) {
               thumbnail = posterMatch[1];
+            } else if (firstFallbackImg) {
+              thumbnail = firstFallbackImg;
             }
           }
 
@@ -876,15 +902,26 @@
             return ' style=' + quote + filtered.join('; ').trim() + quote;
           });
 
-          // 3. 为所有图片自动注入防盗链穿透与懒加载
+          // 3. 清洗 <img> 标签上的硬编码 style 中的 width/height 以及固定宽高属性，防止外力挤压导致失真
           html = html.replace(/<img\b([^>]*?)>/gi, (match, attrs) => {
-            if (!attrs.includes('referrerpolicy')) {
-              attrs += ' referrerpolicy="no-referrer"';
+            // 清洗 style 里的 width/height
+            let newAttrs = attrs.replace(/\s+style=(["'])([\s\S]*?)\1/gi, (sMatch, quote, styleContent) => {
+              const decls = styleContent.split(';');
+              const filtered = decls.filter(d => {
+                const prop = d.trim().toLowerCase().split(':')[0].trim();
+                return prop !== 'width' && prop !== 'height' && prop !== 'max-width' && prop !== 'max-height';
+              });
+              if (filtered.length === 0) return '';
+              return ' style=' + quote + filtered.join('; ').trim() + quote;
+            });
+
+            if (!newAttrs.includes('referrerpolicy')) {
+              newAttrs += ' referrerpolicy="no-referrer"';
             }
-            if (!attrs.includes('loading')) {
-              attrs += ' loading="lazy"';
+            if (!newAttrs.includes('loading')) {
+              newAttrs += ' loading="lazy"';
             }
-            return `<img ${attrs}>`;
+            return `<img ${newAttrs.trim()}>`;
           });
 
           // 4. 为所有视频自动注入 playsinline 与 controls，防止移动端打断全屏
