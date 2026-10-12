@@ -251,17 +251,17 @@
     <!-- 1. 事件流时间线阅读主视图 (默认主页) -->
     <div x-show="currentTab === 'timeline'" class="max-w-3xl mx-auto">
       
-      <!-- 顶栏快速操作与过滤 -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-3 border-b border-slate-200/80 dark:border-slate-800/80">
-        <!-- 左侧状态切换 -->
-        <div class="flex items-center space-x-1.5 overflow-x-auto py-0.5 no-scrollbar">
+      <!-- 顶栏快速操作与过滤 (单行紧凑排列，移动端自适应保持同一行) -->
+      <div class="flex items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-200/80 dark:border-slate-800/80 overflow-x-auto no-scrollbar py-0.5">
+        <!-- 左侧状态与分类切换 -->
+        <div class="flex items-center space-x-1.5 shrink-0">
           <button @click="setTimelineFilter('all')"
-                  class="px-3 py-1 rounded-full text-xs font-medium transition shrink-0"
+                  class="px-2.5 sm:px-3 py-1 rounded-full text-xs font-medium transition shrink-0"
                   :class="timelineFilter === 'all' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'">
             全部
           </button>
           <button @click="setTimelineFilter('unread')"
-                  class="px-3 py-1 rounded-full text-xs font-medium transition shrink-0 flex items-center space-x-1"
+                  class="px-2.5 sm:px-3 py-1 rounded-full text-xs font-medium transition shrink-0 flex items-center space-x-1"
                   :class="timelineFilter === 'unread' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'">
             <span>仅未读</span>
             <span x-show="computedData.unreadTotal > 0" 
@@ -270,7 +270,7 @@
                   x-text="computedData.unreadTotal"></span>
           </button>
           <button @click="setTimelineFilter('starred')"
-                  class="px-3 py-1 rounded-full text-xs font-medium transition shrink-0 flex items-center space-x-1"
+                  class="px-2.5 sm:px-3 py-1 rounded-full text-xs font-medium transition shrink-0 flex items-center space-x-1"
                   :class="timelineFilter === 'starred' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'">
             <span>★ 标星</span>
           </button>
@@ -278,24 +278,18 @@
           <!-- 文件夹过滤 -->
           <div class="h-4 w-px bg-slate-200 dark:bg-slate-800 mx-1 shrink-0"></div>
           <select x-model="timelineSelectedCategory" @change="loadTimeline(true)"
-                  class="px-2.5 py-1 text-xs rounded-full bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 shrink-0">
-            <option value="all">所有分类文件夹</option>
+                  class="max-w-[110px] sm:max-w-[140px] px-2 sm:px-2.5 py-1 text-xs rounded-full bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 shrink-0 truncate">
+            <option value="all">所有分类</option>
             <template x-for="cat in computedData.categoryList" :key="cat.name">
               <option :value="cat.name" x-text="cat.name"></option>
             </template>
           </select>
         </div>
 
-        <!-- 右侧操作栏 (全部标记已读 / 刷新) -->
-        <div class="flex items-center space-x-2 shrink-0 self-end sm:self-auto">
-          <button @click="loadTimeline(true)" :disabled="timelineLoading"
-                  class="px-2.5 py-1 text-xs text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg transition flex items-center space-x-1 shadow-2xs"
-                  title="刷新时间线">
-            <svg class="w-3.5 h-3.5" :class="timelineLoading ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-            <span>刷新</span>
-          </button>
+        <!-- 右侧操作栏 (全标已读) -->
+        <div class="flex items-center shrink-0 ml-1">
           <button @click="markAllTimelineRead()"
-                  class="px-2.5 py-1 text-xs text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg transition flex items-center space-x-1 shadow-2xs"
+                  class="px-2.5 py-1 text-xs text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg transition flex items-center space-x-1 shadow-2xs shrink-0"
                   title="标记全部为已读">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
             <span>全标已读</span>
