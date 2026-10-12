@@ -41,10 +41,12 @@
     html.dark {
       color-scheme: dark;
     }
-    /* 优化移动端手势与触控体验 */
+    /* 优化移动端手势与触控体验：不限制 html/body 原生滚动动量，使 iOS Safari 能够自然触发地址栏胶囊悬浮 */
     html, body {
-      touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
+    }
+    button, a, select, input {
+      touch-action: manipulation;
     }
     /* 适配 iOS Safari / Chrome 动态底部地址栏与安全区域 (Safe Area Inset) */
     .pb-safe {
@@ -54,10 +56,13 @@
       padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 7rem) !important;
     }
 
-    /* 阅读器滑动返回触控优化 */
+    /* 阅读器滑动返回触控优化与 iOS 原生惯性滚动 */
     .reader-sheet {
-      touch-action: pan-y pinch-zoom;
       will-change: transform;
+    }
+    .reader-scroll-container {
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
     }
 
     /* 阅读器正文富文本排版样式优化 */
@@ -372,6 +377,8 @@
         <div x-show="!timelineLoading && !timelineHasMore && timelineItems.length > 0">
           已加载全部文章 · 休息一下吧
         </div>
+        <!-- 物理底部占位块：确保时间线最末端卡片完全滑出 iOS Safari 悬浮胶囊之上 -->
+        <div class="w-full shrink-0 pointer-events-none" style="height: calc(env(safe-area-inset-bottom, 0px) + 5rem);"></div>
       </div>
 
     </div>
@@ -1442,8 +1449,8 @@
         </div>
       </div>
 
-      <!-- 文章主体内容 -->
-      <div class="px-5 sm:px-8 py-6 pb-safe-modal overflow-y-auto flex-1">
+      <!-- 文章主体内容 (配备 iOS 原生动量滚动与物理底部安全留白块) -->
+      <div class="reader-scroll-container px-5 sm:px-8 py-6 overflow-y-auto flex-1">
         <!-- 标题 -->
         <h2 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white leading-tight mb-2 select-text" x-text="readerArticle ? readerArticle.title : ''"></h2>
 
@@ -1458,6 +1465,9 @@
         <div class="reader-content text-slate-800 dark:text-slate-200 leading-relaxed text-sm sm:text-base select-text"
              x-html="readerArticle ? formatReaderHtml(readerArticle.content) : ''">
         </div>
+
+        <!-- 物理底部占位块：防止任何 iOS Safari 胶囊底栏遮挡正文 -->
+        <div class="w-full shrink-0 pointer-events-none" style="height: calc(env(safe-area-inset-bottom, 0px) + 6.5rem);"></div>
       </div>
 
     </div>
