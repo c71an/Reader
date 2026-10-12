@@ -19,6 +19,7 @@
         readerIndex: -1,
         readerSwipeX: 0,
         readerClosing: false,
+        timelineScrollPos: 0,
         _touchStartX: 0,
         _touchStartY: 0,
         _touchActive: false,
@@ -1060,11 +1061,16 @@
         },
 
         openReader(article) {
+          // 记录当前列表滚动位置，切换到文章页面流
+          this.timelineScrollPos = window.scrollY || document.documentElement.scrollTop || 0;
           this.readerArticle = article;
           this.readerIndex = this.timelineItems.findIndex(it => it.id === article.id);
           this.readerSwipeX = 0;
           this.readerClosing = false;
           this.modals.reader = true;
+
+          // 平滑重置到页面顶端并聚焦
+          window.scrollTo(0, 0);
 
           // 自动标记已读
           if (!article.is_read) {
@@ -1089,6 +1095,8 @@
             this.readerIndex = -1;
             this.readerSwipeX = 0;
             this.readerClosing = false;
+            // 无缝恢复列表滚动高度
+            window.scrollTo(0, this.timelineScrollPos || 0);
           }, 180);
         },
 

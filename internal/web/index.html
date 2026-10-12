@@ -150,8 +150,8 @@
     </template>
   </div>
 
-  <!-- 顶部导航栏 -->
-  <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 shadow-sm transition-colors">
+  <!-- 顶部导航栏 (阅读模式时隐藏，交由文章独立顶栏接管) -->
+  <header x-show="isLoggedIn && !modals.reader" class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 shadow-sm transition-colors">
     <div class="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
       <div class="flex items-center space-x-3 cursor-pointer select-none" @click="setTab('timeline')">
         <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-sm">
@@ -250,8 +250,8 @@
     </form>
   </div>
 
-  <!-- 主内容区 -->
-  <main x-show="isLoggedIn" class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 pb-safe">
+  <!-- 主内容区 (阅读模式时隐藏，由全屏流式阅读页完全接管 window.scroll) -->
+  <main x-show="isLoggedIn && !modals.reader" class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 pb-safe">
 
     <!-- 1. 事件流时间线阅读主视图 (默认主页) -->
     <div x-show="currentTab === 'timeline'" class="max-w-3xl mx-auto">
@@ -1382,40 +1382,31 @@
     </div>
   </div>
 
-  <!-- 3. 文章沉浸式阅读器模态框/抽屉 (支持左右滑动返回、上下篇、星标、已读、Live图与图片防盗链) -->
+  <!-- 3. 文章沉浸式独立页面流 (全量支持 iOS Safari Window 级原生滚动、悬浮胶囊岛、右滑手势返回) -->
   <div x-show="modals.reader" 
        x-cloak
        @keydown.escape.window="closeReader()" 
-       style="z-index: 9998;"
-       class="fixed inset-0 bg-slate-950/75 backdrop-blur-xs flex justify-center items-stretch sm:items-start sm:p-4 md:p-6 overflow-hidden select-none"
-       x-transition:enter="transition ease-out duration-200"
-       x-transition:enter-start="opacity-0"
-       x-transition:enter-end="opacity-100"
-       x-transition:leave="transition ease-in duration-150"
-       x-transition:leave-start="opacity-100"
-       x-transition:leave-end="opacity-0">
+       class="min-h-screen bg-white dark:bg-slate-900 transition-transform duration-150"
+       :style="readerSwipeX > 0 ? `transform: translateX(${readerSwipeX}px); transition: none;` : (readerClosing ? 'transform: translateX(100%); transition: transform 0.2s ease-out;' : '')"
+       @touchstart="handleReaderTouchStart($event)"
+       @touchmove="handleReaderTouchMove($event)"
+       @touchend="handleReaderTouchEnd($event)">
 
-    <div class="reader-sheet bg-white dark:bg-slate-900 w-full max-w-3xl h-[100dvh] sm:h-auto sm:max-h-[92vh] sm:rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col my-0 sm:my-auto overflow-hidden transition-transform duration-150"
-         :style="readerSwipeX > 0 ? `transform: translateX(${readerSwipeX}px); transition: none;` : (readerClosing ? 'transform: translateX(100%); transition: transform 0.2s ease-out;' : '')"
-         @touchstart="handleReaderTouchStart($event)"
-         @touchmove="handleReaderTouchMove($event)"
-         @touchend="handleReaderTouchEnd($event)"
-         @click.outside="closeReader()">
-      
-      <!-- 顶栏工具条 (常驻固定) -->
-      <div class="sticky top-0 z-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 h-14 flex items-center justify-between">
-        <!-- 左侧返回与订阅源信息 -->
+    <!-- 详情页专属吸顶顶栏 -->
+    <div class="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 h-14 sm:h-16 shadow-2xs">
+      <div class="max-w-3xl mx-auto px-3.5 sm:px-6 h-full flex items-center justify-between">
+        <!-- 左侧返回按钮与订阅源信息 -->
         <div class="flex items-center space-x-2 truncate pr-2">
-          <button @click="closeReader()" class="p-1.5 -ml-1 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg transition" title="返回列表 (Esc)">
+          <button @click="closeReader()" class="p-1.5 -ml-1 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg transition" title="返回列表 (Esc 或右滑)">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
           </button>
           <div class="truncate">
-            <span class="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate" x-text="readerArticle ? readerArticle.feed_title : ''"></span>
+            <span class="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 truncate" x-text="readerArticle ? readerArticle.feed_title : ''"></span>
           </div>
         </div>
 
         <!-- 右侧操作栏 (星标 / 未读切换 / 原文直达 / 上下篇) -->
-        <div class="flex items-center space-x-1 sm:space-x-1.5">
+        <div class="flex items-center space-x-1 sm:space-x-1.5 shrink-0">
           <!-- 上一篇 -->
           <button @click="prevArticle()" :disabled="readerIndex <= 0" 
                   class="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 disabled:opacity-30 rounded-lg transition" title="上一篇 (← 或 K)">
@@ -1448,29 +1439,29 @@
           </a>
         </div>
       </div>
+    </div>
 
-      <!-- 文章主体内容 (配备 iOS 原生动量滚动与物理底部安全留白块) -->
-      <div class="reader-scroll-container px-5 sm:px-8 py-6 overflow-y-auto flex-1">
-        <!-- 标题 -->
-        <h2 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white leading-tight mb-2 select-text" x-text="readerArticle ? readerArticle.title : ''"></h2>
+    <!-- 正文内容区 (原生 window 根滚动流) -->
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <!-- 标题 -->
+      <h1 class="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white leading-tight mb-3 select-text" x-text="readerArticle ? readerArticle.title : ''"></h1>
 
-        <!-- 元信息 -->
-        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400 dark:text-slate-500 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
-          <span class="font-medium text-indigo-600 dark:text-indigo-400" x-text="readerArticle ? readerArticle.feed_title : ''"></span>
-          <span x-show="readerArticle && readerArticle.author" x-text="'作者: ' + readerArticle.author"></span>
-          <span x-text="readerArticle ? formatReadableTime(readerArticle.published_at) : ''"></span>
-        </div>
-
-        <!-- 正文富文本 HTML (支持图片防盗链、Live 图短视频等) -->
-        <div class="reader-content text-slate-800 dark:text-slate-200 leading-relaxed text-sm sm:text-base select-text"
-             x-html="readerArticle ? formatReaderHtml(readerArticle.content) : ''">
-        </div>
-
-        <!-- 物理底部占位块：防止任何 iOS Safari 胶囊底栏遮挡正文 -->
-        <div class="w-full shrink-0 pointer-events-none" style="height: calc(env(safe-area-inset-bottom, 0px) + 6.5rem);"></div>
+      <!-- 元信息 -->
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-slate-400 dark:text-slate-500 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+        <span class="font-medium text-indigo-600 dark:text-indigo-400" x-text="readerArticle ? readerArticle.feed_title : ''"></span>
+        <span x-show="readerArticle && readerArticle.author" x-text="'作者: ' + readerArticle.author"></span>
+        <span x-text="readerArticle ? formatReadableTime(readerArticle.published_at) : ''"></span>
       </div>
 
+      <!-- 正文富文本 HTML (支持图片防盗链、Live 图短视频等) -->
+      <div class="reader-content text-slate-800 dark:text-slate-200 leading-relaxed text-base sm:text-lg select-text"
+           x-html="readerArticle ? formatReaderHtml(readerArticle.content) : ''">
+      </div>
+
+      <!-- 物理底部留白块：让 Safari 悬浮地址栏无论处于何种状态都绝不遮挡最后一行正文 -->
+      <div class="w-full shrink-0 pointer-events-none" style="height: calc(env(safe-area-inset-bottom, 0px) + 6rem);"></div>
     </div>
+
   </div>
 
   <!-- 前端核心应用逻辑 -->
