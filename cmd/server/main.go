@@ -137,7 +137,6 @@ func main() {
 	// 高性能防盗链图片反代服务 (32KB 零拷贝流式转发 + 30 天客户端强缓存)
 	imageProxy := proxy.NewImageProxy()
 	r.Get("/api/proxy/image", imageProxy.ServeHTTP)
-	r.Get("/proxy", imageProxy.ServeHTTP) // 兼容旧 Router /proxy?url= 模板
 
 	// Web Admin API
 	adminHandler := admin.NewAdminHandler(database, sched)

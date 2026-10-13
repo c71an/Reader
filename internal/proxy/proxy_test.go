@@ -94,3 +94,29 @@ func TestServeHTTP_MockUpstream(t *testing.T) {
 		t.Errorf("Expected body fake-image-bytes, got %s", rr.Body.String())
 	}
 }
+
+func TestServeHTTP_NestedProxy(t *testing.T) {
+	mockUpstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("unwrapped-bytes"))
+	}))
+	defer mockUpstream.Close()
+
+	p := NewImageProxy()
+	p.client = mockUpstream.Client()
+
+	nestedURL := "https://reader.example.com/api/proxy/image?url=" + mockUpstream.URL + "/real.png"
+	req := httptest.NewRequest(http.MethodGet, "/api/proxy/image?url="+nestedURL, nil)
+	rr := httptest.NewRecorder()
+
+	p.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("Expected status 200, got %d, body: %s", rr.Code, rr.Body.String())
+	}
+	if rr.Body.String() != "unwrapped-bytes" {
+		t.Errorf("Expected body unwrapped-bytes, got %s", rr.Body.String())
+	}
+}
+

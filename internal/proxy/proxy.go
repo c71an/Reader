@@ -170,6 +170,21 @@ func (p *ImageProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 防套娃解包：如果传入了嵌套的代理 URL，自动递归解包至最深层的原始图片真实地址
+	for {
+		if strings.Contains(rawTargetURL, "/api/proxy/image?url=") || strings.Contains(rawTargetURL, "/proxy?url=") {
+			uInner, err := url.Parse(rawTargetURL)
+			if err == nil {
+				innerQ := uInner.Query().Get("url")
+				if innerQ != "" && innerQ != rawTargetURL {
+					rawTargetURL = strings.TrimSpace(innerQ)
+					continue
+				}
+			}
+		}
+		break
+	}
+
 	u, err := url.Parse(rawTargetURL)
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
 		http.Error(w, `Invalid target URL scheme, only http/https allowed`, http.StatusBadRequest)
