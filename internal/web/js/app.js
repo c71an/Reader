@@ -15,6 +15,7 @@
         timelineLoading: false,
         timelineFilter: 'all', // 'all' | 'unread' | 'starred'
         timelineSelectedCategory: 'all',
+        timelinePageSize: 10,
         readerArticle: null,
         readerIndex: -1,
         readerSwipeX: 0,
@@ -1005,8 +1006,14 @@
 
           this.timelineLoading = true;
           try {
+            // 动态计算 1.5 倍屏幕高度对应的文章篇数 (移动端约 10~12 篇，桌面端约 14 篇)
+            const targetHeight = (window.innerHeight || 800) * 1.5;
+            const estimatedCardHeight = 110;
+            const dynamicLimit = Math.max(6, Math.ceil(targetHeight / estimatedCardHeight));
+            this.timelinePageSize = dynamicLimit;
+
             const params = new URLSearchParams();
-            params.set('limit', '30');
+            params.set('limit', String(dynamicLimit));
             if (this.timelineContinuation) {
               params.set('continuation', String(this.timelineContinuation));
             }
@@ -1032,7 +1039,7 @@
               this.timelineItems.push(...newItems);
             }
 
-            if (data.continuation && newItems.length >= 30) {
+            if (data.continuation && newItems.length >= this.timelinePageSize) {
               this.timelineContinuation = data.continuation;
               this.timelineHasMore = true;
             } else {
