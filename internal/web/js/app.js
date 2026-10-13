@@ -65,6 +65,9 @@
 
         init() {
           this.checkAuth();
+          if (window.location.hash.startsWith('#article-')) {
+            history.replaceState(null, '', window.location.pathname + window.location.search);
+          }
           window.addEventListener('keydown', (e) => {
             if (!this.modals.reader) return;
             if (e.key === 'ArrowRight' || e.key === 'j' || e.key === 'J') {
@@ -73,6 +76,12 @@
               this.prevArticle();
             } else if (e.key === 'Escape') {
               this.closeReader();
+            }
+          });
+          // 监听浏览器原生返回手势与返回键 (iOS Safari 边缘左滑或底栏后退)
+          window.addEventListener('popstate', () => {
+            if (this.modals.reader) {
+              this.closeReader(false);
             }
           });
         },
@@ -1068,18 +1077,27 @@
         },
 
         openReader(article) {
-          // 记录当前列表滚动位置，切换到文章页面流
-          this.timelineScrollPos = window.scrollY || document.documentElement.scrollTop || 0;
           this.readerArticle = article;
           this.readerIndex = this.timelineItems.findIndex(it => it.id === article.id);
           this.readerSwipeX = 0;
           this.readerClosing = false;
           this.modals.reader = true;
 
-          // 平滑重置到页面顶端并聚焦
+          // 保持底层时间流滚动条原位不动，仅重置详情抽屉内部滚动容器到顶端
           this.$nextTick(() => {
-            window.scrollTo({ top: 0, behavior: 'instant' });
+            const overlay = document.getElementById('reader-modal-overlay');
+            if (overlay) overlay.scrollTop = 0;
           });
+
+          // 推进浏览器历史栈（支持原生返回手势与返回键）
+          const targetHash = '#article-' + article.id;
+          if (window.location.hash !== targetHash) {
+            if (window.location.hash.startsWith('#article-')) {
+              history.replaceState({ readerOpen: true, articleId: article.id }, '', targetHash);
+            } else {
+              history.pushState({ readerOpen: true, articleId: article.id }, '', targetHash);
+            }
+          }
 
           // 自动标记已读
           if (!article.is_read) {
@@ -1095,11 +1113,13 @@
           }
         },
 
-        closeReader() {
+        closeReader(triggerHistoryBack = true) {
+          if (triggerHistoryBack && window.location.hash.startsWith('#article-')) {
+            history.back();
+            return;
+          }
           if (this.readerClosing) return;
           this.readerClosing = true;
-          const targetPos = this.timelineScrollPos || 0;
-          const activeArticleId = this.readerArticle ? this.readerArticle.id : null;
 
           setTimeout(() => {
             this.modals.reader = false;
@@ -1107,21 +1127,6 @@
             this.readerIndex = -1;
             this.readerSwipeX = 0;
             this.readerClosing = false;
-
-            // 无缝恢复列表位置：优先将刚阅读完毕的卡片平滑定位至视口舒适区 (避开底栏遮挡危险区)
-            this.$nextTick(() => {
-              if (activeArticleId) {
-                const cardEl = document.getElementById('article-card-' + activeArticleId);
-                if (cardEl) {
-                  // 计算卡片距离顶部的偏移，预留约 80px 顶栏空间，让卡片舒适地停留在视口上部 15%~25%
-                  const cardTop = cardEl.getBoundingClientRect().top + window.scrollY;
-                  const idealScrollY = Math.max(0, cardTop - 80);
-                  window.scrollTo({ top: idealScrollY, behavior: 'instant' });
-                  return;
-                }
-              }
-              window.scrollTo({ top: targetPos, behavior: 'instant' });
-            });
           }, 180);
         },
 
