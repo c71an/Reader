@@ -1022,9 +1022,10 @@
 
           this.timelineLoading = true;
           try {
-            // 动态计算 1.5 倍屏幕高度对应的文章篇数 (移动端约 10~12 篇，桌面端约 14 篇)
+            // 动态计算 1.5 倍屏幕高度对应的文章篇数 (单屏约 4~5 篇，1.5 屏约 6~8 篇)
+            // 考虑卡片本身高度 (~160px)、日期分节标题、顶部过滤栏及底部留白，单张卡片等效高度按 180px 估算
             const targetHeight = (window.innerHeight || 800) * 1.5;
-            const estimatedCardHeight = 110;
+            const estimatedCardHeight = 180;
             const dynamicLimit = Math.max(6, Math.ceil(targetHeight / estimatedCardHeight));
             this.timelinePageSize = dynamicLimit;
 
@@ -1078,7 +1079,7 @@
               if (entries[0].isIntersecting && !this.timelineLoading && this.timelineHasMore && this.currentTab === 'timeline') {
                 this.loadTimeline(false);
               }
-            }, { rootMargin: '300px' });
+            }, { rootMargin: '150px' });
             observer.observe(sentinel);
           }, 100);
         },
