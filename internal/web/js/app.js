@@ -826,7 +826,7 @@
 
         isAntiHotlinkImage(url) {
           if (!url || typeof url !== 'string') return false;
-          if (url.startsWith('/api/proxy/image')) return false;
+          if (url.includes('/api/proxy/image') || url.includes('/proxy?url=')) return false;
           return /(?:sinaimg\.cn|weibo\.cn|weibocdn\.com|xhscdn\.com|xiaohongshu\.com|zhimg\.com|hdslb\.com|doubanio\.com)/i.test(url);
         },
 
