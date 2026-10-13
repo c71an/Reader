@@ -12,7 +12,26 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
-      darkMode: 'class'
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            slate: {
+              50: '#fafafa',
+              100: '#f5f5f5',
+              200: '#e5e5e5',
+              300: '#d4d4d4',
+              400: '#a3a3a3',
+              500: '#737373',
+              600: '#525252',
+              700: '#404040',
+              800: '#262626',
+              900: '#171717',
+              950: '#0a0a0a',
+            }
+          }
+        }
+      }
     }
   </script>
   <script>
@@ -108,10 +127,10 @@
       -webkit-overflow-scrolling: touch;
       margin: 1.25rem 0;
       border-radius: 0.5rem;
-      border: 1px solid #e2e8f0;
+      border: 1px solid #e5e5e5;
     }
     .dark .reader-table-wrapper {
-      border-color: #334155;
+      border-color: #262626;
     }
     .reader-content table {
       width: max-content !important;
@@ -124,18 +143,18 @@
     .reader-content th,
     .reader-content td {
       padding: 0.5rem 0.75rem !important;
-      border: 1px solid #e2e8f0 !important;
+      border: 1px solid #e5e5e5 !important;
       white-space: nowrap;
     }
     .dark .reader-content th,
     .dark .reader-content td {
-      border-color: #334155 !important;
+      border-color: #262626 !important;
     }
     .reader-content tr:nth-child(even) {
-      background-color: rgba(241, 245, 249, 0.6) !important;
+      background-color: rgba(245, 245, 245, 0.7) !important;
     }
     .dark .reader-content tr:nth-child(even) {
-      background-color: rgba(30, 41, 59, 0.5) !important;
+      background-color: rgba(38, 38, 38, 0.5) !important;
     }
     .reader-content p {
       margin-bottom: 1rem;
@@ -144,27 +163,27 @@
     .reader-content a {
       color: inherit;
       text-decoration: underline;
-      text-decoration-color: #94a3b8;
+      text-decoration-color: #a3a3a3;
       text-underline-offset: 3px;
       font-weight: 500;
     }
     .dark .reader-content a {
-      text-decoration-color: #64748b;
+      text-decoration-color: #737373;
     }
     .reader-content blockquote {
-      border-left: 3px solid #cbd5e1;
+      border-left: 3px solid #d4d4d4;
       padding-left: 1rem;
-      color: #64748b;
+      color: #737373;
       margin: 1.25rem 0;
       font-style: italic;
     }
     .dark .reader-content blockquote {
-      border-left-color: #475569;
-      color: #94a3b8;
+      border-left-color: #404040;
+      color: #a3a3a3;
     }
   </style>
 </head>
-<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 antialiased min-h-screen transition-colors duration-150" x-data="readerApp()" x-cloak>
+<body class="bg-neutral-50 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-100 antialiased min-h-screen transition-colors duration-150" x-data="readerApp()" x-cloak>
   
   <!-- 全局浮动 Toast 消息通知 (黑白灰纯净风格) -->
   <div class="fixed top-3 inset-x-3 sm:inset-x-auto sm:right-5 sm:top-5 z-[99999] flex flex-col space-y-2 pointer-events-none sm:max-w-sm w-auto">
@@ -175,12 +194,12 @@
            x-transition:leave="transition ease-in duration-200"
            x-transition:leave-start="opacity-100 scale-100"
            x-transition:leave-end="opacity-0 scale-95"
-           class="pointer-events-auto px-4 py-3 rounded-xl shadow-lg border flex items-center justify-between text-sm transition bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-slate-200 dark:border-slate-800">
+           class="pointer-events-auto px-4 py-3 rounded-xl shadow-lg border flex items-center justify-between text-sm transition bg-white dark:bg-neutral-900 text-black dark:text-white border-neutral-200 dark:border-neutral-800">
         <div class="flex items-center space-x-2.5 mr-2">
           <span class="text-base font-bold" x-text="t.type === 'success' ? '✓' : (t.type === 'error' ? '✕' : (t.type === 'warning' ? '!' : '·'))"></span>
           <span class="font-medium leading-snug break-words" x-text="t.message"></span>
         </div>
-        <button @click="removeToast(t.id)" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded transition">
+        <button @click="removeToast(t.id)" class="text-neutral-400 hover:text-black dark:hover:text-white p-0.5 rounded transition">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
       </div>
@@ -188,7 +207,7 @@
   </div>
 
   <!-- 顶部全局吸顶导航栏 (列表态与阅读态统一容器，保证顶栏绝对不闪烁、不重新挂载) -->
-  <header x-show="isLoggedIn" class="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 shadow-2xs">
+  <header x-show="isLoggedIn" class="bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800 sticky top-0 z-30 shadow-2xs">
     <!-- 列表默认导航栏 -->
     <div x-show="!modals.reader" class="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
       <div class="flex items-center space-x-3 cursor-pointer select-none" @click="setTab('timeline')">
@@ -345,29 +364,29 @@
     <div x-show="currentTab === 'timeline'" class="max-w-3xl mx-auto">
       
       <!-- 顶栏快速操作与过滤 (单行紧凑排列，移动端自适应保持同一行) -->
-      <div class="flex items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-200/80 dark:border-slate-800/80 overflow-x-auto no-scrollbar py-0.5">
+      <div class="flex items-center justify-between gap-2 mb-4 pb-3 border-b border-neutral-200/80 dark:border-neutral-800/80 overflow-x-auto no-scrollbar py-0.5">
         <!-- 左侧状态与分类切换 -->
         <div class="flex items-center space-x-1.5 shrink-0">
           <button @click="setTimelineFilter('all')"
                   class="w-14 h-7 rounded-full text-xs font-medium transition shrink-0 flex items-center justify-center"
-                  :class="timelineFilter === 'all' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'">
+                  :class="timelineFilter === 'all' ? 'bg-black dark:bg-white text-white dark:text-black shadow-xs' : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800'">
             全部
           </button>
           <button @click="setTimelineFilter('unread')"
                   class="w-14 h-7 rounded-full text-xs font-medium transition shrink-0 flex items-center justify-center"
-                  :class="timelineFilter === 'unread' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'">
+                  :class="timelineFilter === 'unread' ? 'bg-black dark:bg-white text-white dark:text-black shadow-xs' : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800'">
             未读
           </button>
           <button @click="setTimelineFilter('starred')"
                   class="w-14 h-7 rounded-full text-xs font-medium transition shrink-0 flex items-center justify-center"
-                  :class="timelineFilter === 'starred' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'">
+                  :class="timelineFilter === 'starred' ? 'bg-black dark:bg-white text-white dark:text-black shadow-xs' : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800'">
             星标
           </button>
 
           <!-- 文件夹过滤 -->
-          <div class="h-4 w-px bg-slate-200 dark:bg-slate-800 mx-1 shrink-0"></div>
+          <div class="h-4 w-px bg-neutral-200 dark:bg-neutral-800 mx-1 shrink-0"></div>
           <select x-model="timelineSelectedCategory" @change="loadTimeline(true)"
-                  class="max-w-[110px] sm:max-w-[140px] px-2 sm:px-2.5 py-1 text-xs rounded-full bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-400 shrink-0 truncate">
+                  class="max-w-[110px] sm:max-w-[140px] px-2 sm:px-2.5 py-1 text-xs rounded-full bg-white dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-400 shrink-0 truncate">
             <option value="all">所有分类</option>
             <template x-for="cat in computedData.categoryList" :key="cat.name">
               <option :value="cat.name" x-text="cat.name"></option>
@@ -378,7 +397,7 @@
         <!-- 右侧操作栏 (全标已读) -->
         <div class="flex items-center shrink-0 ml-1">
           <button @click="markAllTimelineRead()"
-                  class="px-2.5 py-1 text-xs text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg transition flex items-center space-x-1 shadow-2xs shrink-0"
+                  class="px-2.5 py-1 text-xs text-neutral-600 dark:text-neutral-300 hover:text-black dark:hover:text-white bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg transition flex items-center space-x-1 shadow-2xs shrink-0"
                   title="标记全部为已读">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
             <span>全标已读</span>
@@ -391,26 +410,26 @@
         <template x-for="group in timelineGroups" :key="group.date">
           <div>
             <!-- 日期分节标题 (如 TUESDAY, OCTOBER 6, 2026) -->
-            <div class="py-2.5 px-1 mb-1 sm:sticky sm:top-16 z-10 bg-slate-50/95 dark:bg-slate-950/95 sm:backdrop-blur-md">
-              <h3 class="text-xs font-bold tracking-wider text-slate-400 dark:text-slate-500 uppercase select-none" x-text="group.date"></h3>
+            <div class="py-2.5 px-1 mb-2 sm:sticky sm:top-16 z-10 bg-neutral-50/95 dark:bg-neutral-950/95 sm:backdrop-blur-md">
+              <h3 class="text-xs font-bold tracking-wider text-neutral-400 dark:text-neutral-500 uppercase select-none" x-text="group.date"></h3>
             </div>
 
             <!-- 组内文章卡片列表 -->
-            <div class="space-y-1">
+            <div class="space-y-2.5">
               <template x-for="item in group.items" :key="item.id">
                 <div :id="'article-card-' + item.id"
                      @click="openReader(item)"
-                     class="group p-3.5 sm:p-4 rounded-xl hover:bg-white dark:hover:bg-slate-900 transition cursor-pointer border-b border-slate-100 dark:border-slate-800/60 last:border-b-0 hover:shadow-xs active:bg-slate-100/70 dark:active:bg-slate-800/50">
+                     class="group p-3.5 sm:p-4 rounded-xl bg-white dark:bg-neutral-900 transition cursor-pointer border border-neutral-200/80 dark:border-neutral-800 shadow-2xs hover:shadow-xs active:bg-neutral-100/70 dark:active:bg-neutral-800/50">
                   
                   <!-- 顶信息：Feed 名称 + 发布时刻 -->
-                  <div class="flex items-center justify-between text-xs sm:text-sm text-slate-400 dark:text-slate-500 mb-1.5">
+                  <div class="flex items-center justify-between text-xs sm:text-sm text-neutral-400 dark:text-neutral-500 mb-1.5">
                     <div class="flex items-center space-x-1.5 truncate pr-2 min-w-0">
-                      <span class="font-medium text-slate-600 dark:text-slate-300 truncate" x-text="item.feed_title"></span>
-                      <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="item.is_read ? 'hidden' : 'bg-slate-900 dark:bg-white'"></span>
+                      <span class="font-medium text-neutral-600 dark:text-neutral-300 truncate" x-text="item.feed_title"></span>
+                      <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="item.is_read ? 'hidden' : 'bg-black dark:bg-white'"></span>
                     </div>
                     <div class="flex items-center space-x-2 shrink-0">
-                      <span x-show="item.is_starred" class="text-slate-900 dark:text-white text-sm font-bold">★</span>
-                      <span class="font-mono text-xs text-slate-400 dark:text-slate-500" x-text="formatItemTime(item.published_at)"></span>
+                      <span x-show="item.is_starred" class="text-black dark:text-white text-sm font-bold">★</span>
+                      <span class="font-mono text-xs text-neutral-400 dark:text-neutral-500" x-text="formatItemTime(item.published_at)"></span>
                     </div>
                   </div>
 
@@ -418,16 +437,16 @@
                   <div class="flex items-start justify-between gap-3 sm:gap-4">
                     <div class="flex-1 min-w-0">
                       <h4 class="text-base sm:text-lg leading-snug line-clamp-2 transition-colors select-none"
-                          :class="item.is_read ? 'font-normal text-slate-600 dark:text-slate-400' : 'font-semibold text-slate-900 dark:text-slate-100'"
+                          :class="item.is_read ? 'font-normal text-neutral-500 dark:text-neutral-400' : 'font-semibold text-black dark:text-white'"
                           x-text="item.title || item._snippet"></h4>
                       <p x-show="item.title && item._snippet" 
-                         class="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mt-1.5 leading-relaxed select-none" 
+                         class="text-sm text-neutral-500 dark:text-neutral-400 line-clamp-2 mt-1.5 leading-relaxed select-none" 
                          x-text="item._snippet"></p>
                     </div>
 
                     <!-- 右侧正方形缩略图 -->
                     <template x-if="item._thumbnail">
-                      <div class="relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden shrink-0 bg-slate-200 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60">
+                      <div class="relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200/80 dark:border-neutral-700/80">
                         <img :src="item._thumbnail" 
                              loading="lazy" 
                              referrerpolicy="no-referrer" 
@@ -444,16 +463,16 @@
       </div>
 
       <!-- 空列表状态 -->
-      <div x-show="timelineItems.length === 0 && !timelineLoading" class="py-16 text-center text-slate-400 dark:text-slate-500">
+      <div x-show="timelineItems.length === 0 && !timelineLoading" class="py-16 text-center text-neutral-400 dark:text-neutral-500">
         <div class="text-4xl mb-3">☕</div>
-        <div class="text-sm font-medium text-slate-600 dark:text-slate-300">暂无文章</div>
-        <div class="text-xs text-slate-400 mt-1">没有匹配的文章，或者所有订阅内容均已标记为已读</div>
+        <div class="text-sm font-medium text-neutral-600 dark:text-neutral-300">暂无文章</div>
+        <div class="text-xs text-neutral-400 mt-1">没有匹配的文章，或者所有订阅内容均已标记为已读</div>
       </div>
 
       <!-- 滚动加载哨兵 Sentinel -->
-      <div id="timelineSentinel" class="py-8 text-center text-xs text-slate-400 dark:text-slate-500">
+      <div id="timelineSentinel" class="py-8 text-center text-xs text-neutral-400 dark:text-neutral-500">
         <div x-show="timelineLoading" class="flex items-center justify-center space-x-2">
-          <svg class="animate-spin h-4 w-4 text-slate-900 dark:text-slate-100" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <svg class="animate-spin h-4 w-4 text-black dark:text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
           </svg>
