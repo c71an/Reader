@@ -1077,16 +1077,19 @@
         },
 
         openReader(article) {
+          // 仅当首次从列表打开阅读器时记录时间线滚动位置
+          if (!this.modals.reader) {
+            this.timelineScrollPos = window.scrollY || document.documentElement.scrollTop || 0;
+          }
           this.readerArticle = article;
           this.readerIndex = this.timelineItems.findIndex(it => it.id === article.id);
           this.readerSwipeX = 0;
           this.readerClosing = false;
           this.modals.reader = true;
 
-          // 保持底层时间流滚动条原位不动，仅重置详情抽屉内部滚动容器到顶端
+          // 切换为独立页面流后平滑重置原生 window 滚动条到顶端
           this.$nextTick(() => {
-            const overlay = document.getElementById('reader-modal-overlay');
-            if (overlay) overlay.scrollTop = 0;
+            window.scrollTo({ top: 0, behavior: 'instant' });
           });
 
           // 推进浏览器历史栈（支持原生返回手势与返回键）
@@ -1114,21 +1117,36 @@
         },
 
         closeReader(triggerHistoryBack = true) {
+          if (this.readerClosing) return;
           if (triggerHistoryBack && window.location.hash.startsWith('#article-')) {
+            this.readerClosing = true;
             history.back();
             return;
           }
+          this.readerClosing = false;
           this.modals.reader = false;
           this.readerArticle = null;
           this.readerIndex = -1;
           this.readerSwipeX = 0;
-          this.readerClosing = false;
+
+          // 无缝恢复列表原始滚动条位置
+          this.$nextTick(() => {
+            requestAnimationFrame(() => {
+              window.scrollTo({ top: this.timelineScrollPos || 0, behavior: 'instant' });
+            });
+          });
         },
 
         // 文章详情页滑动返回手势 (左向右滑)
         handleReaderTouchStart(e) {
           if (!e.touches || e.touches.length !== 1) return;
           const touch = e.touches[0];
+          // 关键优化：若触摸起始点位于屏幕最左边缘 (touch.clientX < 30px)，属于 iOS Safari 系统原生边缘返回热区。
+          // 放弃前端模拟手势，全权交给 Safari 原生边缘滑动返回手势，避免与 Safari 原生交互冲突导致二次 history.back() 误退至外部网站。
+          if (touch.clientX < 30) {
+            this._touchActive = false;
+            return;
+          }
           this._touchStartX = touch.clientX;
           this._touchStartY = touch.clientY;
           this._touchActive = true;

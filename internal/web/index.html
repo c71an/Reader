@@ -151,8 +151,8 @@
     </template>
   </div>
 
-  <!-- 顶部导航栏 -->
-  <header x-show="isLoggedIn" class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 shadow-sm transition-colors">
+  <!-- 顶部导航栏 (阅读模式时隐藏，交由文章独立顶栏接管) -->
+  <header x-show="isLoggedIn && !modals.reader" class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 shadow-sm transition-colors">
     <div class="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
       <div class="flex items-center space-x-3 cursor-pointer select-none" @click="setTab('timeline')">
         <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-sm">
@@ -251,8 +251,8 @@
     </form>
   </div>
 
-  <!-- 主内容区 -->
-  <main x-show="isLoggedIn" class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 pb-safe">
+  <!-- 主内容区 (阅读模式时隐藏，由全屏流式阅读页完全接管 window.scroll) -->
+  <main x-show="isLoggedIn && !modals.reader" class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 pb-safe">
 
     <!-- 1. 事件流时间线阅读主视图 (默认主页) -->
     <div x-show="currentTab === 'timeline'" class="max-w-3xl mx-auto">
@@ -1384,15 +1384,14 @@
     </div>
   </div>
 
-  <!-- 3. 文章沉浸式独立覆盖层 (Fixed Fullscreen Overlay，完全不破坏底层时间流滚动与状态) -->
+  <!-- 3. 文章沉浸式独立页面流 (全量支持 iOS Safari Window 级原生滚动、悬浮胶囊岛、右滑手势返回) -->
   <div x-show="modals.reader" 
        x-cloak
        id="reader-modal-overlay"
        @keydown.escape.window="closeReader()" 
-       class="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-white dark:bg-slate-900 select-none"
-       style="-webkit-overflow-scrolling: touch;">
-    <div class="min-h-full w-full max-w-full bg-white dark:bg-slate-900 select-text"
-         :style="readerSwipeX > 0 ? `transform: translateX(${readerSwipeX}px);` : ''"
+       class="w-full max-w-full overflow-x-hidden min-h-screen bg-white dark:bg-slate-900 select-none">
+    <div class="min-h-screen w-full max-w-full bg-white dark:bg-slate-900 select-text"
+         :style="readerSwipeX > 0 ? `transform: translateX(${readerSwipeX}px); will-change: transform;` : ''"
          @touchstart="handleReaderTouchStart($event)"
          @touchmove="handleReaderTouchMove($event)"
          @touchend="handleReaderTouchEnd($event)">
