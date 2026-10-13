@@ -64,6 +64,9 @@
         modalForm: { title: '', feed_url: '', category_name: '' },
 
         init() {
+          if ('scrollRestoration' in history) {
+            history.scrollRestoration = 'manual';
+          }
           this.checkAuth();
           if (window.location.hash.startsWith('#article-')) {
             history.replaceState(null, '', window.location.pathname + window.location.search);
@@ -1125,24 +1128,43 @@
         },
 
         closeReader(triggerHistoryBack = true) {
-          if (triggerHistoryBack) {
-            if (this.readerClosing) return;
-            if (window.location.hash.startsWith('#article-')) {
-              this.readerClosing = true;
-              history.back();
-              return;
-            }
+          if (this.readerClosing) return;
+          this.readerClosing = true;
+
+          // 释放当前聚集元素焦点，防止 Chrome 在隐藏 modal 时将焦点复位至 body 导致滚动条回滚到 0
+          if (document.activeElement && typeof document.activeElement.blur === 'function') {
+            document.activeElement.blur();
           }
-          this.readerClosing = false;
+
+          if (triggerHistoryBack && window.location.hash.startsWith('#article-')) {
+            history.back();
+          }
+
           this.modals.reader = false;
           this.readerArticle = null;
           this.readerIndex = -1;
           this.readerSwipeX = 0;
 
-          // 无缝恢复列表原始滚动条位置 (同步在 DOM 更新时生效，无需延迟至 rAF 避免点击冲突与闪烁)
+          const targetPos = this.timelineScrollPos || 0;
+          const restoreScroll = () => {
+            window.scrollTo({ top: targetPos, behavior: 'instant' });
+          };
+
+          // 双阶段平滑恢复原始滚动条位置：
+          // 1. $nextTick 在 DOM 响应后立即复位
+          // 2. requestAnimationFrame 确保在浏览器渲染帧（Layout / Reflow 完成后）再次锚定，防止 Chrome 布局尚未就绪时被截断
           this.$nextTick(() => {
-            window.scrollTo({ top: this.timelineScrollPos || 0, behavior: 'instant' });
+            restoreScroll();
+            requestAnimationFrame(() => {
+              restoreScroll();
+              this.readerClosing = false;
+            });
           });
+
+          // 保底超时重置防抖锁
+          setTimeout(() => {
+            this.readerClosing = false;
+          }, 350);
         },
 
         // 文章详情页滑动返回手势 (左向右滑)
