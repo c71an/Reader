@@ -824,6 +824,24 @@
           return d.toLocaleString('zh-CN', { hour12: false });
         },
 
+        isAntiHotlinkImage(url) {
+          if (!url || typeof url !== 'string') return false;
+          if (url.startsWith('/api/proxy/image')) return false;
+          return /(?:sinaimg\.cn|weibo\.cn|weibocdn\.com|xhscdn\.com|xiaohongshu\.com|zhimg\.com|hdslb\.com|doubanio\.com)/i.test(url);
+        },
+
+        getProxyImageUrl(url) {
+          if (!url || typeof url !== 'string') return '';
+          let normalized = url.trim();
+          if (normalized.startsWith('//')) {
+            normalized = 'https:' + normalized;
+          }
+          if (this.isAntiHotlinkImage(normalized)) {
+            return `/api/proxy/image?url=${encodeURIComponent(normalized)}`;
+          }
+          return normalized;
+        },
+
         processTimelineItem(item) {
           const content = item.content || '';
           let thumbnail = '';
@@ -901,7 +919,7 @@
                             .replace(/\s+/g, ' ')
                             .trim();
 
-          item._thumbnail = thumbnail;
+          item._thumbnail = this.getProxyImageUrl(thumbnail);
           item._isLive = isLive;
           item._snippet = text.slice(0, 180);
           return item;
@@ -927,7 +945,7 @@
             return ' style=' + quote + filtered.join('; ').trim() + quote;
           });
 
-          // 3. 清洗 <img> 标签上的硬编码 style 中的 width/height 以及固定宽高属性，并自动补全相对路径
+          // 3. 清洗 <img> 标签上的硬编码 style 中的 width/height 以及固定宽高属性，补全相对路径并反代防盗链图片
           const articleBaseUrl = this.readerArticle ? this.readerArticle.url : '';
           html = html.replace(/<img\b([^>]*?)>/gi, (match, attrs) => {
             // 清洗 style 里的 width/height
@@ -941,19 +959,19 @@
               return ' style=' + quote + filtered.join('; ').trim() + quote;
             });
 
-            // 补全相对路径
-            if (articleBaseUrl) {
-              newAttrs = newAttrs.replace(/\s+src=(["'])([\s\S]*?)\1/gi, (srcMatch, quote, srcVal) => {
-                const trimmed = srcVal.trim();
-                if (trimmed && !trimmed.startsWith('http://') && !trimmed.startsWith('https://') && !trimmed.startsWith('data:') && !trimmed.startsWith('//')) {
+            // 补全相对路径并进行代理路由
+            newAttrs = newAttrs.replace(/\s+src=(["'])([\s\S]*?)\1/gi, (srcMatch, quote, srcVal) => {
+              let trimmed = srcVal.trim();
+              if (trimmed && !trimmed.startsWith('http://') && !trimmed.startsWith('https://') && !trimmed.startsWith('data:') && !trimmed.startsWith('//')) {
+                if (articleBaseUrl) {
                   try {
-                    const resolved = new URL(trimmed, articleBaseUrl).href;
-                    return ` src=${quote}${resolved}${quote}`;
+                    trimmed = new URL(trimmed, articleBaseUrl).href;
                   } catch (_) {}
                 }
-                return srcMatch;
-              });
-            }
+              }
+              const proxied = this.getProxyImageUrl(trimmed);
+              return ` src=${quote}${proxied}${quote}`;
+            });
 
             if (!newAttrs.includes('referrerpolicy')) {
               newAttrs += ' referrerpolicy="no-referrer"';
@@ -964,15 +982,26 @@
             return `<img ${newAttrs.trim()}>`;
           });
 
-          // 4. 为所有视频自动注入 playsinline 与 controls，防止移动端打断全屏
+          // 4. 为所有视频自动注入 playsinline 与 controls，并对封面图防盗链进行反代
           html = html.replace(/<video\b([^>]*?)>/gi, (match, attrs) => {
-            if (!attrs.includes('playsinline')) {
-              attrs += ' playsinline webkit-playsinline';
+            let newAttrs = attrs.replace(/\s+poster=(["'])([\s\S]*?)\1/gi, (pMatch, quote, pVal) => {
+              let pTrimmed = pVal.trim();
+              if (pTrimmed && !pTrimmed.startsWith('http://') && !pTrimmed.startsWith('https://') && !pTrimmed.startsWith('//')) {
+                if (articleBaseUrl) {
+                  try {
+                    pTrimmed = new URL(pTrimmed, articleBaseUrl).href;
+                  } catch (_) {}
+                }
+              }
+              return ` poster=${quote}${this.getProxyImageUrl(pTrimmed)}${quote}`;
+            });
+            if (!newAttrs.includes('playsinline')) {
+              newAttrs += ' playsinline webkit-playsinline';
             }
-            if (!attrs.includes('controls')) {
-              attrs += ' controls';
+            if (!newAttrs.includes('controls')) {
+              newAttrs += ' controls';
             }
-            return `<video ${attrs}>`;
+            return `<video ${newAttrs.trim()}>`;
           });
 
           return html;

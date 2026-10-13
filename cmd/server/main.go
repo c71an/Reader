@@ -15,6 +15,7 @@ import (
 	"reader/internal/config"
 	"reader/internal/db"
 	"reader/internal/fetcher"
+	"reader/internal/proxy"
 	"reader/internal/scheduler"
 	"reader/internal/web"
 
@@ -132,6 +133,10 @@ func main() {
 		})
 		registerGReaderRoutes(sub)
 	})
+
+	// 高性能防盗链图片反代服务 (32KB 零拷贝流式转发 + 30 天客户端强缓存)
+	imageProxy := proxy.NewImageProxy()
+	r.Get("/api/proxy/image", imageProxy.ServeHTTP)
 
 	// Web Admin API
 	adminHandler := admin.NewAdminHandler(database, sched)
