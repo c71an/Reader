@@ -142,9 +142,14 @@
       line-height: 1.75;
     }
     .reader-content a {
-      color: #6366f1;
+      color: inherit;
       text-decoration: underline;
+      text-decoration-color: #94a3b8;
       text-underline-offset: 3px;
+      font-weight: 500;
+    }
+    .dark .reader-content a {
+      text-decoration-color: #64748b;
     }
     .reader-content blockquote {
       border-left: 3px solid #cbd5e1;
@@ -161,7 +166,7 @@
 </head>
 <body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 antialiased min-h-screen transition-colors duration-150" x-data="readerApp()" x-cloak>
   
-  <!-- 全局浮动 Toast 消息通知 (移动端顶部居中，桌面端右上角) -->
+  <!-- 全局浮动 Toast 消息通知 (黑白灰纯净风格) -->
   <div class="fixed top-3 inset-x-3 sm:inset-x-auto sm:right-5 sm:top-5 z-[99999] flex flex-col space-y-2 pointer-events-none sm:max-w-sm w-auto">
     <template x-for="t in toasts" :key="t.id">
       <div x-transition:enter="transition ease-out duration-300"
@@ -170,15 +175,9 @@
            x-transition:leave="transition ease-in duration-200"
            x-transition:leave-start="opacity-100 scale-100"
            x-transition:leave-end="opacity-0 scale-95"
-           class="pointer-events-auto px-4 py-3 rounded-xl shadow-lg border flex items-center justify-between text-sm transition"
-            :class="{
-              'bg-white dark:bg-slate-900 text-emerald-900 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/80 shadow-emerald-500/10': t.type === 'success',
-              'bg-white dark:bg-slate-900 text-rose-900 dark:text-rose-300 border-rose-200 dark:border-rose-800/80 shadow-rose-500/10': t.type === 'error',
-              'bg-white dark:bg-slate-900 text-amber-900 dark:text-amber-300 border-amber-200 dark:border-amber-800/80 shadow-amber-500/10': t.type === 'warning',
-              'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200 border-slate-200 dark:border-slate-800 shadow-slate-500/10': t.type === 'info'
-            }">
+           class="pointer-events-auto px-4 py-3 rounded-xl shadow-lg border flex items-center justify-between text-sm transition bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-slate-200 dark:border-slate-800">
         <div class="flex items-center space-x-2.5 mr-2">
-          <span class="text-base" x-text="t.type === 'success' ? '✅' : (t.type === 'error' ? '❌' : (t.type === 'warning' ? '⚠️' : 'ℹ️'))"></span>
+          <span class="text-base font-bold" x-text="t.type === 'success' ? '✓' : (t.type === 'error' ? '✕' : (t.type === 'warning' ? '!' : '·'))"></span>
           <span class="font-medium leading-snug break-words" x-text="t.message"></span>
         </div>
         <button @click="removeToast(t.id)" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded transition">
@@ -193,7 +192,7 @@
     <!-- 列表默认导航栏 -->
     <div x-show="!modals.reader" class="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
       <div class="flex items-center space-x-3 cursor-pointer select-none" @click="setTab('timeline')">
-        <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-sm">
+        <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-slate-900 dark:bg-white flex items-center justify-center text-white dark:text-slate-900 font-bold text-base sm:text-lg shadow-sm">
           R
         </div>
         <h1 class="font-bold text-base sm:text-lg text-slate-900 dark:text-white tracking-tight leading-none">Reader</h1>
@@ -203,8 +202,8 @@
         <!-- 菜单下拉组件 (三条横线 logo) -->
         <div class="relative" @click.away="menuOpen = false">
           <button @click="menuOpen = !menuOpen" 
-                  class="p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  :class="menuOpen ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400' : ''"
+                  class="p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition focus:outline-none focus:ring-2 focus:ring-slate-400"
+                  :class="menuOpen ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white' : ''"
                   title="菜单">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
@@ -225,8 +224,8 @@
             <div class="py-1">
               <!-- 添加订阅 -->
               <button @click="modals.add = true; menuOpen = false" 
-                      class="w-full flex items-center space-x-2.5 px-3.5 py-2 text-xs sm:text-sm text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 font-medium transition text-left">
-                <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                      class="w-full flex items-center space-x-2.5 px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 font-medium transition text-left">
+                <svg class="w-4 h-4 text-slate-700 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                 <span>添加订阅</span>
               </button>
 
@@ -259,8 +258,8 @@
             <!-- 账号退出区 -->
             <div class="py-1">
               <button @click="logout(); menuOpen = false" 
-                      class="w-full flex items-center space-x-2.5 px-3.5 py-2 text-xs sm:text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition text-left">
-                <svg class="w-4 h-4 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                      class="w-full flex items-center space-x-2.5 px-3.5 py-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition text-left">
+                <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                 <span>退出登录</span>
               </button>
             </div>
@@ -301,14 +300,14 @@
         <!-- 标星 -->
         <button @click="toggleReaderArticleStar()" 
                 class="p-1.5 rounded-lg transition"
-                :class="readerArticle && readerArticle.is_starred ? 'text-amber-500' : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'" title="标星收藏">
+                :class="readerArticle && readerArticle.is_starred ? 'text-slate-900 dark:text-white' : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'" title="标星收藏">
           <svg class="w-4 h-4" :fill="readerArticle && readerArticle.is_starred ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
           </svg>
         </button>
         <!-- 标记已读/未读 -->
         <button @click="toggleReaderArticleRead()" 
-                class="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg transition" 
+                class="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg transition" 
                 :title="readerArticle && readerArticle.is_read ? '设为未读' : '设为已读'">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
         </button>
@@ -327,13 +326,13 @@
     <form @submit.prevent="login">
       <div class="mb-4">
         <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">用户名</label>
-        <input type="text" x-model="loginForm.username" required class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+        <input type="text" x-model="loginForm.username" required class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-md focus:ring-slate-400 focus:border-slate-400 text-sm">
       </div>
       <div class="mb-6">
         <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">密码</label>
-        <input type="password" x-model="loginForm.password" required class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+        <input type="password" x-model="loginForm.password" required class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-md focus:ring-slate-400 focus:border-slate-400 text-sm">
       </div>
-      <button type="submit" class="w-full py-2 px-4 bg-indigo-600 text-white rounded-md font-medium text-sm hover:bg-indigo-700 transition">
+      <button type="submit" class="w-full py-2 px-4 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 rounded-md font-medium text-sm transition">
         登录
       </button>
     </form>
@@ -350,29 +349,25 @@
         <!-- 左侧状态与分类切换 -->
         <div class="flex items-center space-x-1.5 shrink-0">
           <button @click="setTimelineFilter('all')"
-                  class="px-2.5 sm:px-3 py-1 rounded-full text-xs font-medium transition shrink-0"
-                  :class="timelineFilter === 'all' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'">
+                  class="w-14 h-7 rounded-full text-xs font-medium transition shrink-0 flex items-center justify-center"
+                  :class="timelineFilter === 'all' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'">
             全部
           </button>
           <button @click="setTimelineFilter('unread')"
-                  class="px-2.5 sm:px-3 py-1 rounded-full text-xs font-medium transition shrink-0 flex items-center space-x-1"
-                  :class="timelineFilter === 'unread' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'">
-            <span>仅未读</span>
-            <span x-show="computedData.unreadTotal > 0" 
-                  class="px-1.5 py-0.2 rounded-full text-[10px] font-bold"
-                  :class="timelineFilter === 'unread' ? 'bg-indigo-500 text-white' : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'" 
-                  x-text="computedData.unreadTotal"></span>
+                  class="w-14 h-7 rounded-full text-xs font-medium transition shrink-0 flex items-center justify-center"
+                  :class="timelineFilter === 'unread' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'">
+            未读
           </button>
           <button @click="setTimelineFilter('starred')"
-                  class="px-2.5 sm:px-3 py-1 rounded-full text-xs font-medium transition shrink-0 flex items-center space-x-1"
-                  :class="timelineFilter === 'starred' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'">
-            <span>★ 标星</span>
+                  class="w-14 h-7 rounded-full text-xs font-medium transition shrink-0 flex items-center justify-center"
+                  :class="timelineFilter === 'starred' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'">
+            星标
           </button>
 
           <!-- 文件夹过滤 -->
           <div class="h-4 w-px bg-slate-200 dark:bg-slate-800 mx-1 shrink-0"></div>
           <select x-model="timelineSelectedCategory" @change="loadTimeline(true)"
-                  class="max-w-[110px] sm:max-w-[140px] px-2 sm:px-2.5 py-1 text-xs rounded-full bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 shrink-0 truncate">
+                  class="max-w-[110px] sm:max-w-[140px] px-2 sm:px-2.5 py-1 text-xs rounded-full bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-400 shrink-0 truncate">
             <option value="all">所有分类</option>
             <template x-for="cat in computedData.categoryList" :key="cat.name">
               <option :value="cat.name" x-text="cat.name"></option>
@@ -383,7 +378,7 @@
         <!-- 右侧操作栏 (全标已读) -->
         <div class="flex items-center shrink-0 ml-1">
           <button @click="markAllTimelineRead()"
-                  class="px-2.5 py-1 text-xs text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg transition flex items-center space-x-1 shadow-2xs shrink-0"
+                  class="px-2.5 py-1 text-xs text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg transition flex items-center space-x-1 shadow-2xs shrink-0"
                   title="标记全部为已读">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
             <span>全标已读</span>
@@ -411,10 +406,10 @@
                   <div class="flex items-center justify-between text-xs sm:text-sm text-slate-400 dark:text-slate-500 mb-1.5">
                     <div class="flex items-center space-x-1.5 truncate pr-2 min-w-0">
                       <span class="font-medium text-slate-600 dark:text-slate-300 truncate" x-text="item.feed_title"></span>
-                      <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="item.is_read ? 'hidden' : 'bg-indigo-600 dark:bg-indigo-400'"></span>
+                      <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="item.is_read ? 'hidden' : 'bg-slate-900 dark:bg-white'"></span>
                     </div>
                     <div class="flex items-center space-x-2 shrink-0">
-                      <span x-show="item.is_starred" class="text-amber-500 text-sm">★</span>
+                      <span x-show="item.is_starred" class="text-slate-900 dark:text-white text-sm font-bold">★</span>
                       <span class="font-mono text-xs text-slate-400 dark:text-slate-500" x-text="formatItemTime(item.published_at)"></span>
                     </div>
                   </div>
@@ -458,7 +453,7 @@
       <!-- 滚动加载哨兵 Sentinel -->
       <div id="timelineSentinel" class="py-8 text-center text-xs text-slate-400 dark:text-slate-500">
         <div x-show="timelineLoading" class="flex items-center justify-center space-x-2">
-          <svg class="animate-spin h-4 w-4 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <svg class="animate-spin h-4 w-4 text-slate-900 dark:text-slate-100" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
           </svg>
@@ -481,49 +476,49 @@
           <div class="text-[11px] sm:text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5 sm:mb-1">全部订阅源</div>
           <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white" x-text="computedData.totalFeeds">0</div>
         </div>
-      <div class="bg-white dark:bg-slate-900 p-3 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-        <div class="text-[11px] sm:text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5 sm:mb-1">分类文件夹数</div>
-        <div class="text-2xl sm:text-3xl font-extrabold text-indigo-600 dark:text-indigo-400" x-text="computedData.categoryList.length">0</div>
-      </div>
-      <div class="bg-white dark:bg-slate-900 p-3 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-        <div class="text-[11px] sm:text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5 sm:mb-1">固定 / 暂停源</div>
-        <div class="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 flex items-baseline">
-          <span x-text="computedData.dailyFixedCount">0</span>
-          <span class="text-[10px] sm:text-xs font-medium text-slate-400 dark:text-slate-500 ml-1.5" x-text="'(' + computedData.pausedCount + ' 暂停)'"></span>
+        <div class="bg-white dark:bg-slate-900 p-3 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div class="text-[11px] sm:text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5 sm:mb-1">分类文件夹数</div>
+          <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white" x-text="computedData.categoryList.length">0</div>
+        </div>
+        <div class="bg-white dark:bg-slate-900 p-3 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div class="text-[11px] sm:text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5 sm:mb-1">固定 / 暂停源</div>
+          <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white flex items-baseline">
+            <span x-text="computedData.dailyFixedCount">0</span>
+            <span class="text-[10px] sm:text-xs font-medium text-slate-400 dark:text-slate-500 ml-1.5" x-text="'(' + computedData.pausedCount + ' 暂停)'"></span>
+          </div>
+        </div>
+        <div class="bg-white dark:bg-slate-900 p-3 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div class="text-[11px] sm:text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5 sm:mb-1">未读文章累计</div>
+          <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white" x-text="computedData.unreadTotal">0</div>
         </div>
       </div>
-      <div class="bg-white dark:bg-slate-900 p-3 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-        <div class="text-[11px] sm:text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5 sm:mb-1">未读文章累计</div>
-        <div class="text-2xl sm:text-3xl font-extrabold text-amber-500 dark:text-amber-400" x-text="computedData.unreadTotal">0</div>
-      </div>
-    </div>
 
     <!-- 顶栏与分类快速筛选器 (自适应排版) -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 mb-4 sm:mb-6">
       <div class="flex items-center space-x-1.5 sm:space-x-2 overflow-x-auto py-1 no-scrollbar">
         <span class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider shrink-0 mr-1">文件夹:</span>
         <button @click="selectedCategory = 'all'" 
-                :class="selectedCategory === 'all' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800'"
+                :class="selectedCategory === 'all' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm font-semibold' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800'"
                 class="px-2.5 sm:px-3 py-1 rounded-full text-xs font-medium transition flex items-center shrink-0">
           全部
-          <span class="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px]" :class="selectedCategory === 'all' ? 'bg-indigo-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'" x-text="computedData.totalFeeds"></span>
+          <span class="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px]" :class="selectedCategory === 'all' ? 'bg-slate-700 dark:bg-slate-200 text-white dark:text-slate-900' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'" x-text="computedData.totalFeeds"></span>
         </button>
         <template x-for="cat in computedData.categoryList" :key="cat.name">
           <button @click="selectedCategory = cat.name" 
-                  :class="selectedCategory === cat.name ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800'"
+                  :class="selectedCategory === cat.name ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm font-semibold' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800'"
                   class="px-2.5 sm:px-3 py-1 rounded-full text-xs font-medium transition flex items-center shrink-0">
             <span class="mr-1">📁</span>
             <span x-text="cat.name"></span>
-            <span class="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px]" :class="selectedCategory === cat.name ? 'bg-indigo-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'" x-text="cat.count"></span>
+            <span class="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px]" :class="selectedCategory === cat.name ? 'bg-slate-700 dark:bg-slate-200 text-white dark:text-slate-900' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'" x-text="cat.count"></span>
           </button>
         </template>
       </div>
 
       <div class="flex items-center justify-between sm:justify-end space-x-2 shrink-0">
-        <button @click="toggleSelectAll()" class="text-xs text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md transition shadow-2xs">
+        <button @click="toggleSelectAll()" class="text-xs text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-medium px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md transition shadow-2xs">
           <span x-text="isAllSelected() ? '取消全选' : '全部全选'"></span>
         </button>
-        <button @click="toggleAllFolders()" class="text-xs text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md transition shadow-2xs">
+        <button @click="toggleAllFolders()" class="text-xs text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-medium px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md transition shadow-2xs">
           <span x-text="areAllFoldersCollapsed() ? '展开全部' : '折叠全部'"></span>
         </button>
       </div>
@@ -541,14 +536,14 @@
       
       <!-- 已选数量提示 -->
       <div class="flex items-center space-x-1 sm:space-x-1.5 px-2 sm:px-2.5 py-1 text-xs font-medium text-slate-500 dark:text-slate-400 border-r border-slate-200 dark:border-slate-800 mr-0.5 sm:mr-1 shrink-0">
-        <span class="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-500 animate-pulse"></span>
+        <span class="w-2 h-2 rounded-full bg-slate-900 dark:bg-white animate-pulse"></span>
         <span>已选 <span class="font-bold text-slate-800 dark:text-white" x-text="selectedFeedIds.length"></span> 项</span>
       </div>
 
       <!-- 抓取按钮 -->
       <div class="relative group shrink-0">
         <button @click="runBatchAction('fetch')" :disabled="loading.batch" 
-                class="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition disabled:opacity-40"
+                class="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition disabled:opacity-40"
                 title="立即抓取">
           <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
@@ -563,7 +558,7 @@
       <!-- 时间分配 -->
       <div class="relative group shrink-0">
         <button @click="openStaggerModal(getSelectedFeeds(), '已选订阅')" :disabled="loading.batch"
-                class="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition disabled:opacity-40"
+                class="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition disabled:opacity-40"
                 title="时间分配">
           <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -578,7 +573,7 @@
       <!-- 暂停抓取 -->
       <div class="relative group shrink-0">
         <button @click="runBatchAction('pause')" :disabled="loading.batch"
-                class="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition disabled:opacity-40"
+                class="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition disabled:opacity-40"
                 title="暂停抓取">
           <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -593,7 +588,7 @@
       <!-- 恢复抓取 -->
       <div class="relative group shrink-0">
         <button @click="runBatchAction('resume')" :disabled="loading.batch"
-                class="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition disabled:opacity-40"
+                class="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition disabled:opacity-40"
                 title="恢复抓取">
           <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
@@ -609,7 +604,7 @@
       <!-- 删除按钮 -->
       <div class="relative group shrink-0">
         <button @click="runBatchAction('delete')" :disabled="loading.batch"
-                class="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition disabled:opacity-40"
+                class="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition disabled:opacity-40"
                 title="删除订阅">
           <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -656,14 +651,14 @@
                 <span class="text-base shrink-0">📁</span>
                 <span class="font-bold text-slate-900 dark:text-white text-sm sm:text-base truncate" x-text="group.categoryName"></span>
                 <span x-show="group.unreadTotal > 0" 
-                      class="inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded-full text-[11px] sm:text-xs font-semibold bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 shrink-0" 
+                      class="inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded-full text-[11px] sm:text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shrink-0" 
                       x-text="group.unreadTotal + ' 未读'"></span>
               </div>
             </div>
 
             <div class="flex items-center space-x-2 shrink-0" @click.stop>
               <button @click="openCategoryEditModal(group)" 
-                      class="text-xs text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium p-1.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-500 transition shadow-2xs flex items-center"
+                      class="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium p-1.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500 transition shadow-2xs flex items-center"
                       title="设置文件夹标题与排列顺序">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
@@ -684,7 +679,7 @@
                       <input type="checkbox" 
                              :checked="isGroupAllSelected(group.feeds)" 
                              @change="toggleGroupSelect(group.feeds)" 
-                             class="rounded border-slate-300 dark:border-slate-700 dark:bg-slate-800 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+                             class="rounded border-slate-300 dark:border-slate-700 dark:bg-slate-800 text-slate-900 focus:ring-slate-400 cursor-pointer">
                     </th>
                     <th class="px-4 py-2.5 text-left">订阅源标题 / 链接</th>
                     <th class="w-44 px-4 py-2.5 text-left">调度策略</th>
@@ -694,50 +689,49 @@
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                   <template x-for="feed in group.feeds" :key="feed.id">
-                    <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition" :class="isSelected(selectedFeedIds, feed.id) ? 'bg-indigo-50/40 dark:bg-indigo-950/40' : ''">
+                    <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition" :class="isSelected(selectedFeedIds, feed.id) ? 'bg-slate-100/70 dark:bg-slate-800/60' : ''">
                       <td class="w-12 px-3 py-3.5 text-center">
                         <input type="checkbox" 
                                :checked="isSelected(selectedFeedIds, feed.id)" 
                                @change="toggleSelect(selectedFeedIds, feed.id)" 
-                               class="rounded border-slate-300 dark:border-slate-700 dark:bg-slate-800 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+                               class="rounded border-slate-300 dark:border-slate-700 dark:bg-slate-800 text-slate-900 focus:ring-slate-400 cursor-pointer">
                       </td>
                       <td class="px-4 py-3.5 overflow-hidden">
                         <div class="font-semibold text-slate-900 dark:text-slate-100 flex items-center space-x-2 min-w-0">
-                          <button @click="openDbView(feed)" class="text-left hover:text-indigo-600 dark:hover:text-indigo-400 transition truncate min-w-0" :title="feed.title">
+                          <button @click="openDbView(feed)" class="text-left hover:text-slate-600 dark:hover:text-slate-300 transition truncate min-w-0" :title="feed.title">
                             <span x-text="feed.title" class="hover:underline"></span>
                           </button>
-                          <a x-show="feed.site_url" :href="feed.site_url" target="_blank" class="text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 shrink-0" title="打开网站主页">
+                          <a x-show="feed.site_url" :href="feed.site_url" target="_blank" class="text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white shrink-0" title="打开网站主页">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                           </a>
                         </div>
                         <div class="text-xs text-slate-400 dark:text-slate-500 font-mono flex items-center space-x-1.5 mt-0.5 min-w-0">
                           <span class="truncate" x-text="feed.feed_url" :title="feed.feed_url"></span>
-                          <button type="button" @click.stop="copyText(feed.feed_url, '订阅链接已复制')" class="text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 shrink-0 p-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="复制订阅链接">
+                          <button type="button" @click.stop="copyText(feed.feed_url, '订阅链接已复制')" class="text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white shrink-0 p-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="复制订阅链接">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                           </button>
                         </div>
                       </td>
                       <td class="w-44 px-3 py-2 whitespace-nowrap overflow-hidden" @click.stop>
                         <input type="text"
-                               :value="feed.schedule_type === 'paused' ? '' : (feed.schedule_value || '')"
-                               @change="updateFeedSchedule(feed, $event.target.value)"
-                               @keydown.enter="$event.target.blur()"
-                               placeholder="已暂停"
-                               title="回车或失焦保存，留空为暂停"
-                               class="w-full px-2.5 py-1 text-xs font-mono rounded-md border transition focus:outline-none focus:ring-1"
-                               :class="feed.schedule_type === 'paused' 
-                                 ? 'border-dashed border-slate-300 dark:border-slate-700 text-slate-400 dark:text-slate-500 bg-slate-50/70 dark:bg-slate-800/40 placeholder-slate-400 dark:placeholder-slate-500 focus:border-indigo-400 focus:ring-indigo-300 dark:focus:border-indigo-500 dark:focus:ring-indigo-400 focus:bg-white dark:focus:bg-slate-800 focus:text-slate-800 dark:focus:text-slate-100' 
-                                 : 'border-slate-200 dark:border-slate-700 text-indigo-700 dark:text-indigo-300 bg-indigo-50/30 dark:bg-indigo-950/40 hover:border-slate-300 dark:hover:border-slate-600 focus:border-indigo-500 focus:ring-indigo-400 focus:bg-white dark:focus:bg-slate-800'">
+                                :value="feed.schedule_type === 'paused' ? '' : (feed.schedule_value || '')"
+                                @change="updateFeedSchedule(feed, $event.target.value)"
+                                @keydown.enter="$event.target.blur()"
+                                placeholder="已暂停"
+                                title="回车或失焦保存，留空为暂停"
+                                class="w-full px-2.5 py-1 text-xs font-mono rounded-md border transition focus:outline-none focus:ring-1"
+                                :class="feed.schedule_type === 'paused' 
+                                  ? 'border-dashed border-slate-300 dark:border-slate-700 text-slate-400 dark:text-slate-500 bg-slate-50/70 dark:bg-slate-800/40 placeholder-slate-400 dark:placeholder-slate-500 focus:border-slate-400 focus:bg-white dark:focus:bg-slate-800 focus:text-slate-800 dark:focus:text-slate-100' 
+                                  : 'border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-600 focus:border-slate-400 focus:bg-white dark:focus:bg-slate-800'">
                       </td>
                       <td class="w-16 px-3 py-3.5 text-center">
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
-                              :class="feed.unread_count > 0 ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'"
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
                               x-text="feed.unread_count || 0">
                         </span>
                       </td>
                       <td class="w-48 px-4 py-3.5 whitespace-nowrap overflow-hidden">
                         <div class="text-xs text-slate-600 dark:text-slate-400 font-mono" x-text="formatTime(feed.last_fetched_at)"></div>
-                        <div x-show="feed.last_error" class="text-xs text-red-500 dark:text-rose-400 truncate mt-0.5" :title="feed.last_error" x-text="'⚠️ ' + feed.last_error"></div>
+                        <div x-show="feed.last_error" class="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5" :title="feed.last_error" x-text="'⚠️ ' + feed.last_error"></div>
                       </td>
                     </tr>
                   </template>
@@ -755,7 +749,7 @@
                       <input type="checkbox" 
                              :checked="isGroupAllSelected(group.feeds)" 
                              @change="toggleGroupSelect(group.feeds)" 
-                             class="w-5 h-5 rounded border-slate-300 dark:border-slate-700 dark:bg-slate-800 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+                             class="w-5 h-5 rounded border-slate-300 dark:border-slate-700 dark:bg-slate-800 text-slate-900 focus:ring-slate-400 cursor-pointer">
                     </label>
                     <span>订阅源</span>
                   </div>
@@ -765,32 +759,32 @@
 
               <template x-for="feed in group.feeds" :key="feed.id">
                 <div class="p-3.5 flex items-start space-x-3 transition active:bg-slate-50 dark:active:bg-slate-800/60"
-                     :class="isSelected(selectedFeedIds, feed.id) ? 'bg-indigo-50/50 dark:bg-indigo-950/40' : ''">
+                     :class="isSelected(selectedFeedIds, feed.id) ? 'bg-slate-100/70 dark:bg-slate-800/60' : ''">
                   <!-- 增大触控复选框区域 -->
                   <label class="shrink-0 pt-0.5 p-1 -m-1 cursor-pointer">
                     <input type="checkbox" 
                            :checked="isSelected(selectedFeedIds, feed.id)" 
                            @change="toggleSelect(selectedFeedIds, feed.id)" 
-                           class="w-5 h-5 rounded border-slate-300 dark:border-slate-700 dark:bg-slate-800 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+                           class="w-5 h-5 rounded border-slate-300 dark:border-slate-700 dark:bg-slate-800 text-slate-900 focus:ring-slate-400 cursor-pointer">
                   </label>
 
                   <!-- 卡片主体内容 -->
                   <div class="flex-1 min-w-0">
                     <div class="flex items-start justify-between gap-2">
-                      <button @click="openDbView(feed)" class="text-left font-semibold text-slate-900 dark:text-slate-100 hover:text-indigo-600 dark:hover:text-indigo-400 text-sm leading-snug line-clamp-2 transition" title="点击查看文章">
+                      <button @click="openDbView(feed)" class="text-left font-semibold text-slate-900 dark:text-slate-100 hover:text-slate-600 dark:hover:text-slate-300 text-sm leading-snug line-clamp-2 transition" title="点击查看文章">
                         <span x-text="feed.title"></span>
                       </button>
                       <span x-show="(feed.unread_count || 0) > 0" 
-                            class="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border dark:border-amber-800/50"
+                            class="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
                             x-text="feed.unread_count"></span>
                     </div>
 
                     <div class="text-[11px] text-slate-400 dark:text-slate-500 font-mono truncate mt-0.5 flex items-center space-x-1.5">
                       <span class="truncate" x-text="feed.feed_url"></span>
-                      <button type="button" @click.stop="copyText(feed.feed_url, '订阅链接已复制')" class="text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 shrink-0 p-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="复制订阅链接">
+                      <button type="button" @click.stop="copyText(feed.feed_url, '订阅链接已复制')" class="text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white shrink-0 p-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="复制订阅链接">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                       </button>
-                      <a x-show="feed.site_url" :href="feed.site_url" target="_blank" class="text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 shrink-0 p-0.5" title="主页">
+                      <a x-show="feed.site_url" :href="feed.site_url" target="_blank" class="text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white shrink-0 p-0.5" title="主页">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                       </a>
                     </div>
@@ -807,15 +801,15 @@
                                title="回车或失焦保存，留空为暂停"
                                class="w-32 px-1.5 py-0.5 text-[11px] font-mono rounded border transition focus:outline-none focus:ring-1"
                                :class="feed.schedule_type === 'paused' 
-                                 ? 'border-dashed border-slate-300 dark:border-slate-700 text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/40 placeholder-slate-400 dark:placeholder-slate-500 focus:border-indigo-400 focus:bg-white dark:focus:bg-slate-800 focus:text-slate-800 dark:focus:text-slate-100' 
-                                 : 'border-slate-200 dark:border-slate-700 text-indigo-700 dark:text-indigo-300 bg-indigo-50/40 dark:bg-indigo-950/40 focus:border-indigo-500 focus:bg-white dark:focus:bg-slate-800'">
+                                 ? 'border-dashed border-slate-300 dark:border-slate-700 text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/40 placeholder-slate-400 dark:placeholder-slate-500 focus:border-slate-400 focus:bg-white dark:focus:bg-slate-800 focus:text-slate-800 dark:focus:text-slate-100' 
+                                 : 'border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/50 focus:border-slate-400 focus:bg-white dark:focus:bg-slate-800'">
                       </div>
 
                       <span class="text-slate-400 dark:text-slate-500 font-mono text-[10px] shrink-0 ml-auto" x-text="formatTime(feed.last_fetched_at)"></span>
                     </div>
 
                     <!-- 错误状态提示 -->
-                    <div x-show="feed.last_error" class="text-[11px] text-red-500 dark:text-rose-400 truncate mt-1.5 bg-red-50 dark:bg-rose-950/40 px-2 py-0.5 rounded border border-red-100 dark:border-rose-900/50" :title="feed.last_error" x-text="'⚠️ ' + feed.last_error"></div>
+                    <div x-show="feed.last_error" class="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-1.5 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700" :title="feed.last_error" x-text="'⚠️ ' + feed.last_error"></div>
                   </div>
                 </div>
               </template>
@@ -845,12 +839,12 @@
         <div>
           <div class="flex items-center justify-between mb-1">
             <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">源地址 (Feed URL / RSSHub)</label>
-            <button x-show="modalForm.feed_url" type="button" @click="copyText(modalForm.feed_url, '订阅链接已复制')" class="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 flex items-center space-x-1" title="复制订阅链接">
+            <button x-show="modalForm.feed_url" type="button" @click="copyText(modalForm.feed_url, '订阅链接已复制')" class="text-xs text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center space-x-1" title="复制订阅链接">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
               <span>复制链接</span>
             </button>
           </div>
-          <input type="text" x-model="modalForm.feed_url" placeholder="https://rsshub.app/... 或自定义 RSSHub 路由" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 font-mono">
+          <input type="text" x-model="modalForm.feed_url" placeholder="https://rsshub.app/... 或自定义 RSSHub 路由" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-md text-sm focus:ring-slate-400 focus:border-slate-400 font-mono">
         </div>
 
         <div>
@@ -861,7 +855,7 @@
         <div>
           <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1">所属分类文件夹 (输入新名字自动新建)</label>
           <div class="relative" x-data="{ open: false }" @click.outside="open = false">
-            <div class="flex items-center border border-slate-300 dark:border-slate-700 rounded-md focus-within:ring-1 focus-within:ring-indigo-500 focus-within:border-indigo-500 bg-white dark:bg-slate-800">
+            <div class="flex items-center border border-slate-300 dark:border-slate-700 rounded-md focus-within:ring-1 focus-within:ring-slate-400 focus-within:border-slate-400 bg-white dark:bg-slate-800">
               <input type="text" 
                      x-model="modalForm.category_name" 
                      @focus="open = true"
@@ -887,18 +881,18 @@
               </div>
               <button type="button" 
                       @click="modalForm.category_name = ''; open = false"
-                      class="w-full text-left px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-700 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center justify-between transition"
-                      :class="!modalForm.category_name ? 'font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/50' : ''">
+                      class="w-full text-left px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white flex items-center justify-between transition"
+                      :class="!modalForm.category_name ? 'font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-700' : ''">
                 <span>📁 (未分类)</span>
-                <span x-show="!modalForm.category_name" class="text-indigo-600 dark:text-indigo-400 text-xs">✓</span>
+                <span x-show="!modalForm.category_name" class="text-slate-900 dark:text-white text-xs">✓</span>
               </button>
               <template x-for="cat in computedData.categoryList.filter(c => c.name !== '未分类')" :key="cat.name">
                 <button type="button" 
                         @click="modalForm.category_name = cat.name; open = false"
-                        class="w-full text-left px-3 py-1.5 text-xs text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-700 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center justify-between transition"
-                        :class="modalForm.category_name === cat.name ? 'font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/50' : ''">
+                        class="w-full text-left px-3 py-1.5 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white flex items-center justify-between transition"
+                        :class="modalForm.category_name === cat.name ? 'font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-700' : ''">
                   <span class="truncate" x-text="'📁 ' + cat.name"></span>
-                  <span x-show="modalForm.category_name === cat.name" class="text-indigo-600 dark:text-indigo-400 text-xs shrink-0 ml-1">✓</span>
+                  <span x-show="modalForm.category_name === cat.name" class="text-slate-900 dark:text-white text-xs shrink-0 ml-1">✓</span>
                 </button>
               </template>
             </div>
@@ -908,7 +902,7 @@
 
       <div class="mt-6 flex justify-end space-x-3">
         <button @click="closeAddModal()" class="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-md text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition">取消</button>
-        <button @click="saveAddFeed()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition">添加订阅</button>
+        <button @click="saveAddFeed()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 rounded-md text-sm font-medium transition">添加订阅</button>
       </div>
     </div>
   </div>
@@ -933,20 +927,20 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <div>
             <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">起始时间 (HH:MM)</label>
-            <input type="text" x-model="staggerForm.start_time" placeholder="08:00" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-md text-sm font-mono focus:ring-indigo-500 focus:border-indigo-500">
+            <input type="text" x-model="staggerForm.start_time" placeholder="08:00" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-md text-sm font-mono focus:ring-slate-400 focus:border-slate-400">
           </div>
           <div>
             <div class="flex items-center justify-between mb-1">
               <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase">间隔 (分钟)</label>
               <span class="text-[10px] text-slate-400 dark:text-slate-500">设为 0 则时间相同</span>
             </div>
-            <input type="number" x-model.number="staggerForm.interval_minutes" min="0" max="720" placeholder="30" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-md text-sm font-mono focus:ring-indigo-500 focus:border-indigo-500">
+            <input type="number" x-model.number="staggerForm.interval_minutes" min="0" max="720" placeholder="30" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-md text-sm font-mono focus:ring-slate-400 focus:border-slate-400">
           </div>
         </div>
 
         <div>
           <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">随机浮动时长 (可选)</label>
-          <input type="text" x-model="staggerForm.jitter" placeholder="30m (留空则不设置)" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-md text-sm font-mono focus:ring-indigo-500 focus:border-indigo-500">
+          <input type="text" x-model="staggerForm.jitter" placeholder="30m (留空则不设置)" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-md text-sm font-mono focus:ring-slate-400 focus:border-slate-400">
         </div>
 
         <div>
@@ -962,8 +956,8 @@
               { label: '周六', val: 6 }
             ]" :key="day.val">
               <label class="flex items-center justify-center gap-1.5 p-2 rounded-lg border cursor-pointer text-xs transition select-none"
-                     :class="staggerForm.days.includes(day.val) ? 'border-indigo-600 dark:border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/60 font-semibold text-indigo-900 dark:text-indigo-300' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'">
-                <input type="checkbox" :value="day.val" x-model="staggerForm.days" class="rounded text-indigo-600 focus:ring-indigo-500">
+                     :class="staggerForm.days.includes(day.val) ? 'border-slate-900 dark:border-white bg-slate-900 dark:bg-white font-semibold text-white dark:text-slate-900' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'">
+                <input type="checkbox" :value="day.val" x-model="staggerForm.days" class="rounded text-slate-900 focus:ring-slate-400">
                 <span x-text="day.label"></span>
               </label>
             </template>
@@ -976,7 +970,7 @@
             <template x-for="item in staggerPreviewList" :key="item.id">
               <div class="flex items-center justify-between py-1 px-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800/60 transition">
                 <span class="text-slate-800 dark:text-slate-200 font-sans truncate max-w-[260px]" x-text="item.title"></span>
-                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-400" x-text="item.time + ' (' + item.cron + ')'"></span>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200" x-text="item.time + ' (' + item.cron + ')'"></span>
               </div>
             </template>
           </div>
@@ -989,7 +983,7 @@
 
       <div class="mt-6 flex justify-end space-x-3">
         <button @click="modals.stagger = false" class="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-md text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition">取消</button>
-        <button @click="saveStaggerSchedule()" :disabled="loading.stagger || staggerTargetFeeds.length === 0" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-md text-sm font-medium transition flex items-center">
+        <button @click="saveStaggerSchedule()" :disabled="loading.stagger || staggerTargetFeeds.length === 0" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 disabled:opacity-50 text-white dark:text-slate-900 rounded-md text-sm font-medium transition flex items-center">
           <span x-text="loading.stagger ? '正在分配...' : '确认分配时间'"></span>
         </button>
       </div>
@@ -1015,20 +1009,20 @@
       <div class="space-y-4">
         <div>
           <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">文件夹标题 (分类名称)</label>
-          <input type="text" x-model="categoryForm.name" placeholder="输入文件夹标题" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500">
+          <input type="text" x-model="categoryForm.name" placeholder="输入文件夹标题" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-md text-sm focus:ring-slate-400 focus:border-slate-400">
           <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">修改后本文件夹下的所有订阅源将归属于此标题</p>
         </div>
 
         <div>
           <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">排列顺序 (数字越小越上面)</label>
-          <input type="number" x-model.number="categoryForm.sort_order" placeholder="0" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-md text-sm font-mono focus:ring-indigo-500 focus:border-indigo-500">
+          <input type="number" x-model.number="categoryForm.sort_order" placeholder="0" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-md text-sm font-mono focus:ring-slate-400 focus:border-slate-400">
           <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">例如：1 排在 2 上面；数字越小，在页面与分类栏中的排列位置越靠前</p>
         </div>
       </div>
 
       <div class="mt-6 flex justify-end space-x-3">
         <button @click="modals.category = false" class="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-md text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition">取消</button>
-        <button @click="saveCategorySettings()" :disabled="loading.category" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-md text-sm font-medium transition flex items-center">
+        <button @click="saveCategorySettings()" :disabled="loading.category" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 disabled:opacity-50 text-white dark:text-slate-900 rounded-md text-sm font-medium transition flex items-center">
           <span x-text="loading.category ? '正在保存...' : '保存设置'"></span>
         </button>
       </div>
@@ -1045,18 +1039,18 @@
       <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Reeder 完美原生支持 Google Reader API 规范，请在 Reeder 中直接添加账号：</p>
       
       <div class="bg-slate-50 dark:bg-slate-950 p-4 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-mono space-y-2 mb-4">
-        <div><span class="text-slate-400 dark:text-slate-500">账号类型:</span> <span class="font-bold text-indigo-600 dark:text-indigo-400">Google Reader</span></div>
+        <div><span class="text-slate-400 dark:text-slate-500">账号类型:</span> <span class="font-bold text-slate-900 dark:text-white">Google Reader</span></div>
         <div><span class="text-slate-400 dark:text-slate-500">Server (服务器地址):</span> <span class="text-slate-800 dark:text-slate-200" x-text="window.location.origin"></span></div>
         <div><span class="text-slate-400 dark:text-slate-500">Username (用户名):</span> <span class="text-slate-800 dark:text-slate-200" x-text="profile.username"></span></div>
         <div><span class="text-slate-400 dark:text-slate-500">Password (密码):</span> <span class="text-slate-800 dark:text-slate-200">您的控制台登录密码 (默认 admin123)</span></div>
       </div>
 
-      <div class="text-xs text-slate-600 dark:text-amber-200/90 leading-relaxed bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 p-3 rounded-lg mb-6">
+      <div class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-lg mb-6">
         ℹ️ Reeder 会自动通过 <code>/accounts/ClientLogin</code> 完成认证并请求 <code>/reader/api/0/*</code> 接口，拉取所有分类文件夹、订阅源以及文章正文。
       </div>
 
       <div class="flex items-center justify-end pt-2">
-        <button @click="modals.clientInfo = false" class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700">完成</button>
+        <button @click="modals.clientInfo = false" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 rounded-md text-sm font-medium">完成</button>
       </div>
     </div>
   </div>
@@ -1072,7 +1066,7 @@
         <div>
           <div class="flex items-center space-x-2">
             <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">设备与 Token 会话管理</h3>
-            <span class="text-xs px-2 py-0.5 rounded-full font-mono font-medium bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300" x-text="'共 ' + tokensList.length + ' 个会话'"></span>
+            <span class="text-xs px-2 py-0.5 rounded-full font-mono font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300" x-text="'共 ' + tokensList.length + ' 个会话'"></span>
           </div>
           <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">管理已连接本系统的客户端授权凭证与活跃设备</p>
         </div>
@@ -1090,8 +1084,8 @@
 
         <button @click="revokeOtherTokens()" 
                 :disabled="loading.tokens || tokensList.filter(t => !t.is_current).length === 0"
-                class="px-3 py-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 disabled:opacity-40 disabled:cursor-not-allowed text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 font-medium rounded-lg transition flex items-center shadow-2xs">
-          <svg class="w-3.5 h-3.5 mr-1 text-rose-600 dark:text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                class="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 font-medium rounded-lg transition flex items-center shadow-2xs">
+          <svg class="w-3.5 h-3.5 mr-1 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
           <span>一键注销其他设备</span>
           <span class="ml-1 text-[11px] opacity-80" x-text="'(' + tokensList.filter(t => !t.is_current).length + ')'"></span>
         </button>
@@ -1101,17 +1095,17 @@
       <div class="flex-1 overflow-y-auto min-h-[160px] max-h-[380px] space-y-2.5 pr-0.5">
         <template x-for="tok in tokensList" :key="tok.id">
           <div class="p-3 sm:p-3.5 rounded-xl border transition flex items-center justify-between"
-               :class="tok.is_current ? 'bg-indigo-50/40 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800/80' : 'bg-white dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'">
+               :class="tok.is_current ? 'bg-slate-100/70 dark:bg-slate-800/70 border-slate-300 dark:border-slate-600' : 'bg-white dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'">
             <div class="flex items-center space-x-3 min-w-0 mr-2">
               <div class="w-9 h-9 rounded-lg flex items-center justify-center text-lg shrink-0"
-                   :class="tok.is_current ? 'bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'"
+                   :class="tok.is_current ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'"
                    x-text="getClientIcon(tok.client_type)">
               </div>
               <div class="min-w-0">
                 <div class="flex items-center space-x-2">
                   <span class="font-bold text-sm text-slate-900 dark:text-slate-100 truncate" x-text="getClientTypeName(tok.client_type)"></span>
                   <span class="px-1.5 py-0.2 rounded text-[10px] font-mono uppercase bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300" x-text="tok.client_type"></span>
-                  <span x-show="tok.is_current" class="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-400 shrink-0">当前设备 (本机)</span>
+                  <span x-show="tok.is_current" class="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 shrink-0">当前设备 (本机)</span>
                 </div>
                 <div class="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5 flex flex-wrap items-center gap-x-2.5">
                   <span x-text="'Token #' + tok.id"></span>
@@ -1121,12 +1115,12 @@
             </div>
 
             <div class="shrink-0">
-              <span x-show="tok.is_current" class="text-xs text-emerald-600 dark:text-emerald-400 font-medium px-2 py-1 bg-emerald-50 dark:bg-emerald-950/40 rounded border border-emerald-200 dark:border-emerald-800">
+              <span x-show="tok.is_current" class="text-xs text-slate-700 dark:text-slate-300 font-medium px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700">
                 在线
               </span>
               <button x-show="!tok.is_current" 
                       @click="revokeToken(tok.id)" 
-                      class="px-2.5 py-1 text-xs text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/50 border border-slate-200 dark:border-slate-700 hover:border-rose-200 dark:hover:border-rose-800 rounded-md transition font-medium">
+                      class="px-2.5 py-1 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md transition font-medium">
                 注销
               </button>
             </div>
@@ -1144,7 +1138,7 @@
       <!-- 底部安全与防膨胀说明 -->
       <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 -mx-5 -mb-5 sm:-mx-6 sm:-mb-6 p-4 sm:px-6 rounded-b-2xl sm:rounded-b-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
         <div class="flex items-start space-x-1.5 leading-relaxed text-[11px]">
-          <span class="text-indigo-600 dark:text-indigo-400 font-bold shrink-0">🛡️ 安全策略:</span>
+          <span class="text-slate-700 dark:text-slate-300 font-bold shrink-0">🛡️ 安全策略:</span>
           <span>系统采用 LRU 配额策略（同客户端最多保留 5 个会话）；超期 90 天未活跃的 Token 会被后台自动清理。</span>
         </div>
         <button @click="modals.tokens = false" class="px-4 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-medium rounded-md transition shrink-0 self-end sm:self-auto">
@@ -1165,14 +1159,14 @@
         <div class="min-w-0 flex-1 space-y-2">
           <!-- 标题与所属分类与 ID -->
           <div class="flex flex-wrap items-center gap-2">
-            <span class="text-[10px] sm:text-xs font-mono font-semibold px-1.5 sm:px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 shrink-0">源配置</span>
+            <span class="text-[10px] sm:text-xs font-mono font-semibold px-1.5 sm:px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 shrink-0">源配置</span>
             
             <div class="flex items-center space-x-1 min-w-0 flex-1 sm:flex-initial">
               <input type="text" 
                      x-model="dbEditForm.title" 
                      placeholder="订阅源自定义标题" 
                      title="可直接修改自定义标题"
-                     class="font-bold text-slate-900 dark:text-slate-100 text-sm sm:text-base border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 focus:border-indigo-500 rounded px-2 py-0.5 bg-white dark:bg-slate-800 transition w-full sm:w-72">
+                     class="font-bold text-slate-900 dark:text-slate-100 text-sm sm:text-base border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 focus:border-slate-400 rounded px-2 py-0.5 bg-white dark:bg-slate-800 transition w-full sm:w-72">
             </div>
             
             <span class="text-[11px] text-slate-400 dark:text-slate-500 font-mono shrink-0" x-text="'(id: ' + dbCurrentFeed.id + ')'"></span>
@@ -1181,7 +1175,7 @@
             <div class="flex items-center space-x-1.5 text-xs" x-data="{ open: false }">
               <span class="text-slate-400 dark:text-slate-500 text-[11px] shrink-0">分类:</span>
               <div class="relative w-36 sm:w-44" @click.outside="open = false">
-                <div class="w-full flex items-center border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 focus-within:border-indigo-500 rounded-md bg-white dark:bg-slate-800 transition shadow-2xs">
+                <div class="w-full flex items-center border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 focus-within:border-slate-400 rounded-md bg-white dark:bg-slate-800 transition shadow-2xs">
                   <input type="text" 
                          x-model="dbEditForm.category_name" 
                          @focus="open = true"
@@ -1209,18 +1203,18 @@
                   </div>
                   <button type="button" 
                           @click="dbEditForm.category_name = ''; open = false"
-                          class="w-full text-left px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-700 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center justify-between transition"
-                          :class="!dbEditForm.category_name ? 'font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/50' : ''">
+                          class="w-full text-left px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white flex items-center justify-between transition"
+                          :class="!dbEditForm.category_name ? 'font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-700' : ''">
                     <span>📁 (未分类)</span>
-                    <span x-show="!dbEditForm.category_name" class="text-indigo-600 dark:text-indigo-400 text-xs">✓</span>
+                    <span x-show="!dbEditForm.category_name" class="text-slate-900 dark:text-white text-xs">✓</span>
                   </button>
                   <template x-for="cat in computedData.categoryList.filter(c => c.name !== '未分类')" :key="cat.name">
                     <button type="button" 
                             @click="dbEditForm.category_name = cat.name; open = false"
-                            class="w-full text-left px-2.5 py-1.5 text-xs text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-700 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center justify-between transition"
-                            :class="dbEditForm.category_name === cat.name ? 'font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/50' : ''">
+                            class="w-full text-left px-2.5 py-1.5 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white flex items-center justify-between transition"
+                            :class="dbEditForm.category_name === cat.name ? 'font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-700' : ''">
                       <span class="truncate" x-text="'📁 ' + cat.name"></span>
-                      <span x-show="dbEditForm.category_name === cat.name" class="text-indigo-600 dark:text-indigo-400 text-xs shrink-0 ml-1">✓</span>
+                      <span x-show="dbEditForm.category_name === cat.name" class="text-slate-900 dark:text-white text-xs shrink-0 ml-1">✓</span>
                     </button>
                   </template>
                 </div>
@@ -1235,11 +1229,11 @@
               <input type="text" 
                      x-model="dbEditForm.feed_url" 
                      title="源地址 (Feed URL / RSSHub)"
-                     class="font-mono text-[11px] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded px-2 py-0.5 w-60 sm:w-96 focus:outline-none focus:border-indigo-500 bg-white dark:bg-slate-800 transition truncate">
-              <button type="button" @click.stop="copyText(dbEditForm.feed_url, '订阅链接已复制')" class="text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 shrink-0 p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 transition" title="复制订阅链接">
+                     class="font-mono text-[11px] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded px-2 py-0.5 w-60 sm:w-96 focus:outline-none focus:border-slate-400 bg-white dark:bg-slate-800 transition truncate">
+              <button type="button" @click.stop="copyText(dbEditForm.feed_url, '订阅链接已复制')" class="text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white shrink-0 p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 transition" title="复制订阅链接">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
               </button>
-              <a x-show="dbCurrentFeed.site_url" :href="dbCurrentFeed.site_url" target="_blank" class="text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 shrink-0 p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 transition" title="打开网站主页">
+              <a x-show="dbCurrentFeed.site_url" :href="dbCurrentFeed.site_url" target="_blank" class="text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white shrink-0 p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 transition" title="打开网站主页">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
               </a>
             </div>
@@ -1247,7 +1241,7 @@
             <!-- 有改动时高亮保存按钮 -->
             <button x-show="isDbFeedModified()" 
                     @click="saveFeedSettingsInDbView()" 
-                    class="px-2.5 py-0.5 rounded text-[11px] font-medium bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition flex items-center space-x-1 animate-pulse">
+                    class="px-2.5 py-0.5 rounded text-[11px] font-medium bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 shadow-xs transition flex items-center space-x-1">
               <span>✓ 保存修改</span>
             </button>
           </div>
@@ -1262,14 +1256,14 @@
       </div>
 
       <!-- 批量管理操作工具条 (已读 / 未读) -->
-      <div class="px-4 sm:px-6 py-2 sm:py-2.5 bg-slate-50/80 dark:bg-slate-800/40 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 sm:gap-3 text-xs font-sans">
+      <div class="px-4 sm:px-6 py-2.5 sm:py-3 bg-slate-50/80 dark:bg-slate-800/40 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 sm:gap-3 text-xs font-sans">
         <div class="flex items-center space-x-2">
           <span class="font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[11px]">批量:</span>
           <button @click="toggleSelectAllArticles()" 
                   class="px-2.5 py-1 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded text-slate-700 dark:text-slate-300 font-medium transition shadow-2xs">
             <span x-text="isAllArticlesSelected() ? '取消全选' : '全选本页'"></span>
           </button>
-          <span x-show="selectedArticleIds.length > 0" class="text-indigo-600 dark:text-indigo-400 font-semibold ml-1">
+          <span x-show="selectedArticleIds.length > 0" class="text-slate-900 dark:text-white font-semibold ml-1">
             已勾选 <span x-text="selectedArticleIds.length"></span> 篇
           </span>
         </div>
@@ -1282,7 +1276,7 @@
           </button>
           <button @click="batchMarkArticlesRead(false)" 
                   :disabled="selectedArticleIds.length === 0 || loading.dbAction"
-                  class="px-2.5 sm:px-3 py-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium rounded text-xs transition flex items-center shadow-xs">
+                  class="px-2.5 sm:px-3 py-1 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium rounded text-xs transition flex items-center shadow-xs">
             ● 设为未读
           </button>
         </div>
@@ -1295,7 +1289,7 @@
             <thead class="bg-slate-100/90 dark:bg-slate-800/90 text-slate-700 dark:text-slate-300 sticky top-0 z-10 font-bold border-b border-slate-200 dark:border-slate-700">
               <tr>
                 <th class="w-10 px-3 py-3 text-center">
-                  <input type="checkbox" :checked="isAllArticlesSelected()" @change="toggleSelectAllArticles()" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+                  <input type="checkbox" :checked="isAllArticlesSelected()" @change="toggleSelectAllArticles()" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-slate-400 cursor-pointer">
                 </th>
                 <th class="px-4 py-3 text-left">id</th>
                 <th class="px-3 py-3 text-left">feed_id</th>
@@ -1312,9 +1306,9 @@
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
               <template x-for="art in dbArticles" :key="art.id">
-                <tr class="hover:bg-indigo-50/40 dark:hover:bg-slate-800/50 transition group" :class="isSelected(selectedArticleIds, art.id) ? 'bg-indigo-50/70 dark:bg-indigo-950/50' : ''">
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition group" :class="isSelected(selectedArticleIds, art.id) ? 'bg-slate-100/80 dark:bg-slate-800' : ''">
                   <td class="w-10 px-3 py-3 text-center">
-                    <input type="checkbox" :checked="isSelected(selectedArticleIds, art.id)" @change="toggleSelect(selectedArticleIds, art.id)" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+                    <input type="checkbox" :checked="isSelected(selectedArticleIds, art.id)" @change="toggleSelect(selectedArticleIds, art.id)" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-slate-400 cursor-pointer">
                   </td>
                   <td class="px-4 py-3 text-slate-900 dark:text-slate-100 font-semibold" x-text="art.id"></td>
                   <td class="px-3 py-3 text-slate-500 dark:text-slate-400" x-text="art.feed_id"></td>
@@ -1326,28 +1320,28 @@
                   <td class="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap" x-text="formatTime(art.published_at)"></td>
                   <td class="px-4 py-3 text-slate-400 dark:text-slate-500 whitespace-nowrap" x-text="formatTime(art.created_at)"></td>
                   <td class="px-3 py-3 text-center">
-                    <a x-show="art.url" :href="art.url" target="_blank" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 underline font-sans" title="在新标签打开链接">
+                    <a x-show="art.url" :href="art.url" target="_blank" class="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white underline font-sans" title="在新标签打开链接">
                       链接
                     </a>
                     <span x-show="!art.url" class="text-slate-400 dark:text-slate-600">-</span>
                   </td>
                   <td class="px-3 py-3 text-center">
-                    <button @click="openContentDetail(art)" class="px-2 py-1 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/70 text-indigo-700 dark:text-indigo-300 font-medium rounded text-[11px] font-sans transition">
+                    <button @click="openContentDetail(art)" class="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium rounded text-[11px] font-sans transition">
                       查看正文 (<span x-text="(art.content || '').length + '字'"></span>)
                     </button>
                   </td>
                   <td class="px-3 py-3 text-center">
                     <button @click="toggleSingleArticleRead(art)" 
-                            class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-sans font-medium transition cursor-pointer hover:ring-1 hover:ring-indigo-400"
-                            :class="art.is_read ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700' : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/60'"
+                            class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-sans font-medium transition cursor-pointer hover:ring-1 hover:ring-slate-400"
+                            :class="art.is_read ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700' : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold'"
                             title="点击切换已读/未读">
                       <span x-text="art.is_read ? '1 (已读)' : '0 (未读)'"></span>
                     </button>
                   </td>
                   <td class="px-3 py-3 text-center">
                     <span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-sans font-medium"
-                          :class="art.is_starred ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'"
-                          x-text="art.is_starred ? '1 (已标星)' : '0'">
+                          :class="art.is_starred ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white font-bold' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'"
+                          x-text="art.is_starred ? '★ 已标星' : '0'">
                     </span>
                   </td>
                 </tr>
@@ -1370,10 +1364,10 @@
         <div class="block md:hidden p-3 space-y-2.5">
           <template x-for="art in dbArticles" :key="art.id">
             <div class="bg-white dark:bg-slate-800/80 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-2"
-                 :class="isSelected(selectedArticleIds, art.id) ? 'bg-indigo-50/50 dark:bg-indigo-950/50 border-indigo-200 dark:border-indigo-800' : ''">
+                 :class="isSelected(selectedArticleIds, art.id) ? 'bg-slate-100/70 dark:bg-slate-800 border-slate-300 dark:border-slate-600' : ''">
               <div class="flex items-start space-x-2.5">
                 <label class="pt-0.5 cursor-pointer shrink-0">
-                  <input type="checkbox" :checked="isSelected(selectedArticleIds, art.id)" @change="toggleSelect(selectedArticleIds, art.id)" class="w-4.5 h-4.5 rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+                  <input type="checkbox" :checked="isSelected(selectedArticleIds, art.id)" @change="toggleSelect(selectedArticleIds, art.id)" class="w-4.5 h-4.5 rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-slate-400 cursor-pointer">
                 </label>
                 <div class="flex-1 min-w-0">
                   <h4 class="font-bold text-sm text-slate-900 dark:text-slate-100 leading-snug line-clamp-2" x-text="art.title"></h4>
@@ -1388,16 +1382,16 @@
                 <div class="flex items-center space-x-1.5">
                   <button @click="toggleSingleArticleRead(art)" 
                           class="inline-flex px-2 py-0.5 rounded text-[11px] font-medium transition cursor-pointer"
-                          :class="art.is_read ? 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400' : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-400 font-semibold'">
+                          :class="art.is_read ? 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400' : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold'">
                     <span x-text="art.is_read ? '已读' : '● 未读'"></span>
                   </button>
-                  <span x-show="art.is_starred" class="inline-flex px-1.5 py-0.5 rounded text-[10px] bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-400">★ 标星</span>
+                  <span x-show="art.is_starred" class="inline-flex px-1.5 py-0.5 rounded text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white font-bold">★ 标星</span>
                 </div>
                 <div class="flex items-center space-x-2">
-                  <a x-show="art.url" :href="art.url" target="_blank" class="text-indigo-600 dark:text-indigo-400 text-xs hover:underline">
+                  <a x-show="art.url" :href="art.url" target="_blank" class="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-xs hover:underline">
                     原文 ↗
                   </a>
-                  <button @click="openContentDetail(art)" class="px-2 py-1 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/70 text-indigo-700 dark:text-indigo-300 font-medium rounded text-[11px] transition">
+                  <button @click="openContentDetail(art)" class="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium rounded text-[11px] transition">
                     正文 (<span x-text="(art.content || '').length + '字'"></span>)
                   </button>
                 </div>
@@ -1436,7 +1430,7 @@
       <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex items-center justify-between">
         <div class="min-w-0 pr-2">
           <div class="flex items-center space-x-2">
-            <span class="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 shrink-0">HTML 源码</span>
+            <span class="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 shrink-0">HTML 源码</span>
             <span class="text-xs text-slate-500 dark:text-slate-400 font-mono" x-text="'id: ' + (detailArticle ? detailArticle.id : '')"></span>
           </div>
           <h3 class="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 mt-0.5 truncate" x-text="detailArticle ? detailArticle.title : ''"></h3>
@@ -1449,7 +1443,7 @@
       <!-- 纯原始 HTML 源码展示区 -->
       <div class="p-3.5 sm:p-6 overflow-y-auto flex-1 flex flex-col space-y-2.5 sm:space-y-3 bg-slate-900 dark:bg-slate-950">
         <div class="flex items-center justify-between text-xs text-slate-400 font-mono">
-          <span>长度: <span class="text-emerald-400 font-bold" x-text="(detailArticle && detailArticle.content ? detailArticle.content.length : 0) + ' 字符'"></span></span>
+          <span>长度: <span class="text-slate-200 font-bold" x-text="(detailArticle && detailArticle.content ? detailArticle.content.length : 0) + ' 字符'"></span></span>
           <button @click="copyRawContent()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs transition flex items-center">
             <span x-text="copySuccess ? '已复制！' : '复制代码'"></span>
           </button>
@@ -1458,7 +1452,7 @@
         <textarea readonly 
                   id="rawContentTextarea"
                   x-ref="rawContentTextarea"
-                  class="w-full flex-1 min-h-[260px] sm:min-h-[380px] p-3 sm:p-4 bg-slate-950 text-emerald-400 font-mono text-xs rounded-xl border border-slate-800 focus:outline-none select-all resize-none leading-relaxed" 
+                  class="w-full flex-1 min-h-[260px] sm:min-h-[380px] p-3 sm:p-4 bg-slate-950 text-slate-200 font-mono text-xs rounded-xl border border-slate-800 focus:outline-none select-all resize-none leading-relaxed" 
                   x-text="detailArticle ? (detailArticle.content || '') : ''"
                   placeholder="无正文内容"></textarea>
       </div>
@@ -1493,7 +1487,7 @@
 
       <!-- 元信息 -->
       <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-slate-400 dark:text-slate-500 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
-        <span class="font-medium text-indigo-600 dark:text-indigo-400" x-text="readerArticle ? readerArticle.feed_title : ''"></span>
+        <span class="font-medium text-slate-600 dark:text-slate-400" x-text="readerArticle ? readerArticle.feed_title : ''"></span>
         <span x-show="readerArticle && readerArticle.author" x-text="'作者: ' + readerArticle.author"></span>
         <span x-text="readerArticle ? formatReadableTime(readerArticle.published_at) : ''"></span>
       </div>
