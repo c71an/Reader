@@ -297,7 +297,8 @@ func (d *DB) SaveArticles(articles []*Article) (int, error) {
 
 	newCount := 0
 	for _, a := range articles {
-		res, err := stmt.Exec(a.FeedID, a.GUID, a.Title, a.URL, a.Content, a.Author, a.PublishedAt)
+		pubAt := a.PublishedAt.Truncate(time.Second).UTC()
+		res, err := stmt.Exec(a.FeedID, a.GUID, a.Title, a.URL, a.Content, a.Author, pubAt)
 		if err != nil {
 			return 0, err
 		}

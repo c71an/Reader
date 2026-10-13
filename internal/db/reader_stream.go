@@ -45,7 +45,7 @@ type StreamItemIDRef struct {
 
 func normalizeTimestamp(ts int64) time.Time {
 	if ts <= 0 {
-		return time.Now().Add(24 * time.Hour)
+		return time.Now().Add(24 * time.Hour).UTC()
 	}
 	if ts > 1e16 {
 		ts = ts / 1e9 // nanoseconds
@@ -54,7 +54,7 @@ func normalizeTimestamp(ts int64) time.Time {
 	} else if ts > 1e10 {
 		ts = ts / 1e3 // milliseconds
 	}
-	return time.Unix(ts, 0)
+	return time.Unix(ts, 0).UTC()
 }
 
 func (d *DB) buildStreamFilterWhere(filter StreamQueryFilter) ([]string, []interface{}) {
@@ -150,7 +150,7 @@ func (d *DB) buildStreamFilterWhere(filter StreamQueryFilter) ([]string, []inter
 		if strings.Contains(filter.Continuation, "_") {
 			parts := strings.SplitN(filter.Continuation, "_", 2)
 			if sec, err := strconv.ParseInt(parts[0], 10, 64); err == nil && sec > 0 {
-				contPubTime = time.Unix(sec, 0)
+				contPubTime = time.Unix(sec, 0).UTC()
 			}
 			if id, err := strconv.ParseInt(parts[1], 10, 64); err == nil && id > 0 {
 				contID = id
@@ -160,7 +160,7 @@ func (d *DB) buildStreamFilterWhere(filter StreamQueryFilter) ([]string, []inter
 			contID = id
 			var pubAt time.Time
 			if err := d.QueryRow("SELECT published_at FROM articles WHERE id = ?", id).Scan(&pubAt); err == nil {
-				contPubTime = pubAt
+				contPubTime = pubAt.UTC()
 			}
 		}
 

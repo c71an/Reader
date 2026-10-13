@@ -1017,7 +1017,7 @@
         },
 
         async loadTimeline(reset = false) {
-          if (this.timelineLoading) return;
+          if (this.timelineLoading && !reset) return;
           if (!reset && !this.timelineHasMore) return;
 
           if (reset) {
@@ -1059,10 +1059,14 @@
             if (reset) {
               this.timelineItems = newItems;
             } else {
-              this.timelineItems.push(...newItems);
+              // 关键去重保护：防止游标边界重叠导致同一文章在时间流中重复展示或乱序
+              const existingIds = new Set(this.timelineItems.map(it => it.id));
+              const uniqueNewItems = newItems.filter(it => !existingIds.has(it.id));
+              this.timelineItems.push(...uniqueNewItems);
             }
 
-            if (data.continuation && newItems.length >= this.timelinePageSize) {
+            // 只要服务端明确给出了下一页游标，就说明底层还有更多文章，继续允许无限滚动加载
+            if (data.continuation) {
               this.timelineContinuation = data.continuation;
               this.timelineHasMore = true;
             } else {

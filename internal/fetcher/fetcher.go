@@ -131,6 +131,7 @@ func (f *Fetcher) FetchFeed(ctx context.Context, feed *db.Feed) (int, error) {
 		if pubDate.After(now.Add(24 * time.Hour)) {
 			pubDate = now
 		}
+		pubDate = pubDate.Truncate(time.Second).UTC()
 
 		guid := strings.TrimSpace(item.GUID)
 		if guid == "" {
