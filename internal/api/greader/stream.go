@@ -105,11 +105,7 @@ func (h *Handler) StreamContentsHandler(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	continuationStr := r.URL.Query().Get("c")
-	var continuation int64
-	if continuationStr != "" {
-		continuation, _ = strconv.ParseInt(continuationStr, 10, 64)
-	}
+	continuationStr := strings.TrimSpace(r.URL.Query().Get("c"))
 
 	orderOldest := r.URL.Query().Get("r") == "o"
 
@@ -129,7 +125,7 @@ func (h *Handler) StreamContentsHandler(w http.ResponseWriter, r *http.Request) 
 		StartTime:     startTime,
 		StopTime:      stopTime,
 		Limit:         limit,
-		Continuation:  continuation,
+		Continuation:  continuationStr,
 		OrderOldest:   orderOldest,
 	})
 	if err != nil {
@@ -150,7 +146,8 @@ func (h *Handler) StreamContentsHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if len(items) == limit && len(items) > 0 {
-		resp.Continuation = fmt.Sprintf("%d", items[len(items)-1].ID)
+		last := items[len(items)-1]
+		resp.Continuation = fmt.Sprintf("%d_%d", last.PublishedAt.Unix(), last.ID)
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -184,11 +181,7 @@ func (h *Handler) StreamItemIDsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	continuationStr := r.URL.Query().Get("c")
-	var continuation int64
-	if continuationStr != "" {
-		continuation, _ = strconv.ParseInt(continuationStr, 10, 64)
-	}
+	continuationStr := strings.TrimSpace(r.URL.Query().Get("c"))
 
 	orderOldest := r.URL.Query().Get("r") == "o"
 
@@ -208,7 +201,7 @@ func (h *Handler) StreamItemIDsHandler(w http.ResponseWriter, r *http.Request) {
 		StartTime:     startTime,
 		StopTime:      stopTime,
 		Limit:         limit,
-		Continuation:  continuation,
+		Continuation:  continuationStr,
 		OrderOldest:   orderOldest,
 	})
 	if err != nil {
@@ -237,8 +230,9 @@ func (h *Handler) StreamItemIDsHandler(w http.ResponseWriter, r *http.Request) {
 		ItemRefs: refs,
 	}
 
-	if len(refs) == limit && len(refs) > 0 {
-		resp.Continuation = refs[len(refs)-1].ID
+	if len(itemRefsRaw) == limit && len(itemRefsRaw) > 0 {
+		last := itemRefsRaw[len(itemRefsRaw)-1]
+		resp.Continuation = fmt.Sprintf("%d_%d", last.PublishedAt.Unix(), last.ID)
 	}
 
 	// 兼容 News+ 客户端：空列表时返回 0 引用避免客户端报错

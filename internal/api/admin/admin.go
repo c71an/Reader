@@ -680,12 +680,7 @@ func (h *AdminHandler) GetTimeline(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var continuation int64
-	if cStr := r.URL.Query().Get("continuation"); cStr != "" {
-		if c, err := strconv.ParseInt(cStr, 10, 64); err == nil && c > 0 {
-			continuation = c
-		}
-	}
+	continuation := strings.TrimSpace(r.URL.Query().Get("continuation"))
 
 	streamID := strings.TrimSpace(r.URL.Query().Get("stream_id"))
 	if streamID == "" {
@@ -716,9 +711,10 @@ func (h *AdminHandler) GetTimeline(w http.ResponseWriter, r *http.Request) {
 		items = []*db.StreamItem{}
 	}
 
-	var nextContinuation int64
+	var nextContinuation string
 	if len(items) == limit {
-		nextContinuation = items[len(items)-1].ID
+		last := items[len(items)-1]
+		nextContinuation = fmt.Sprintf("%d_%d", last.PublishedAt.Unix(), last.ID)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

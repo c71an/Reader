@@ -160,6 +160,7 @@ func (d *DB) initSchema() error {
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_articles_published ON articles(published_at DESC);
+	CREATE INDEX IF NOT EXISTS idx_articles_published_id ON articles(published_at DESC, id DESC);
 	CREATE INDEX IF NOT EXISTS idx_articles_feed ON articles(feed_id);
 	CREATE INDEX IF NOT EXISTS idx_states_user_read ON article_states(user_id, is_read);
 	CREATE INDEX IF NOT EXISTS idx_states_user_starred ON article_states(user_id, is_starred);

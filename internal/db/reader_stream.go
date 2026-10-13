@@ -16,8 +16,8 @@ type StreamQueryFilter struct {
 	StartTime     int64   // ot (获取指定时间之后的文章)
 	StopTime      int64   // nt (获取指定时间之前的文章)
 	Limit         int
-	Continuation  int64   // 基于文章 ID 的分页 (按 FreshRSS 规则使用 monotonic article ID)
-	OrderOldest   bool    // r == "o"
+	Continuation  string // 复合游标字符串，格式 "{timestamp}_{id}" 或兼容纯数字 id
+	OrderOldest   bool   // r == "o"
 }
 
 type StreamItem struct {
@@ -143,14 +143,42 @@ func (d *DB) buildStreamFilterWhere(filter StreamQueryFilter) ([]string, []inter
 		args = append(args, stopT)
 	}
 
-	// 7. Continuation (基于自增 ID 进行稳定无遗漏的分页)
-	if filter.Continuation > 0 {
-		if filter.OrderOldest {
-			whereClauses = append(whereClauses, "a.id > ?")
-		} else {
-			whereClauses = append(whereClauses, "a.id < ?")
+	// 7. Continuation (基于发布时间与自增 ID 联合游标的分页)
+	if filter.Continuation != "" {
+		var contPubTime time.Time
+		var contID int64
+		if strings.Contains(filter.Continuation, "_") {
+			parts := strings.SplitN(filter.Continuation, "_", 2)
+			if sec, err := strconv.ParseInt(parts[0], 10, 64); err == nil && sec > 0 {
+				contPubTime = time.Unix(sec, 0)
+			}
+			if id, err := strconv.ParseInt(parts[1], 10, 64); err == nil && id > 0 {
+				contID = id
+			}
+		} else if id, err := strconv.ParseInt(filter.Continuation, 10, 64); err == nil && id > 0 {
+			// 兼容旧版仅传纯数字 ID: 尝试从 articles 表中查出该 ID 对应的 published_at
+			contID = id
+			var pubAt time.Time
+			if err := d.QueryRow("SELECT published_at FROM articles WHERE id = ?", id).Scan(&pubAt); err == nil {
+				contPubTime = pubAt
+			}
 		}
-		args = append(args, filter.Continuation)
+
+		if !contPubTime.IsZero() && contID > 0 {
+			if filter.OrderOldest {
+				whereClauses = append(whereClauses, "(a.published_at > ? OR (a.published_at = ? AND a.id > ?))")
+			} else {
+				whereClauses = append(whereClauses, "(a.published_at < ? OR (a.published_at = ? AND a.id < ?))")
+			}
+			args = append(args, contPubTime, contPubTime, contID)
+		} else if contID > 0 {
+			if filter.OrderOldest {
+				whereClauses = append(whereClauses, "a.id > ?")
+			} else {
+				whereClauses = append(whereClauses, "a.id < ?")
+			}
+			args = append(args, contID)
+		}
 	}
 
 	return whereClauses, args
@@ -177,9 +205,9 @@ func (d *DB) GetStreamItems(filter StreamQueryFilter) ([]*StreamItem, error) {
 		LEFT JOIN categories c ON f.category_id = c.id
 		LEFT JOIN article_states s ON a.id = s.article_id AND s.user_id = ?
 		WHERE %s
-		ORDER BY a.id %s
+		ORDER BY a.published_at %s, a.id %s
 		LIMIT %d
-	`, strings.Join(whereClauses, " AND "), orderDir, filter.Limit)
+	`, strings.Join(whereClauses, " AND "), orderDir, orderDir, filter.Limit)
 
 	rows, err := d.Query(query, args...)
 	if err != nil {
@@ -222,9 +250,9 @@ func (d *DB) GetStreamItemIDs(filter StreamQueryFilter) ([]*StreamItemIDRef, err
 		LEFT JOIN categories c ON f.category_id = c.id
 		LEFT JOIN article_states s ON a.id = s.article_id AND s.user_id = ?
 		WHERE %s
-		ORDER BY a.id %s
+		ORDER BY a.published_at %s, a.id %s
 		LIMIT %d
-	`, strings.Join(whereClauses, " AND "), orderDir, filter.Limit)
+	`, strings.Join(whereClauses, " AND "), orderDir, orderDir, filter.Limit)
 
 	rows, err := d.Query(query, args...)
 	if err != nil {

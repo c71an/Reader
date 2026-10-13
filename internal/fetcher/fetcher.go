@@ -127,6 +127,10 @@ func (f *Fetcher) FetchFeed(ctx context.Context, feed *db.Feed) (int, error) {
 		} else if item.UpdatedParsed != nil {
 			pubDate = *item.UpdatedParsed
 		}
+		// 防御性保护：若订阅源发布时间异常（超出当前时间 24 小时以上），重置为当前时间，防止错误置顶
+		if pubDate.After(now.Add(24 * time.Hour)) {
+			pubDate = now
+		}
 
 		guid := strings.TrimSpace(item.GUID)
 		if guid == "" {

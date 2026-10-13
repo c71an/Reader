@@ -10,7 +10,7 @@
         
         // 时间线流状态
         timelineItems: [],
-        timelineContinuation: 0,
+        timelineContinuation: '',
         timelineHasMore: true,
         timelineLoading: false,
         timelineFilter: 'all', // 'all' | 'unread' | 'starred'
@@ -984,6 +984,13 @@
             return `<video ${attrs}>`;
           });
 
+          // 5. 自动为所有 <table> 标签包裹横向滚动容器，并清洗写死的固定宽度
+          html = html.replace(/<table\b([\s\S]*?)<\/table>/gi, (match) => {
+            let cleaned = match.replace(/\s+width=(["'])\d+["']/gi, '')
+                               .replace(/width:\s*\d+px;?/gi, '');
+            return `<div class="reader-table-wrapper">${cleaned}</div>`;
+          });
+
           return html;
         },
 
@@ -1008,7 +1015,7 @@
           if (!reset && !this.timelineHasMore) return;
 
           if (reset) {
-            this.timelineContinuation = 0;
+            this.timelineContinuation = '';
             this.timelineHasMore = true;
             this.timelineItems = [];
           }
@@ -1052,7 +1059,7 @@
               this.timelineContinuation = data.continuation;
               this.timelineHasMore = true;
             } else {
-              this.timelineContinuation = 0;
+              this.timelineContinuation = '';
               this.timelineHasMore = false;
             }
           } catch (e) {
