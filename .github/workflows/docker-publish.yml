@@ -52,10 +52,7 @@ jobs:
           images: |
             ghcr.io/${{ github.repository }}
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,format=short
+            type=raw,value=latest
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -68,4 +65,14 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # 自动清理非 latest 版本的旧镜像
+      - name: Prune old container versions
+        uses: actions/delete-package-versions@v5
+        continue-on-error: true
+        with:
+          package-name: 'reader'
+          package-type: 'container'
+          min-versions-to-keep: 1
+          ignore-versions: '^latest$'
 
