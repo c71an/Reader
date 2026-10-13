@@ -24,6 +24,8 @@
         _touchStartX: 0,
         _touchStartY: 0,
         _touchActive: false,
+        _touchDirectionDetermined: false,
+        _touchLockedVertical: false,
 
         // 1. 状态收纳 (统一集中管理弹窗和异步加载状态)
         menuOpen: false,
@@ -72,6 +74,7 @@
             history.replaceState(null, '', window.location.pathname + window.location.search);
           }
           window.addEventListener('keydown', (e) => {
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
             if (!this.modals.reader) return;
             if (e.key === 'ArrowRight' || e.key === 'j' || e.key === 'J') {
               this.nextArticle();
@@ -1180,6 +1183,8 @@
           this._touchStartX = touch.clientX;
           this._touchStartY = touch.clientY;
           this._touchActive = true;
+          this._touchDirectionDetermined = false;
+          this._touchLockedVertical = false;
           this.readerSwipeX = 0;
         },
 
@@ -1189,20 +1194,38 @@
           const dx = touch.clientX - this._touchStartX;
           const dy = touch.clientY - this._touchStartY;
 
-          // 仅当向右滑动且水平位移明显大于垂直位移时触发滑动返回视觉反馈
-          if (dx > 10 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+          // 手势意图判定锁：初次微小位移时判断用户意图
+          if (!this._touchDirectionDetermined) {
+            if (Math.abs(dx) > 7 || Math.abs(dy) > 7) {
+              this._touchDirectionDetermined = true;
+              // 若垂直位移大于等于水平位移，锁定为垂直阅读滚动，本次触摸彻底忽略滑动返回，消除拇指斜向滚屏时的卡顿与抖动
+              if (Math.abs(dy) >= Math.abs(dx)) {
+                this._touchLockedVertical = true;
+                this._touchActive = false;
+                return;
+              }
+            } else {
+              return;
+            }
+          }
+          if (this._touchLockedVertical) return;
+
+          // 确认向右滑动返回
+          if (dx > 0) {
             if (e.cancelable) {
               e.preventDefault();
             }
-            this.readerSwipeX = Math.min(window.innerWidth || 500, Math.max(0, dx));
-          } else if (dx < 0) {
+            this.readerSwipeX = Math.min(window.innerWidth || 500, dx);
+          } else {
             this.readerSwipeX = 0;
           }
         },
 
-        handleReaderTouchEnd(e) {
+        handleReaderTouchEnd() {
           if (!this._touchActive) return;
           this._touchActive = false;
+          this._touchDirectionDetermined = false;
+          this._touchLockedVertical = false;
           // 若右滑超过 85px，执行平滑关闭；否则回弹归位
           if (this.readerSwipeX > 85) {
             this.closeReader();

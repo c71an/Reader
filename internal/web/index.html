@@ -70,10 +70,10 @@
     }
     /* 适配 iOS Safari / Chrome 动态底部地址栏与安全区域 (Safe Area Inset) */
     .pb-safe {
-      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 7.5rem) !important;
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 2.5rem) !important;
     }
     .pb-safe-modal {
-      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 7.5rem) !important;
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 2.5rem) !important;
     }
 
     /* 阅读器滑动返回触控优化与 iOS 原生惯性滚动 */
@@ -183,7 +183,7 @@
     }
   </style>
 </head>
-<body class="bg-neutral-50 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-100 antialiased min-h-screen transition-colors duration-150" x-data="readerApp()" x-cloak>
+<body ontouchstart="" class="bg-neutral-50 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-100 antialiased min-h-screen transition-colors duration-150" x-data="readerApp()" x-cloak>
   
   <!-- 全局浮动 Toast 消息通知 (黑白灰纯净风格) -->
   <div class="fixed top-3 inset-x-3 sm:inset-x-auto sm:right-5 sm:top-5 z-[99999] flex flex-col space-y-2 pointer-events-none sm:max-w-sm w-auto">
@@ -291,6 +291,7 @@
     <!-- 文章详情专属吸顶导航栏 -->
     <div x-show="modals.reader" 
          x-cloak
+         :class="_touchActive ? '' : 'transition-transform duration-200 ease-out'"
          :style="readerSwipeX > 0 ? `transform: translateX(${readerSwipeX}px); will-change: transform;` : ''"
          class="max-w-3xl mx-auto px-3.5 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
       <!-- 左侧返回按钮与订阅源信息 -->
@@ -481,8 +482,8 @@
         <div x-show="!timelineLoading && !timelineHasMore && timelineItems.length > 0">
           已加载全部文章 · 休息一下吧
         </div>
-        <!-- 物理底部占位块：确保时间线最末端卡片完全滑出 iOS Safari 悬浮胶囊之上 -->
-        <div class="w-full shrink-0 pointer-events-none" style="height: calc(env(safe-area-inset-bottom, 0px) + 7.5rem);"></div>
+        <!-- 物理底部占位块：预留适量呼吸间距，兼顾移动端手势条与桌面端紧凑排版 -->
+        <div class="w-full shrink-0 pointer-events-none" style="height: calc(env(safe-area-inset-bottom, 0px) + 2rem);"></div>
       </div>
 
     </div>
@@ -1492,6 +1493,7 @@
        @keydown.escape.window="closeReader()" 
        class="w-full max-w-full overflow-x-hidden min-h-screen bg-white dark:bg-slate-900 select-none">
     <div class="min-h-screen w-full max-w-full bg-white dark:bg-slate-900 select-text"
+         :class="_touchActive ? '' : 'transition-transform duration-200 ease-out'"
          :style="readerSwipeX > 0 ? `transform: translateX(${readerSwipeX}px); will-change: transform;` : ''"
          @touchstart="handleReaderTouchStart($event)"
          @touchmove="handleReaderTouchMove($event)"
@@ -1517,7 +1519,7 @@
       </div>
 
       <!-- 物理底部留白块：让 Safari 悬浮地址栏无论处于何种状态都绝不遮挡最后一行正文 -->
-      <div class="w-full shrink-0 pointer-events-none" style="height: calc(env(safe-area-inset-bottom, 0px) + 7.5rem);"></div>
+      <div class="w-full shrink-0 pointer-events-none" style="height: calc(env(safe-area-inset-bottom, 0px) + 3rem);"></div>
     </div>
   </div>
 </div>
