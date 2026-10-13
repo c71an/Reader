@@ -28,8 +28,30 @@ func (d *DB) UpdateFeed(feed *Feed) error {
 }
 
 func (d *DB) DeleteFeed(feedID int64) error {
-	_, err := d.Exec("DELETE FROM feeds WHERE id = ?", feedID)
-	return err
+	tx, err := d.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// 显式级联删除该订阅源下的所有文章状态、文章以及订阅源本身（双重保障）
+	if _, err := tx.Exec(`
+		DELETE FROM article_states WHERE article_id IN (
+			SELECT id FROM articles WHERE feed_id = ?
+		)
+	`, feedID); err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec("DELETE FROM articles WHERE feed_id = ?", feedID); err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec("DELETE FROM feeds WHERE id = ?", feedID); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 const feedSelectColumns = `

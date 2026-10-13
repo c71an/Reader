@@ -69,7 +69,7 @@ func InitDB(dbPath, defaultUser, defaultPass string) (*DB, error) {
 		return nil, fmt.Errorf("failed to create db directory: %w", err)
 	}
 
-	dsn := fmt.Sprintf("%s?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)", dbPath)
+	dsn := fmt.Sprintf("%s?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=foreign_keys(1)", dbPath)
 	database, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite database: %w", err)
@@ -175,6 +175,12 @@ func (d *DB) initSchema() error {
 	if tokenCount == 0 {
 		_, _ = d.Exec("INSERT OR IGNORE INTO user_tokens (user_id, token, client_type) SELECT id, auth_token, 'legacy' FROM users WHERE auth_token != '';")
 	}
+
+	// 自动清理历史上因未开启外键约束而遗留在数据库中的孤儿文章与孤儿状态
+	_, _ = d.Exec(`
+		DELETE FROM article_states WHERE article_id NOT IN (SELECT id FROM articles);
+		DELETE FROM articles WHERE feed_id NOT IN (SELECT id FROM feeds);
+	`)
 	return nil
 }
 
