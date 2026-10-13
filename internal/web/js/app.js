@@ -979,15 +979,16 @@
             return `<img ${newAttrs.trim()}>`;
           });
 
-          // 4. 为所有视频自动注入 playsinline 与 controls，防止移动端打断全屏
+          // 4. 为所有视频/Live 图清洗硬编码尺寸，自动注入 playsinline 与 controls
           html = html.replace(/<video\b([^>]*?)>/gi, (match, attrs) => {
-            if (!attrs.includes('playsinline')) {
-              attrs += ' playsinline webkit-playsinline';
+            let cleanedAttrs = attrs.replace(/\s+(width|height)=(["'])\d+["']/gi, '');
+            if (!cleanedAttrs.includes('playsinline')) {
+              cleanedAttrs += ' playsinline webkit-playsinline';
             }
-            if (!attrs.includes('controls')) {
-              attrs += ' controls';
+            if (!cleanedAttrs.includes('controls')) {
+              cleanedAttrs += ' controls';
             }
-            return `<video ${attrs}>`;
+            return `<video ${cleanedAttrs.trim()}>`;
           });
 
           // 5. 自动为所有 <table> 标签包裹横向滚动容器，并清洗写死的固定宽度
