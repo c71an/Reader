@@ -1118,16 +1118,11 @@
             history.back();
             return;
           }
-          if (this.readerClosing) return;
-          this.readerClosing = true;
-
-          setTimeout(() => {
-            this.modals.reader = false;
-            this.readerArticle = null;
-            this.readerIndex = -1;
-            this.readerSwipeX = 0;
-            this.readerClosing = false;
-          }, 180);
+          this.modals.reader = false;
+          this.readerArticle = null;
+          this.readerIndex = -1;
+          this.readerSwipeX = 0;
+          this.readerClosing = false;
         },
 
         // 文章详情页滑动返回手势 (左向右滑)

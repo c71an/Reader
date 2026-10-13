@@ -1391,8 +1391,8 @@
        @keydown.escape.window="closeReader()" 
        class="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-white dark:bg-slate-900 select-none"
        style="-webkit-overflow-scrolling: touch;">
-    <div class="min-h-full w-full max-w-full bg-white dark:bg-slate-900 transition-transform duration-150 select-text"
-         :style="readerSwipeX > 0 ? `transform: translateX(${readerSwipeX}px); transition: none;` : (readerClosing ? 'transform: translateX(100%); transition: transform 0.2s ease-out;' : '')"
+    <div class="min-h-full w-full max-w-full bg-white dark:bg-slate-900 select-text"
+         :style="readerSwipeX > 0 ? `transform: translateX(${readerSwipeX}px);` : ''"
          @touchstart="handleReaderTouchStart($event)"
          @touchmove="handleReaderTouchMove($event)"
          @touchend="handleReaderTouchEnd($event)">
