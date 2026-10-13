@@ -1117,11 +1117,13 @@
         },
 
         closeReader(triggerHistoryBack = true) {
-          if (this.readerClosing) return;
-          if (triggerHistoryBack && window.location.hash.startsWith('#article-')) {
-            this.readerClosing = true;
-            history.back();
-            return;
+          if (triggerHistoryBack) {
+            if (this.readerClosing) return;
+            if (window.location.hash.startsWith('#article-')) {
+              this.readerClosing = true;
+              history.back();
+              return;
+            }
           }
           this.readerClosing = false;
           this.modals.reader = false;
@@ -1129,11 +1131,9 @@
           this.readerIndex = -1;
           this.readerSwipeX = 0;
 
-          // 无缝恢复列表原始滚动条位置
+          // 无缝恢复列表原始滚动条位置 (同步在 DOM 更新时生效，无需延迟至 rAF 避免点击冲突与闪烁)
           this.$nextTick(() => {
-            requestAnimationFrame(() => {
-              window.scrollTo({ top: this.timelineScrollPos || 0, behavior: 'instant' });
-            });
+            window.scrollTo({ top: this.timelineScrollPos || 0, behavior: 'instant' });
           });
         },
 
