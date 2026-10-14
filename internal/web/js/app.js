@@ -838,8 +838,9 @@
           let thumbnail = '';
           let isLive = false;
 
-          // 识别 Live 实况图文章：仅在包含明确 [Live Photo]、#实况# 或以 livephoto / .mov 格式为主时判定
-          if (content.includes('[Live Photo]') || content.includes('#实况#') || /livephoto|\.mov\b/i.test(content)) {
+          // 识别 Live 实况图文章：包含明确 [Live Photo]、#实况# 或以 livephoto / .mov 格式为主时判定
+          const title = item.title || '';
+          if (title.includes('[Live Photo]') || content.includes('[Live Photo]') || content.includes('#实况#') || /livephoto|\.mov\b/i.test(content)) {
             isLive = true;
           }
 
@@ -874,27 +875,36 @@
             }
           };
 
-          const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
+          // 统一按正文出现的物理先后顺序扫描首个有效配图 (同时支持 <img> 和 <video poster="... / Live Photo">)
+          const mediaRegex = /<(img|video)\b([^>]*?)>/gi;
           let match;
           let firstFallbackImg = '';
-          while ((match = imgRegex.exec(content)) !== null) {
-            const rawSrc = match[1];
+          while ((match = mediaRegex.exec(content)) !== null) {
+            const tagName = match[1].toLowerCase();
+            const attrs = match[2];
+            let rawSrc = '';
+
+            if (tagName === 'img') {
+              const srcMatch = attrs.match(/\bsrc=(?:(["'])([\s\S]*?)\1|([^\s>]+))/i);
+              if (srcMatch) rawSrc = (srcMatch[2] || srcMatch[3] || '').trim();
+            } else if (tagName === 'video') {
+              const posterMatch = attrs.match(/\bposter=(?:(["'])([\s\S]*?)\1|([^\s>]+))/i);
+              if (posterMatch) rawSrc = (posterMatch[2] || posterMatch[3] || '').trim();
+            }
+
+            if (!rawSrc) continue;
+
             const fullSrc = resolveUrl(rawSrc, item.url);
             if (!firstFallbackImg) firstFallbackImg = fullSrc;
+
             if (!isEmoticonOrAvatar(rawSrc)) {
               thumbnail = fullSrc;
               break;
             }
           }
 
-          // 若未匹配到有效正文图片，检查视频封面 (Weibo Live Photo poster 等)
-          if (!thumbnail) {
-            const posterMatch = content.match(/<video[^>]+poster=["']([^"']+)["']/i);
-            if (posterMatch && posterMatch[1] && !isEmoticonOrAvatar(posterMatch[1])) {
-              thumbnail = resolveUrl(posterMatch[1], item.url);
-            } else if (firstFallbackImg) {
-              thumbnail = firstFallbackImg;
-            }
+          if (!thumbnail && firstFallbackImg) {
+            thumbnail = firstFallbackImg;
           }
 
           // 提取纯文本摘要
