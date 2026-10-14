@@ -838,8 +838,8 @@
           let thumbnail = '';
           let isLive = false;
 
-          // 识别 Live 图：包含 [Live Photo] 关键词、video 标签或视频扩展名
-          if (content.includes('[Live Photo]') || content.includes('<video') || content.includes('.mp4') || content.includes('.mov')) {
+          // 识别 Live 实况图文章：仅在包含明确 [Live Photo]、#实况# 或以 livephoto / .mov 格式为主时判定
+          if (content.includes('[Live Photo]') || content.includes('#实况#') || /livephoto|\.mov\b/i.test(content)) {
             isLive = true;
           }
 
@@ -973,10 +973,17 @@
             return `<img ${newAttrs.trim()}>`;
           });
 
-          // 4. 处理视频与 Live 实况图 (智能去除 iOS/移动端原生播放器遮挡层，还原苹果原生实况体验)
+          // 4. 处理视频与 Live 实况图 (精准区隔常规长视频与短实况动图，智能去除 iOS/移动端原生播放器遮挡层)
           html = html.replace(/<video\b([^>]*?)(?:>([\s\S]*?)<\/video>|\/?>)/gi, (match, attrs, inner = '') => {
             let cleanedAttrs = attrs.replace(/\s+(width|height)=(["'])\d+["']/gi, '');
-            const isLive = /livephoto|\.mov\b/i.test(attrs) || (this.readerArticle && (this.readerArticle._isLive || this.readerArticle.title?.includes('[Live Photo]')));
+            const fullTagContent = (attrs + ' ' + inner).toLowerCase();
+
+            // 判定是否为 Live 实况图：
+            // 1. 标签或子源明确包含 livephoto 路径参数
+            // 2. 视频资源为苹果 Live Photo 标准的 .mov 格式
+            // 3. 文章标题包含 [Live Photo] 且不是普通 mp4 流媒体视频
+            const isLive = /livephoto|\.mov\b/i.test(fullTagContent) || 
+                          (Boolean(this.readerArticle?.title?.includes('[Live Photo]')) && !fullTagContent.includes('.mp4'));
 
             if (isLive) {
               // Live 实况图模式：彻底去除原生 controls 遮挡，注入静音循环播放与内联播放
