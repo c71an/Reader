@@ -1,6 +1,7 @@
     function readerApp() {
       return {
         isLoggedIn: false,
+        authChecking: true,
         currentTab: localStorage.getItem('reader_tab') || 'timeline',
         feeds: [],
         collapsedGroups: {},
@@ -126,6 +127,8 @@
             this.loadTimeline(true);
           } catch (_) {
             this.isLoggedIn = false;
+          } finally {
+            this.authChecking = false;
           }
         },
 
