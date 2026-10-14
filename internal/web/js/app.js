@@ -997,9 +997,8 @@
 
               return `<div class="relative reader-live-container my-4 rounded-xl overflow-hidden select-none group">
                 <video ${cleanedAttrs.trim()} class="w-full h-auto block rounded-xl">${inner}</video>
-                <div class="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-md text-white text-xs font-medium flex items-center space-x-1.5 pointer-events-none shadow-xs">
-                  <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
-                  <span class="tracking-wide text-[11px]">实况</span>
+                <div class="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-md text-white text-xs font-semibold flex items-center pointer-events-none shadow-xs">
+                  <span class="tracking-wider text-[11px] font-semibold">LIVE</span>
                 </div>
                 <button type="button" 
                         onclick="event.stopPropagation(); const v = this.parentElement.querySelector('video'); v.muted = !v.muted; this.querySelector('span').textContent = v.muted ? '静音' : '原声';"
