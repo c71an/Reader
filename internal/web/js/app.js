@@ -979,16 +979,44 @@
             return `<img ${newAttrs.trim()}>`;
           });
 
-          // 4. 为所有视频/Live 图清洗硬编码尺寸，自动注入 playsinline 与 controls
-          html = html.replace(/<video\b([^>]*?)>/gi, (match, attrs) => {
+          // 4. 处理视频与 Live 实况图 (智能去除 iOS/移动端原生播放器遮挡层，还原苹果原生实况体验)
+          html = html.replace(/<video\b([^>]*?)(?:>([\s\S]*?)<\/video>|\/?>)/gi, (match, attrs, inner = '') => {
             let cleanedAttrs = attrs.replace(/\s+(width|height)=(["'])\d+["']/gi, '');
-            if (!cleanedAttrs.includes('playsinline')) {
-              cleanedAttrs += ' playsinline webkit-playsinline';
+            const isLive = /livephoto|\.mov\b/i.test(attrs) || (this.readerArticle && (this.readerArticle._isLive || this.readerArticle.title?.includes('[Live Photo]')));
+
+            if (isLive) {
+              // Live 实况图模式：彻底去除原生 controls 遮挡，注入静音循环播放与内联播放
+              cleanedAttrs = cleanedAttrs.replace(/\s+controls(=["'][^"']*["'])?/gi, '');
+              if (!cleanedAttrs.includes('autoplay')) cleanedAttrs += ' autoplay';
+              if (!cleanedAttrs.includes('loop')) cleanedAttrs += ' loop';
+              if (!cleanedAttrs.includes('muted')) cleanedAttrs += ' muted';
+              if (!cleanedAttrs.includes('playsinline')) cleanedAttrs += ' playsinline webkit-playsinline';
+              if (!cleanedAttrs.includes('onclick')) {
+                cleanedAttrs += ' onclick="this.paused ? this.play() : this.pause()"';
+              }
+
+              return `<div class="relative reader-live-container my-4 rounded-xl overflow-hidden select-none group">
+                <video ${cleanedAttrs.trim()} class="w-full h-auto block rounded-xl">${inner}</video>
+                <div class="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-md text-white text-xs font-medium flex items-center space-x-1.5 pointer-events-none shadow-xs">
+                  <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                  <span class="tracking-wide text-[11px]">实况</span>
+                </div>
+                <button type="button" 
+                        onclick="event.stopPropagation(); const v = this.parentElement.querySelector('video'); v.muted = !v.muted; this.querySelector('span').textContent = v.muted ? '静音' : '原声';"
+                        class="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-md text-white text-xs font-medium flex items-center shadow-xs hover:bg-black/70 active:scale-95 transition">
+                  <span class="text-[11px]">静音</span>
+                </button>
+              </div>`;
+            } else {
+              // 常规视频模式：保留原生控件与内联属性
+              if (!cleanedAttrs.includes('playsinline')) {
+                cleanedAttrs += ' playsinline webkit-playsinline';
+              }
+              if (!cleanedAttrs.includes('controls')) {
+                cleanedAttrs += ' controls';
+              }
+              return `<video ${cleanedAttrs.trim()}>${inner}</video>`;
             }
-            if (!cleanedAttrs.includes('controls')) {
-              cleanedAttrs += ' controls';
-            }
-            return `<video ${cleanedAttrs.trim()}>`;
           });
 
           // 5. 自动为所有 <table> 标签包裹横向滚动容器，并清洗写死的固定宽度
