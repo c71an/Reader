@@ -298,12 +298,10 @@
     <!-- 文章详情专属吸顶导航栏 -->
     <div x-show="modals.reader" 
          x-cloak
-         :class="_touchActive ? '' : 'transition-transform duration-200 ease-out'"
-         :style="readerSwipeX > 0 ? `transform: translateX(${readerSwipeX}px); will-change: transform;` : ''"
          class="max-w-3xl mx-auto px-3.5 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
       <!-- 左侧返回按钮与订阅源信息 -->
       <div class="flex items-center space-x-2 truncate pr-2">
-        <button @click="closeReader()" class="p-1.5 -ml-1 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg transition" title="返回列表 (Esc 或右滑)">
+        <button @click="closeReader()" class="p-1.5 -ml-1 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg transition" title="返回列表 (Esc)">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
         </button>
         <div class="truncate">
@@ -1493,18 +1491,13 @@
     </div>
   </div>
 
-  <!-- 3. 文章沉浸式独立页面流 (全量支持 iOS Safari Window 级原生滚动、悬浮胶囊岛、右滑手势返回) -->
+  <!-- 3. 文章沉浸式独立页面流 (全量支持 iOS Safari Window 级原生滚动、悬浮胶囊岛) -->
   <div x-show="modals.reader" 
        x-cloak
        id="reader-modal-overlay"
        @keydown.escape.window="closeReader()" 
        class="w-full max-w-full overflow-x-hidden min-h-screen bg-white dark:bg-slate-900 select-none">
-    <div class="min-h-screen w-full max-w-full bg-white dark:bg-slate-900 select-text"
-         :class="_touchActive ? '' : 'transition-transform duration-200 ease-out'"
-         :style="readerSwipeX > 0 ? `transform: translateX(${readerSwipeX}px); will-change: transform;` : ''"
-         @touchstart="handleReaderTouchStart($event)"
-         @touchmove="handleReaderTouchMove($event)"
-         @touchend="handleReaderTouchEnd($event)">
+    <div class="min-h-screen w-full max-w-full bg-white dark:bg-slate-900 select-text">
 
 
 

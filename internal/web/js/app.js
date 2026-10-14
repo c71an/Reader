@@ -18,14 +18,8 @@
         timelinePageSize: 10,
         readerArticle: null,
         readerIndex: -1,
-        readerSwipeX: 0,
         readerClosing: false,
         timelineScrollPos: 0,
-        _touchStartX: 0,
-        _touchStartY: 0,
-        _touchActive: false,
-        _touchDirectionDetermined: false,
-        _touchLockedVertical: false,
 
         // 1. 状态收纳 (统一集中管理弹窗和异步加载状态)
         menuOpen: false,
@@ -1129,7 +1123,6 @@
           }
           this.readerArticle = article;
           this.readerIndex = this.timelineItems.findIndex(it => it.id === article.id);
-          this.readerSwipeX = 0;
           this.readerClosing = false;
           this.modals.reader = true;
 
@@ -1178,7 +1171,6 @@
           this.modals.reader = false;
           this.readerArticle = null;
           this.readerIndex = -1;
-          this.readerSwipeX = 0;
 
           const targetPos = this.timelineScrollPos || 0;
           const restoreScroll = () => {
@@ -1200,70 +1192,6 @@
           setTimeout(() => {
             this.readerClosing = false;
           }, 350);
-        },
-
-        // 文章详情页滑动返回手势 (左向右滑)
-        handleReaderTouchStart(e) {
-          if (!e.touches || e.touches.length !== 1) return;
-          const touch = e.touches[0];
-          // 关键优化：若触摸起始点位于屏幕最左边缘 (touch.clientX < 30px)，属于 iOS Safari 系统原生边缘返回热区。
-          // 放弃前端模拟手势，全权交给 Safari 原生边缘滑动返回手势，避免与 Safari 原生交互冲突导致二次 history.back() 误退至外部网站。
-          if (touch.clientX < 30) {
-            this._touchActive = false;
-            return;
-          }
-          this._touchStartX = touch.clientX;
-          this._touchStartY = touch.clientY;
-          this._touchActive = true;
-          this._touchDirectionDetermined = false;
-          this._touchLockedVertical = false;
-          this.readerSwipeX = 0;
-        },
-
-        handleReaderTouchMove(e) {
-          if (!this._touchActive || !e.touches || e.touches.length !== 1) return;
-          const touch = e.touches[0];
-          const dx = touch.clientX - this._touchStartX;
-          const dy = touch.clientY - this._touchStartY;
-
-          // 手势意图判定锁：初次微小位移时判断用户意图
-          if (!this._touchDirectionDetermined) {
-            if (Math.abs(dx) > 7 || Math.abs(dy) > 7) {
-              this._touchDirectionDetermined = true;
-              // 若垂直位移大于等于水平位移，锁定为垂直阅读滚动，本次触摸彻底忽略滑动返回，消除拇指斜向滚屏时的卡顿与抖动
-              if (Math.abs(dy) >= Math.abs(dx)) {
-                this._touchLockedVertical = true;
-                this._touchActive = false;
-                return;
-              }
-            } else {
-              return;
-            }
-          }
-          if (this._touchLockedVertical) return;
-
-          // 确认向右滑动返回
-          if (dx > 0) {
-            if (e.cancelable) {
-              e.preventDefault();
-            }
-            this.readerSwipeX = Math.min(window.innerWidth || 500, dx);
-          } else {
-            this.readerSwipeX = 0;
-          }
-        },
-
-        handleReaderTouchEnd() {
-          if (!this._touchActive) return;
-          this._touchActive = false;
-          this._touchDirectionDetermined = false;
-          this._touchLockedVertical = false;
-          // 若右滑超过 85px，执行平滑关闭；否则回弹归位
-          if (this.readerSwipeX > 85) {
-            this.closeReader();
-          } else {
-            this.readerSwipeX = 0;
-          }
         },
 
         prevArticle() {
