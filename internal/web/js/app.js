@@ -986,20 +986,34 @@
                           (Boolean(this.readerArticle?.title?.includes('[Live Photo]')) && !fullTagContent.includes('.mp4'));
 
             if (isLive) {
-              // Live 实况图模式：默认静止（剥离 controls/autoplay/loop），点击单次播放不循环，播完自动复位首帧
+              // 提取 poster 作为静止状态下的高清封面图
+              let posterUrl = '';
+              const posterMatch = cleanedAttrs.match(/\bposter=(["'])([\s\S]*?)\1/i);
+              if (posterMatch && posterMatch[2]) {
+                posterUrl = posterMatch[2].trim();
+                if (articleBaseUrl && posterUrl && !posterUrl.startsWith('http://') && !posterUrl.startsWith('https://') && !posterUrl.startsWith('data:') && !posterUrl.startsWith('//')) {
+                  try {
+                    posterUrl = new URL(posterUrl, articleBaseUrl).href;
+                  } catch (_) {}
+                }
+              }
+
+              // Live 实况图模式：默认静止（剥离 controls/autoplay/loop），点击单次播放不循环，播完自动淡入恢复原图并复位
               cleanedAttrs = cleanedAttrs.replace(/\s+controls(=["'][^"']*["'])?/gi, '')
                                          .replace(/\s+autoplay(=["'][^"']*["'])?/gi, '')
-                                         .replace(/\s+loop(=["'][^"']*["'])?/gi, '');
+                                         .replace(/\s+loop(=["'][^"']*["'])?/gi, '')
+                                         .replace(/\s+onended(=["'][^"']*["'])?/gi, '')
+                                         .replace(/\s+onplaying(=["'][^"']*["'])?/gi, '');
               if (!cleanedAttrs.includes('muted')) cleanedAttrs += ' muted';
               if (!cleanedAttrs.includes('preload')) cleanedAttrs += ' preload="metadata"';
               if (!cleanedAttrs.includes('playsinline')) cleanedAttrs += ' playsinline webkit-playsinline';
-              if (!cleanedAttrs.includes('onended')) {
-                cleanedAttrs += ' onended="this.currentTime = 0;"';
-              }
+              cleanedAttrs += ' onended="this.currentTime = 0; const img = this.parentElement.querySelector(\'.reader-live-poster\'); if (img) img.style.opacity = \'1\';"';
+              cleanedAttrs += ' onplaying="const img = this.parentElement.querySelector(\'.reader-live-poster\'); if (img) img.style.opacity = \'0\';"';
 
               return `<div class="relative reader-live-container my-4 rounded-xl overflow-hidden select-none cursor-pointer group"
                            onclick="const v = this.querySelector('video'); if (v) { if (v.ended || v.currentTime >= v.duration) v.currentTime = 0; v.paused ? v.play() : v.pause(); }">
                 <video ${cleanedAttrs.trim()} class="w-full h-auto block rounded-xl">${inner}</video>
+                ${posterUrl ? `<img src="${posterUrl}" alt="Live Photo" referrerpolicy="no-referrer" onerror="this.remove()" class="reader-live-poster absolute inset-0 w-full h-full object-cover pointer-events-none">` : ''}
                 <div class="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-md text-white text-xs font-semibold flex items-center pointer-events-none shadow-xs">
                   <span class="tracking-wider text-[11px] font-semibold">LIVE</span>
                 </div>
