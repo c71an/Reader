@@ -986,19 +986,22 @@
                           (Boolean(this.readerArticle?.title?.includes('[Live Photo]')) && !fullTagContent.includes('.mp4'));
 
             if (isLive) {
-              // Live 实况图模式：彻底去除原生 controls 遮挡，注入静音循环播放与内联播放
-              cleanedAttrs = cleanedAttrs.replace(/\s+controls(=["'][^"']*["'])?/gi, '');
-              if (!cleanedAttrs.includes('autoplay')) cleanedAttrs += ' autoplay';
-              if (!cleanedAttrs.includes('loop')) cleanedAttrs += ' loop';
+              // Live 实况图模式：默认静止（剥离 controls/autoplay/loop），点击单次播放不循环，播完自动复位首帧
+              cleanedAttrs = cleanedAttrs.replace(/\s+controls(=["'][^"']*["'])?/gi, '')
+                                         .replace(/\s+autoplay(=["'][^"']*["'])?/gi, '')
+                                         .replace(/\s+loop(=["'][^"']*["'])?/gi, '');
               if (!cleanedAttrs.includes('muted')) cleanedAttrs += ' muted';
+              if (!cleanedAttrs.includes('preload')) cleanedAttrs += ' preload="metadata"';
               if (!cleanedAttrs.includes('playsinline')) cleanedAttrs += ' playsinline webkit-playsinline';
-              if (!cleanedAttrs.includes('onclick')) {
-                cleanedAttrs += ' onclick="this.paused ? this.play() : this.pause()"';
+              if (!cleanedAttrs.includes('onended')) {
+                cleanedAttrs += ' onended="this.currentTime = 0;"';
               }
 
-              return `<div class="relative reader-live-container my-4 rounded-xl overflow-hidden select-none group">
+              return `<div class="relative reader-live-container my-4 rounded-xl overflow-hidden select-none cursor-pointer group"
+                           onclick="const v = this.querySelector('video'); if (v) { if (v.ended || v.currentTime >= v.duration) v.currentTime = 0; v.paused ? v.play() : v.pause(); }">
                 <video ${cleanedAttrs.trim()} class="w-full h-auto block rounded-xl">${inner}</video>
-                <div class="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-md text-white text-xs font-semibold flex items-center pointer-events-none shadow-xs">
+                <div class="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-md text-white text-xs font-semibold flex items-center space-x-1 pointer-events-none shadow-xs">
+                  <svg class="w-2.5 h-2.5 fill-current opacity-90" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                   <span class="tracking-wider text-[11px] font-semibold">LIVE</span>
                 </div>
                 <button type="button" 
