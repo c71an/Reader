@@ -438,8 +438,8 @@
       <!-- 右侧文章列表块 (包含顶栏操作区与卡片流，右侧与顶部菜单按钮对齐) -->
       <div class="flex-1 min-w-0">
         
-        <!-- 顶栏快速操作与过滤 (单行紧凑排列，移动端自适应保持同一行且不溢出) -->
-        <div class="flex items-center justify-between gap-1.5 sm:gap-2 mb-2 pb-2.5 border-b border-neutral-200/80 dark:border-neutral-800/80 overflow-x-auto no-scrollbar py-0.5">
+        <!-- 顶栏快速操作与过滤 (吸顶固定，不随文章列表滚动) -->
+        <div class="sticky top-14 sm:top-16 z-20 bg-neutral-50/95 dark:bg-neutral-950/95 backdrop-blur-md flex items-center justify-between gap-1.5 sm:gap-2 mb-2 pt-2 pb-2.5 border-b border-neutral-200/80 dark:border-neutral-800/80 overflow-x-auto no-scrollbar">
           <!-- 左侧状态与分类切换 -->
           <div class="flex items-center space-x-1 sm:space-x-1.5 shrink-0">
             <button @click="setTimelineFilter('all')"
@@ -511,7 +511,7 @@
         <template x-for="group in timelineGroups" :key="group.date">
           <div>
             <!-- 日期分节标题 (如 TUESDAY, OCTOBER 6, 2026) -->
-            <div class="py-1 px-1 mb-1.5 sm:sticky sm:top-16 z-10 bg-neutral-50/95 dark:bg-neutral-950/95 sm:backdrop-blur-md">
+            <div class="py-1 px-1 mb-1.5">
               <h3 class="text-xs font-normal tracking-wide text-neutral-400 dark:text-neutral-500 uppercase select-none" x-text="group.date"></h3>
             </div>
 
