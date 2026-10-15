@@ -1147,7 +1147,7 @@
               if (entries[0].isIntersecting && !this.timelineLoading && this.timelineHasMore && this.currentTab === 'timeline') {
                 this.loadTimeline(false);
               }
-            }, { rootMargin: '150px' });
+            }, { rootMargin: '400px' });
             observer.observe(sentinel);
           }, 100);
         },

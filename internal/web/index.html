@@ -357,7 +357,7 @@
   </header>
 
   <!-- 登录页面 -->
-  <div x-show="!isLoggedIn && !authChecking" x-cloak class="max-w-md mx-auto mt-20 p-6 bg-white dark:bg-slate-900 rounded-xl shadow-md border border-slate-200 dark:border-slate-800">
+  <div x-show="!isLoggedIn && !authChecking" class="max-w-md mx-auto mt-20 p-6 bg-white dark:bg-slate-900 rounded-xl shadow-md border border-slate-200 dark:border-slate-800">
     <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-6">登录管理控制台</h2>
     <form @submit.prevent="login">
       <div class="mb-4">
@@ -486,17 +486,10 @@
         <div class="text-xs text-neutral-400 mt-1">没有匹配的文章，或者所有订阅内容均已标记为已读</div>
       </div>
 
-      <!-- 滚动加载哨兵 Sentinel -->
-      <div id="timelineSentinel" class="py-8 text-center text-xs text-neutral-400 dark:text-neutral-500">
-        <div x-show="timelineLoading" class="flex items-center justify-center space-x-2">
-          <svg class="animate-spin h-4 w-4 text-black dark:text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-          </svg>
-          <span>正在加载更多文章...</span>
-        </div>
+      <!-- 滚动加载哨兵 Sentinel (纯静默加载模式) -->
+      <div id="timelineSentinel" class="py-6 text-center text-xs text-neutral-400 dark:text-neutral-500">
         <div x-show="!timelineLoading && !timelineHasMore && timelineItems.length > 0">
-          已加载全部文章 · 休息一下吧
+          全部文章已加载
         </div>
         <!-- 物理底部占位块：预留适量呼吸间距，兼顾移动端手势条与桌面端紧凑排版 -->
         <div class="w-full shrink-0 pointer-events-none" style="height: calc(env(safe-area-inset-bottom, 0px) + 2rem);"></div>
