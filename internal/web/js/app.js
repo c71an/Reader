@@ -16,6 +16,8 @@
         timelineLoading: false,
         timelineFilter: 'all', // 'all' | 'unread' | 'starred'
         timelineSelectedCategory: 'all',
+        timelineSelectedFeedId: null,
+        timelineCollapsedCategories: {},
         timelinePageSize: 10,
         readerArticle: null,
         readerIndex: -1,
@@ -193,7 +195,12 @@
             return a.sortOrder !== b.sortOrder ? a.sortOrder - b.sortOrder : a.name.localeCompare(b.name);
           });
 
-          const categoryList = sortedGroups.map(g => ({ name: g.name, count: g.count }));
+          const categoryList = sortedGroups.map(g => ({
+            name: g.name,
+            count: g.count,
+            unreadTotal: g.unreadTotal,
+            feeds: g.feeds
+          }));
           const filteredGroups = sortedGroups
             .filter(g => this.selectedCategory === 'all' || this.selectedCategory === g.name)
             .map(g => ({
@@ -211,6 +218,11 @@
             categoryList,
             filteredGroups
           };
+        },
+
+        get currentSelectedFeed() {
+          if (!this.timelineSelectedFeedId) return null;
+          return this.feeds.find(f => f.id === this.timelineSelectedFeedId) || null;
         },
 
         // 2. 通用选择与全选抽象函数 (DRY Principle)
@@ -1075,9 +1087,41 @@
         },
 
         setTimelineCategory(category) {
-          if (this.timelineSelectedCategory === category) return;
+          this.timelineSelectedFeedId = null;
+          if (this.timelineSelectedCategory === category) {
+            this.loadTimeline(true);
+            return;
+          }
           this.timelineSelectedCategory = category;
           this.loadTimeline(true);
+        },
+
+        setTimelineFeed(feed) {
+          this.timelineSelectedCategory = feed.category_name || '未分类';
+          this.timelineCollapsedCategories[this.timelineSelectedCategory] = false;
+          if (this.timelineSelectedFeedId === feed.id) return;
+          this.timelineSelectedFeedId = feed.id;
+          this.loadTimeline(true);
+        },
+
+        toggleTimelineCategory(catName) {
+          this.timelineCollapsedCategories[catName] = !this.timelineCollapsedCategories[catName];
+        },
+
+        isTimelineCategoryCollapsed(catName) {
+          return !!this.timelineCollapsedCategories[catName];
+        },
+
+        areAllTimelineCategoriesCollapsed() {
+          const list = this.computedData.categoryList;
+          return list.length > 0 && list.every(c => this.timelineCollapsedCategories[c.name]);
+        },
+
+        toggleAllTimelineCategories() {
+          const collapse = !this.areAllTimelineCategoriesCollapsed();
+          this.computedData.categoryList.forEach(c => {
+            this.timelineCollapsedCategories[c.name] = collapse;
+          });
         },
 
         async loadTimeline(reset = false) {
@@ -1111,7 +1155,9 @@
               params.set('starred_only', 'true');
             }
 
-            if (this.timelineSelectedCategory !== 'all') {
+            if (this.timelineSelectedFeedId) {
+              params.set('stream_id', `feed/${this.timelineSelectedFeedId}`);
+            } else if (this.timelineSelectedCategory !== 'all') {
               params.set('stream_id', `user/-/label/${this.timelineSelectedCategory}`);
             } else {
               params.set('stream_id', 'user/-/state/com.google/reading-list');
@@ -1295,7 +1341,9 @@
             return;
           }
           let streamId = 'user/-/state/com.google/reading-list';
-          if (this.timelineSelectedCategory !== 'all') {
+          if (this.timelineSelectedFeedId) {
+            streamId = `feed/${this.timelineSelectedFeedId}`;
+          } else if (this.timelineSelectedCategory !== 'all') {
             streamId = `user/-/label/${this.timelineSelectedCategory}`;
           }
           try {
