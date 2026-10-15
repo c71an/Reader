@@ -1206,18 +1206,22 @@
         },
 
         openReader(article) {
-          // 仅当首次从列表打开阅读器时记录时间线滚动位置
+          // 仅当首次从列表打开阅读器时记录时间线滚动位置并锁定底层滚动
           if (!this.modals.reader) {
             this.timelineScrollPos = window.scrollY || document.documentElement.scrollTop || 0;
+            document.body.style.overflow = 'hidden';
           }
           this.readerArticle = article;
           this.readerIndex = this.timelineItems.findIndex(it => it.id === article.id);
           this.readerClosing = false;
           this.modals.reader = true;
 
-          // 切换为独立页面流后平滑重置原生 window 滚动条到顶端
+          // 重置卡片内部正文滚动条到顶端
           this.$nextTick(() => {
-            window.scrollTo({ top: 0, behavior: 'instant' });
+            const bodyEl = document.getElementById('reader-card-body');
+            if (bodyEl) {
+              bodyEl.scrollTop = 0;
+            }
           });
 
           // 推进浏览器历史栈（支持原生返回手势与返回键）
@@ -1248,7 +1252,7 @@
           if (this.readerClosing) return;
           this.readerClosing = true;
 
-          // 释放当前聚集元素焦点，防止 Chrome 在隐藏 modal 时将焦点复位至 body 导致滚动条回滚到 0
+          // 释放当前聚焦元素焦点
           if (document.activeElement && typeof document.activeElement.blur === 'function') {
             document.activeElement.blur();
           }
@@ -1258,29 +1262,36 @@
           }
 
           this.modals.reader = false;
+          document.body.style.overflow = '';
+
+          const lastArticleId = this.readerArticle ? this.readerArticle.id : null;
           this.readerArticle = null;
           this.readerIndex = -1;
 
-          const targetPos = this.timelineScrollPos || 0;
-          const restoreScroll = () => {
-            window.scrollTo({ top: targetPos, behavior: 'instant' });
-          };
-
-          // 双阶段平滑恢复原始滚动条位置：
-          // 1. $nextTick 在 DOM 响应后立即复位
-          // 2. requestAnimationFrame 确保在浏览器渲染帧（Layout / Reflow 完成后）再次锚定，防止 Chrome 布局尚未就绪时被截断
+          // 原位保持与对齐：
+          // 1. 底层由于未被 display:none 隐藏，原本即停在离开时的绝对像素位置；
+          // 2. 若在详情页中用 J/K 切换了文章，平滑确保当前文章卡片在可视区域内
           this.$nextTick(() => {
-            restoreScroll();
-            requestAnimationFrame(() => {
-              restoreScroll();
-              this.readerClosing = false;
-            });
+            if (lastArticleId) {
+              const card = document.getElementById('article-card-' + lastArticleId);
+              if (card) {
+                const rect = card.getBoundingClientRect();
+                if (rect.top < 60 || rect.bottom > window.innerHeight) {
+                  card.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+                }
+              }
+            } else if (this.timelineScrollPos !== undefined) {
+              if (Math.abs((window.scrollY || 0) - this.timelineScrollPos) > 5) {
+                window.scrollTo({ top: this.timelineScrollPos, behavior: 'instant' });
+              }
+            }
+            this.readerClosing = false;
           });
 
           // 保底超时重置防抖锁
           setTimeout(() => {
             this.readerClosing = false;
-          }, 350);
+          }, 300);
         },
 
         prevArticle() {
