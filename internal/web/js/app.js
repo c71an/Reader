@@ -1206,21 +1206,29 @@
         },
 
         openReader(article) {
-          // 仅当首次从列表打开阅读器时记录时间线滚动位置并锁定底层滚动
+          const isMobile = window.innerWidth < 640;
+          // 仅当首次从列表打开阅读器时记录时间线滚动位置
           if (!this.modals.reader) {
             this.timelineScrollPos = window.scrollY || document.documentElement.scrollTop || 0;
-            document.body.style.overflow = 'hidden';
+            // 仅在桌面端锁定底层滚动；手机端使用原生 window 滚动以支持 Safari 地址栏自动收起与无闪退
+            if (!isMobile) {
+              document.body.style.overflow = 'hidden';
+            }
           }
           this.readerArticle = article;
           this.readerIndex = this.timelineItems.findIndex(it => it.id === article.id);
           this.readerClosing = false;
           this.modals.reader = true;
 
-          // 重置卡片内部正文滚动条到顶端
+          // 重置正文滚动条到顶端
           this.$nextTick(() => {
-            const bodyEl = document.getElementById('reader-card-body');
-            if (bodyEl) {
-              bodyEl.scrollTop = 0;
+            if (isMobile) {
+              window.scrollTo({ top: 0, behavior: 'instant' });
+            } else {
+              const bodyEl = document.getElementById('reader-card-body');
+              if (bodyEl) {
+                bodyEl.scrollTop = 0;
+              }
             }
           });
 
@@ -1261,41 +1269,50 @@
             history.back();
           }
 
-          this.modals.reader = false;
-          document.body.style.overflow = '';
-
+          const isMobile = window.innerWidth < 640;
           const lastArticleId = this.readerArticle ? this.readerArticle.id : null;
+          const savedScrollPos = this.timelineScrollPos || 0;
+
           this.modals.reader = false;
-          document.body.style.overflow = '';
+          if (!isMobile) {
+            document.body.style.overflow = '';
+          }
 
           // 原位保持与对齐：
-          // 底层始终未被隐藏，原本即停在离开时的绝对像素位置；
-          // 若在详情页中用 J/K 切换了文章，平滑确保当前文章卡片在可视区域内
           this.$nextTick(() => {
-            if (lastArticleId) {
-              const card = document.getElementById('article-card-' + lastArticleId);
-              if (card) {
-                const rect = card.getBoundingClientRect();
-                if (rect.top < 60 || rect.bottom > window.innerHeight) {
-                  card.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+            if (isMobile) {
+              // 手机端：立即且纯粹地将 window 还原到进入前的绝对滚动位置，绝无多余重绘跳动
+              window.scrollTo({ top: savedScrollPos, behavior: 'instant' });
+            } else {
+              // 桌面端：底层始终未被隐藏，若在详情页中用 J/K 切换了文章，平滑确保当前文章卡片在可视区域内
+              if (lastArticleId) {
+                const card = document.getElementById('article-card-' + lastArticleId);
+                if (card) {
+                  const rect = card.getBoundingClientRect();
+                  if (rect.top < 60 || rect.bottom > window.innerHeight) {
+                    card.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+                  }
                 }
-              }
-            } else if (this.timelineScrollPos !== undefined) {
-              if (Math.abs((window.scrollY || 0) - this.timelineScrollPos) > 5) {
-                window.scrollTo({ top: this.timelineScrollPos, behavior: 'instant' });
+              } else if (this.timelineScrollPos !== undefined) {
+                if (Math.abs((window.scrollY || 0) - this.timelineScrollPos) > 5) {
+                  window.scrollTo({ top: this.timelineScrollPos, behavior: 'instant' });
+                }
               }
             }
           });
 
-          // 关键修复：延迟清空 readerArticle！
-          // 退出动画持续约 150ms，如果在关闭一瞬间立即将 readerArticle 置为 null，
-          // 会导致卡片内的标题、正文文本瞬间变空，卡片高度发生上下坍塌收缩后才淡出消失。
-          // 保持文章数据直至淡出动画完全结束，视觉自然平滑。
-          setTimeout(() => {
+          // 清理状态：手机端直接复位无延迟；桌面端等待 200ms 淡出动画结束再清空
+          if (isMobile) {
             this.readerArticle = null;
             this.readerIndex = -1;
             this.readerClosing = false;
-          }, 200);
+          } else {
+            setTimeout(() => {
+              this.readerArticle = null;
+              this.readerIndex = -1;
+              this.readerClosing = false;
+            }, 200);
+          }
         },
 
         prevArticle() {
