@@ -61,6 +61,14 @@
     html.dark {
       color-scheme: dark;
     }
+    /* 隐藏滚动条但保留滚动功能 */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
     /* 优化移动端手势与触控体验：优先适配 iOS Safari 原生动量与系统字体栈 */
     html, body {
       -webkit-tap-highlight-color: transparent;
@@ -467,22 +475,22 @@
       <!-- 右侧文章列表块 (包含顶栏操作区与卡片流，右侧与顶部菜单按钮对齐) -->
       <div class="flex-1 min-w-0">
         
-        <!-- 顶栏快速操作与过滤 (单行紧凑排列，移动端自适应保持同一行) -->
-        <div class="flex items-center justify-between gap-2 mb-4 pb-3 border-b border-neutral-200/80 dark:border-neutral-800/80 overflow-x-auto no-scrollbar py-0.5">
+        <!-- 顶栏快速操作与过滤 (单行紧凑排列，移动端自适应保持同一行且不溢出) -->
+        <div class="flex items-center justify-between gap-1.5 sm:gap-2 mb-4 pb-3 border-b border-neutral-200/80 dark:border-neutral-800/80 overflow-x-auto no-scrollbar py-0.5">
           <!-- 左侧状态与分类切换 -->
-          <div class="flex items-center space-x-1.5 shrink-0">
+          <div class="flex items-center space-x-1 sm:space-x-1.5 shrink-0">
             <button @click="setTimelineFilter('all')"
-                    class="w-14 h-7 rounded-full text-xs font-medium transition shrink-0 flex items-center justify-center"
+                    class="px-2.5 sm:w-14 h-7 rounded-full text-xs font-medium transition shrink-0 flex items-center justify-center"
                     :class="timelineFilter === 'all' ? 'bg-black dark:bg-white text-white dark:text-black shadow-xs' : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800'">
               全部
             </button>
             <button @click="setTimelineFilter('unread')"
-                    class="w-14 h-7 rounded-full text-xs font-medium transition shrink-0 flex items-center justify-center"
+                    class="px-2.5 sm:w-14 h-7 rounded-full text-xs font-medium transition shrink-0 flex items-center justify-center"
                     :class="timelineFilter === 'unread' ? 'bg-black dark:bg-white text-white dark:text-black shadow-xs' : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800'">
               未读
             </button>
             <button @click="setTimelineFilter('starred')"
-                    class="w-14 h-7 rounded-full text-xs font-medium transition shrink-0 flex items-center justify-center"
+                    class="px-2.5 sm:w-14 h-7 rounded-full text-xs font-medium transition shrink-0 flex items-center justify-center"
                     :class="timelineFilter === 'starred' ? 'bg-black dark:bg-white text-white dark:text-black shadow-xs' : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800'">
               星标
             </button>
@@ -490,12 +498,12 @@
             <!-- 窄屏专用：状态药丸标签与分类入口 (点击名称开窗，点击 ✕ 清除回到全部) -->
             <!-- 1. 选中具体订阅源时：显示 源: xxx ✕ -->
             <template x-if="timelineSelectedFeedId && currentSelectedFeed">
-              <div class="lg:hidden flex items-center space-x-1 pl-2.5 pr-1 py-0.5 rounded-full text-xs bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 border border-neutral-200 dark:border-neutral-700/80 shrink-0">
-                <button @click="modals.timelineTree = true" class="flex items-center space-x-1 truncate max-w-[120px] sm:max-w-[160px] hover:text-black dark:hover:text-white" title="点击切换订阅源">
-                  <span class="text-neutral-400">源:</span>
+              <div class="lg:hidden flex items-center space-x-1 pl-2 pr-1 py-0.5 rounded-full text-xs bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 border border-neutral-200 dark:border-neutral-700/80 shrink-0">
+                <button @click="modals.timelineTree = true" class="flex items-center space-x-0.5 truncate max-w-[88px] sm:max-w-[160px] hover:text-black dark:hover:text-white" title="点击切换订阅源">
+                  <span class="text-neutral-400 shrink-0">源:</span>
                   <span class="font-medium truncate" x-text="currentSelectedFeed.title"></span>
                 </button>
-                <button @click="setTimelineCategory('all')" class="text-neutral-400 hover:text-black dark:hover:text-white p-1 rounded-full transition" title="清除单源过滤，返回全部文章">
+                <button @click="setTimelineCategory('all')" class="text-neutral-400 hover:text-black dark:hover:text-white p-0.5 rounded-full transition" title="清除单源过滤，返回全部文章">
                   <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
               </div>
@@ -503,12 +511,12 @@
 
             <!-- 2. 选中分类时：显示 分类: xxx ✕ -->
             <template x-if="timelineSelectedCategory !== 'all' && !timelineSelectedFeedId">
-              <div class="lg:hidden flex items-center space-x-1 pl-2.5 pr-1 py-0.5 rounded-full text-xs bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 border border-neutral-200 dark:border-neutral-700/80 shrink-0">
-                <button @click="modals.timelineTree = true" class="flex items-center space-x-1 truncate max-w-[120px] sm:max-w-[160px] hover:text-black dark:hover:text-white" title="点击切换分类">
-                  <span class="text-neutral-400">分类:</span>
+              <div class="lg:hidden flex items-center space-x-1 pl-2 pr-1 py-0.5 rounded-full text-xs bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 border border-neutral-200 dark:border-neutral-700/80 shrink-0">
+                <button @click="modals.timelineTree = true" class="flex items-center space-x-0.5 truncate max-w-[88px] sm:max-w-[160px] hover:text-black dark:hover:text-white" title="点击切换分类">
+                  <span class="text-neutral-400 shrink-0">分类:</span>
                   <span class="font-medium truncate" x-text="timelineSelectedCategory"></span>
                 </button>
-                <button @click="setTimelineCategory('all')" class="text-neutral-400 hover:text-black dark:hover:text-white p-1 rounded-full transition" title="清除分类过滤，返回全部文章">
+                <button @click="setTimelineCategory('all')" class="text-neutral-400 hover:text-black dark:hover:text-white p-0.5 rounded-full transition" title="清除分类过滤，返回全部文章">
                   <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
               </div>
@@ -517,23 +525,23 @@
             <!-- 3. 全量文章状态时：显示 分类与源 ▾ 入口按钮 -->
             <button x-show="timelineSelectedCategory === 'all' && !timelineSelectedFeedId"
                     @click="modals.timelineTree = true"
-                    class="lg:hidden px-2.5 py-1 text-xs rounded-full bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition flex items-center space-x-1 shrink-0 shadow-2xs"
+                    class="lg:hidden px-2 sm:px-2.5 py-1 text-xs rounded-full bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition flex items-center space-x-1 shrink-0 shadow-2xs"
                     title="选择分类与订阅源">
               <span>分类与源</span>
               <svg class="w-3 h-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
             </button>
           </div>
 
-        <!-- 右侧操作栏 (全标已读) -->
-        <div class="flex items-center shrink-0 ml-1">
-          <button @click="markAllTimelineRead()"
-                  class="px-2.5 py-1 text-xs text-neutral-600 dark:text-neutral-300 hover:text-black dark:hover:text-white bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg transition flex items-center space-x-1 shadow-2xs shrink-0"
-                  title="标记全部为已读">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-            <span>全标已读</span>
-          </button>
+          <!-- 右侧操作栏 (全标已读) -->
+          <div class="flex items-center shrink-0 ml-1">
+            <button @click="markAllTimelineRead()"
+                    class="px-2 sm:px-2.5 py-1 text-xs text-neutral-600 dark:text-neutral-300 hover:text-black dark:hover:text-white bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg transition flex items-center space-x-1 shadow-2xs shrink-0"
+                    title="全部标记为已读">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+              <span class="hidden sm:inline">全标已读</span>
+            </button>
+          </div>
         </div>
-      </div>
 
       <!-- 时间线主体流 (按日期分组呈现，对齐设计) -->
       <div class="space-y-6">
