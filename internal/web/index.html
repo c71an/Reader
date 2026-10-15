@@ -344,7 +344,7 @@
              @keydown.escape.window="modals.timelineTree = false"
              @click.self="modals.timelineTree = false"
              class="fixed inset-0 z-50 overflow-y-auto bg-neutral-950/50 dark:bg-black/75 backdrop-blur-xs flex items-center justify-center p-3.5 sm:p-4 lg:z-auto lg:p-0 lg:bg-transparent lg:dark:bg-transparent lg:backdrop-blur-none lg:!block lg:w-72 xl:w-80 lg:shrink-0 lg:sticky lg:top-[97px] lg:will-change-transform lg:transform-gpu lg:overflow-visible">
-        <div class="bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 rounded-2xl shadow-2xl lg:shadow-none w-full max-w-md lg:max-w-none max-h-[78dvh] sm:max-h-[82dvh] lg:max-h-[calc(100vh-120px)] flex flex-col p-3.5 overflow-hidden my-auto lg:my-0">
+        <div class="bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 rounded-2xl shadow-2xl lg:shadow-none w-full max-w-md lg:max-w-none max-h-[78dvh] sm:max-h-[82dvh] lg:max-h-[calc(100vh-144px)] flex flex-col p-3.5 overflow-hidden my-auto lg:my-0">
           <!-- 标题栏与展开/折叠全部切换 (移动端带 ✕ 关闭按钮) -->
           <div class="flex items-center justify-between px-2 pb-2 border-b border-neutral-100 dark:border-neutral-800/80 shrink-0">
             <div class="flex items-center space-x-2">
@@ -436,7 +436,7 @@
       </aside>
 
       <!-- 右侧文章列表块 (包含顶栏操作区与卡片流，右侧与顶部菜单按钮对齐) -->
-      <div class="flex-1 min-w-0">
+      <div class="flex-1 min-w-0 lg:min-h-[calc(100vh-130px)]">
         
         <!-- 顶栏快速操作与过滤 (全端吸顶固定，单行紧凑排列) -->
         <div class="flex items-center justify-between gap-1.5 sm:gap-2 mb-2 pb-2.5 border-b border-neutral-200/80 dark:border-neutral-800/80 overflow-x-auto no-scrollbar py-0.5 sticky top-[57px] sm:top-[65px] z-20 bg-neutral-50 dark:bg-neutral-950 pt-4 -mt-4 sm:pt-8 sm:-mt-8 will-change-transform transform-gpu">
