@@ -357,7 +357,7 @@
   </header>
 
   <!-- 登录页面 -->
-  <div x-show="!isLoggedIn && !authChecking" class="max-w-md mx-auto mt-20 p-6 bg-white dark:bg-slate-900 rounded-xl shadow-md border border-slate-200 dark:border-slate-800">
+  <div x-show="!isLoggedIn && !authChecking" x-cloak class="max-w-md mx-auto mt-20 p-6 bg-white dark:bg-slate-900 rounded-xl shadow-md border border-slate-200 dark:border-slate-800">
     <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-6">登录管理控制台</h2>
     <form @submit.prevent="login">
       <div class="mb-4">
