@@ -34,7 +34,8 @@
           content: false,
           stagger: false,
           category: false,
-          reader: false
+          reader: false,
+          timelineTree: false
         },
         loading: {
           db: false,
