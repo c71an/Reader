@@ -476,7 +476,7 @@
       <div class="flex-1 min-w-0">
         
         <!-- 顶栏快速操作与过滤 (单行紧凑排列，移动端自适应保持同一行且不溢出) -->
-        <div class="flex items-center justify-between gap-1.5 sm:gap-2 mb-4 pb-3 border-b border-neutral-200/80 dark:border-neutral-800/80 overflow-x-auto no-scrollbar py-0.5">
+        <div class="flex items-center justify-between gap-1.5 sm:gap-2 mb-2 pb-2.5 border-b border-neutral-200/80 dark:border-neutral-800/80 overflow-x-auto no-scrollbar py-0.5">
           <!-- 左侧状态与分类切换 -->
           <div class="flex items-center space-x-1 sm:space-x-1.5 shrink-0">
             <button @click="setTimelineFilter('all')"
@@ -544,12 +544,12 @@
         </div>
 
       <!-- 时间线主体流 (按日期分组呈现，对齐设计) -->
-      <div class="space-y-6">
+      <div class="space-y-4">
         <template x-for="group in timelineGroups" :key="group.date">
           <div>
             <!-- 日期分节标题 (如 TUESDAY, OCTOBER 6, 2026) -->
-            <div class="py-2.5 px-1 mb-2 sm:sticky sm:top-16 z-10 bg-neutral-50/95 dark:bg-neutral-950/95 sm:backdrop-blur-md">
-              <h3 class="text-xs font-bold tracking-wider text-neutral-400 dark:text-neutral-500 uppercase select-none" x-text="group.date"></h3>
+            <div class="py-1 px-1 mb-1.5 sm:sticky sm:top-16 z-10 bg-neutral-50/95 dark:bg-neutral-950/95 sm:backdrop-blur-md">
+              <h3 class="text-xs font-normal tracking-wide text-neutral-400 dark:text-neutral-500 uppercase select-none" x-text="group.date"></h3>
             </div>
 
             <!-- 组内文章卡片列表 -->
