@@ -1088,6 +1088,7 @@
         },
 
         setTimelineCategory(category) {
+          this.modals.timelineTree = false;
           this.timelineSelectedFeedId = null;
           if (this.timelineSelectedCategory === category) {
             this.loadTimeline(true);
@@ -1098,6 +1099,7 @@
         },
 
         setTimelineFeed(feed) {
+          this.modals.timelineTree = false;
           this.timelineSelectedCategory = feed.category_name || '未分类';
           this.timelineCollapsedCategories[this.timelineSelectedCategory] = false;
           if (this.timelineSelectedFeedId === feed.id) return;
