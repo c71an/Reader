@@ -382,26 +382,15 @@
       
       <!-- 左侧分类侧边栏 (宽屏专用，左侧与顶部 Logo 对齐) -->
       <aside class="hidden lg:block w-56 xl:w-64 shrink-0 lg:sticky lg:top-20">
-        <div class="bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 rounded-2xl p-3.5 shadow-2xs space-y-3">
+        <div class="bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 rounded-2xl p-3 shadow-2xs space-y-2">
           <!-- 标题栏 -->
-          <div class="flex items-center justify-between px-1">
+          <div class="flex items-center justify-between px-1.5 pb-1">
             <span class="text-xs font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">分类筛选</span>
             <span class="text-[11px] text-neutral-400 dark:text-neutral-500" x-text="computedData.categoryList.length + ' 个分类'"></span>
           </div>
 
-          <!-- 分类下拉框 (从顶部操作栏移入) -->
-          <div>
-            <select x-model="timelineSelectedCategory" @change="loadTimeline(true)"
-                    class="w-full px-2.5 py-1.5 text-xs rounded-xl bg-neutral-50 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 border border-neutral-200 dark:border-neutral-700/80 focus:outline-none focus:ring-1 focus:ring-neutral-400 font-medium cursor-pointer transition">
-              <option value="all">所有分类</option>
-              <template x-for="cat in computedData.categoryList" :key="cat.name">
-                <option :value="cat.name" x-text="cat.name"></option>
-              </template>
-            </select>
-          </div>
-
-          <!-- 分类快捷直达列表 -->
-          <div class="pt-1 border-t border-neutral-100 dark:border-neutral-800/80 space-y-1 max-h-[calc(100vh-240px)] overflow-y-auto no-scrollbar">
+          <!-- 分类列表 -->
+          <div class="space-y-1 max-h-[calc(100vh-200px)] overflow-y-auto no-scrollbar">
             <!-- 所有分类 -->
             <button @click="setTimelineCategory('all')"
                     class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition text-left"
