@@ -1074,6 +1074,12 @@
           this.loadTimeline(true);
         },
 
+        setTimelineCategory(category) {
+          if (this.timelineSelectedCategory === category) return;
+          this.timelineSelectedCategory = category;
+          this.loadTimeline(true);
+        },
+
         async loadTimeline(reset = false) {
           if (this.timelineLoading && !reset) return;
           if (!reset && !this.timelineHasMore) return;

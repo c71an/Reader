@@ -375,41 +375,91 @@
   </div>
 
   <!-- 主内容区 (阅读模式时隐藏，由全屏流式阅读页完全接管 window.scroll) -->
-  <main x-show="isLoggedIn && !modals.reader" class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 pb-safe">
+  <main x-show="isLoggedIn && !modals.reader" class="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-8 pb-safe">
 
     <!-- 1. 事件流时间线阅读主视图 (默认主页) -->
-    <div x-show="currentTab === 'timeline'" class="max-w-3xl mx-auto">
+    <div x-show="currentTab === 'timeline'" class="w-full max-w-3xl mx-auto lg:max-w-none lg:flex lg:items-start lg:gap-8 xl:gap-10">
       
-      <!-- 顶栏快速操作与过滤 (单行紧凑排列，移动端自适应保持同一行) -->
-      <div class="flex items-center justify-between gap-2 mb-4 pb-3 border-b border-neutral-200/80 dark:border-neutral-800/80 overflow-x-auto no-scrollbar py-0.5">
-        <!-- 左侧状态与分类切换 -->
-        <div class="flex items-center space-x-1.5 shrink-0">
-          <button @click="setTimelineFilter('all')"
-                  class="w-14 h-7 rounded-full text-xs font-medium transition shrink-0 flex items-center justify-center"
-                  :class="timelineFilter === 'all' ? 'bg-black dark:bg-white text-white dark:text-black shadow-xs' : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800'">
-            全部
-          </button>
-          <button @click="setTimelineFilter('unread')"
-                  class="w-14 h-7 rounded-full text-xs font-medium transition shrink-0 flex items-center justify-center"
-                  :class="timelineFilter === 'unread' ? 'bg-black dark:bg-white text-white dark:text-black shadow-xs' : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800'">
-            未读
-          </button>
-          <button @click="setTimelineFilter('starred')"
-                  class="w-14 h-7 rounded-full text-xs font-medium transition shrink-0 flex items-center justify-center"
-                  :class="timelineFilter === 'starred' ? 'bg-black dark:bg-white text-white dark:text-black shadow-xs' : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800'">
-            星标
-          </button>
+      <!-- 左侧分类侧边栏 (宽屏专用，左侧与顶部 Logo 对齐) -->
+      <aside class="hidden lg:block w-56 xl:w-64 shrink-0 lg:sticky lg:top-20">
+        <div class="bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 rounded-2xl p-3.5 shadow-2xs space-y-3">
+          <!-- 标题栏 -->
+          <div class="flex items-center justify-between px-1">
+            <span class="text-xs font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">分类筛选</span>
+            <span class="text-[11px] text-neutral-400 dark:text-neutral-500" x-text="computedData.categoryList.length + ' 个分类'"></span>
+          </div>
 
-          <!-- 文件夹过滤 -->
-          <div class="h-4 w-px bg-neutral-200 dark:bg-neutral-800 mx-1 shrink-0"></div>
-          <select x-model="timelineSelectedCategory" @change="loadTimeline(true)"
-                  class="max-w-[110px] sm:max-w-[140px] px-2 sm:px-2.5 py-1 text-xs rounded-full bg-white dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-400 shrink-0 truncate">
-            <option value="all">所有分类</option>
+          <!-- 分类下拉框 (从顶部操作栏移入) -->
+          <div>
+            <select x-model="timelineSelectedCategory" @change="loadTimeline(true)"
+                    class="w-full px-2.5 py-1.5 text-xs rounded-xl bg-neutral-50 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 border border-neutral-200 dark:border-neutral-700/80 focus:outline-none focus:ring-1 focus:ring-neutral-400 font-medium cursor-pointer transition">
+              <option value="all">所有分类</option>
+              <template x-for="cat in computedData.categoryList" :key="cat.name">
+                <option :value="cat.name" x-text="cat.name"></option>
+              </template>
+            </select>
+          </div>
+
+          <!-- 分类快捷直达列表 -->
+          <div class="pt-1 border-t border-neutral-100 dark:border-neutral-800/80 space-y-1 max-h-[calc(100vh-240px)] overflow-y-auto no-scrollbar">
+            <!-- 所有分类 -->
+            <button @click="setTimelineCategory('all')"
+                    class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition text-left"
+                    :class="timelineSelectedCategory === 'all' ? 'bg-black dark:bg-white text-white dark:text-black shadow-2xs font-semibold' : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800'">
+              <span class="truncate">全部</span>
+              <span class="text-[10px] px-1.5 py-0.2 rounded-full shrink-0"
+                    :class="timelineSelectedCategory === 'all' ? 'bg-neutral-800 dark:bg-neutral-200 text-white dark:text-black' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400'"
+                    x-text="computedData.totalFeeds"></span>
+            </button>
+
+            <!-- 各分类项 -->
             <template x-for="cat in computedData.categoryList" :key="cat.name">
-              <option :value="cat.name" x-text="cat.name"></option>
+              <button @click="setTimelineCategory(cat.name)"
+                      class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition text-left"
+                      :class="timelineSelectedCategory === cat.name ? 'bg-black dark:bg-white text-white dark:text-black shadow-2xs font-semibold' : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800'">
+                <span class="truncate" x-text="cat.name"></span>
+                <span class="text-[10px] px-1.5 py-0.2 rounded-full shrink-0"
+                      :class="timelineSelectedCategory === cat.name ? 'bg-neutral-800 dark:bg-neutral-200 text-white dark:text-black' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400'"
+                      x-text="cat.count"></span>
+              </button>
             </template>
-          </select>
+          </div>
         </div>
+      </aside>
+
+      <!-- 右侧文章列表块 (包含顶栏操作区与卡片流，右侧与顶部菜单按钮对齐) -->
+      <div class="flex-1 min-w-0">
+        
+        <!-- 顶栏快速操作与过滤 (单行紧凑排列，移动端自适应保持同一行) -->
+        <div class="flex items-center justify-between gap-2 mb-4 pb-3 border-b border-neutral-200/80 dark:border-neutral-800/80 overflow-x-auto no-scrollbar py-0.5">
+          <!-- 左侧状态与分类切换 -->
+          <div class="flex items-center space-x-1.5 shrink-0">
+            <button @click="setTimelineFilter('all')"
+                    class="w-14 h-7 rounded-full text-xs font-medium transition shrink-0 flex items-center justify-center"
+                    :class="timelineFilter === 'all' ? 'bg-black dark:bg-white text-white dark:text-black shadow-xs' : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800'">
+              全部
+            </button>
+            <button @click="setTimelineFilter('unread')"
+                    class="w-14 h-7 rounded-full text-xs font-medium transition shrink-0 flex items-center justify-center"
+                    :class="timelineFilter === 'unread' ? 'bg-black dark:bg-white text-white dark:text-black shadow-xs' : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800'">
+              未读
+            </button>
+            <button @click="setTimelineFilter('starred')"
+                    class="w-14 h-7 rounded-full text-xs font-medium transition shrink-0 flex items-center justify-center"
+                    :class="timelineFilter === 'starred' ? 'bg-black dark:bg-white text-white dark:text-black shadow-xs' : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800'">
+              星标
+            </button>
+
+            <!-- 移动端文件夹过滤 (宽屏下已移至左侧分类栏，此处仅窄屏显示) -->
+            <div class="h-4 w-px bg-neutral-200 dark:bg-neutral-800 mx-1 shrink-0 lg:hidden"></div>
+            <select x-model="timelineSelectedCategory" @change="loadTimeline(true)"
+                    class="lg:hidden max-w-[110px] sm:max-w-[140px] px-2 sm:px-2.5 py-1 text-xs rounded-full bg-white dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-400 shrink-0 truncate">
+              <option value="all">所有分类</option>
+              <template x-for="cat in computedData.categoryList" :key="cat.name">
+                <option :value="cat.name" x-text="cat.name"></option>
+              </template>
+            </select>
+          </div>
 
         <!-- 右侧操作栏 (全标已读) -->
         <div class="flex items-center shrink-0 ml-1">
@@ -495,6 +545,7 @@
         <div class="w-full shrink-0 pointer-events-none" style="height: calc(env(safe-area-inset-bottom, 0px) + 2rem);"></div>
       </div>
 
+      </div>
     </div>
 
     <!-- 2. 订阅管理控制台视图 -->
