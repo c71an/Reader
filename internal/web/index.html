@@ -344,7 +344,7 @@
              @keydown.escape.window="modals.timelineTree = false"
              @click.self="modals.timelineTree = false"
              class="fixed inset-0 z-50 overflow-y-auto bg-neutral-950/50 dark:bg-black/75 backdrop-blur-xs flex items-center justify-center p-3.5 sm:p-4 lg:z-auto lg:p-0 lg:bg-transparent lg:dark:bg-transparent lg:backdrop-blur-none lg:!block lg:w-72 xl:w-80 lg:shrink-0 lg:sticky lg:top-[97px] lg:will-change-transform lg:transform-gpu lg:overflow-visible">
-        <div class="bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 rounded-2xl shadow-2xl lg:shadow-none w-full max-w-md lg:max-w-none max-h-[78dvh] sm:max-h-[82dvh] lg:max-h-[calc(100vh-120px)] flex flex-col p-3.5 space-y-2.5 overflow-hidden my-auto lg:my-0">
+        <div class="bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 rounded-2xl shadow-2xl lg:shadow-none w-full max-w-md lg:max-w-none max-h-[78dvh] sm:max-h-[82dvh] lg:max-h-[calc(100vh-120px)] flex flex-col p-3.5 overflow-hidden my-auto lg:my-0">
           <!-- 标题栏与展开/折叠全部切换 (移动端带 ✕ 关闭按钮) -->
           <div class="flex items-center justify-between px-2 pb-2 border-b border-neutral-100 dark:border-neutral-800/80 shrink-0">
             <div class="flex items-center space-x-2">
@@ -364,7 +364,7 @@
           </div>
 
           <!-- 分类与订阅源树形列表 (移动端字号放大至 text-sm，阅读与点击更舒适) -->
-          <div class="space-y-1.5 flex-1 overflow-y-auto no-scrollbar">
+          <div class="space-y-1.5 flex-1 overflow-y-auto no-scrollbar pt-2">
             <!-- 全部文章 -->
             <button @click="setTimelineCategory('all')"
                     class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm font-medium transition text-left"
