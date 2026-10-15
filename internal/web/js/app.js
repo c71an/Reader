@@ -1265,12 +1265,12 @@
           document.body.style.overflow = '';
 
           const lastArticleId = this.readerArticle ? this.readerArticle.id : null;
-          this.readerArticle = null;
-          this.readerIndex = -1;
+          this.modals.reader = false;
+          document.body.style.overflow = '';
 
           // 原位保持与对齐：
-          // 1. 底层由于未被 display:none 隐藏，原本即停在离开时的绝对像素位置；
-          // 2. 若在详情页中用 J/K 切换了文章，平滑确保当前文章卡片在可视区域内
+          // 底层始终未被隐藏，原本即停在离开时的绝对像素位置；
+          // 若在详情页中用 J/K 切换了文章，平滑确保当前文章卡片在可视区域内
           this.$nextTick(() => {
             if (lastArticleId) {
               const card = document.getElementById('article-card-' + lastArticleId);
@@ -1285,13 +1285,17 @@
                 window.scrollTo({ top: this.timelineScrollPos, behavior: 'instant' });
               }
             }
-            this.readerClosing = false;
           });
 
-          // 保底超时重置防抖锁
+          // 关键修复：延迟清空 readerArticle！
+          // 退出动画持续约 150ms，如果在关闭一瞬间立即将 readerArticle 置为 null，
+          // 会导致卡片内的标题、正文文本瞬间变空，卡片高度发生上下坍塌收缩后才淡出消失。
+          // 保持文章数据直至淡出动画完全结束，视觉自然平滑。
           setTimeout(() => {
+            this.readerArticle = null;
+            this.readerIndex = -1;
             this.readerClosing = false;
-          }, 300);
+          }, 200);
         },
 
         prevArticle() {
