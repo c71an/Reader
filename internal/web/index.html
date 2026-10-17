@@ -578,28 +578,6 @@
 
     <!-- 2. 订阅管理控制台视图 -->
     <div x-show="currentTab === 'manage'">
-      <!-- 统计卡片与提示 (移动端 2x2 紧凑网格，桌面端 4 列) -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-5 mb-5 sm:mb-8">
-        <div class="bg-white dark:bg-slate-900 p-3 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div class="text-[11px] sm:text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5 sm:mb-1">全部订阅源</div>
-          <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white" x-text="computedData.totalFeeds">0</div>
-        </div>
-        <div class="bg-white dark:bg-slate-900 p-3 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div class="text-[11px] sm:text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5 sm:mb-1">分类文件夹数</div>
-          <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white" x-text="computedData.categoryList.length">0</div>
-        </div>
-        <div class="bg-white dark:bg-slate-900 p-3 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div class="text-[11px] sm:text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5 sm:mb-1">固定 / 暂停源</div>
-          <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white flex items-baseline">
-            <span x-text="computedData.dailyFixedCount">0</span>
-            <span class="text-[10px] sm:text-xs font-medium text-slate-400 dark:text-slate-500 ml-1.5" x-text="'(' + computedData.pausedCount + ' 暂停)'"></span>
-          </div>
-        </div>
-        <div class="bg-white dark:bg-slate-900 p-3 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div class="text-[11px] sm:text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5 sm:mb-1">未读文章累计</div>
-          <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white" x-text="computedData.unreadTotal">0</div>
-        </div>
-      </div>
 
     <!-- 顶栏与快速操作区 (自适应排版) -->
     <div class="flex items-center justify-between gap-2.5 sm:gap-3 mb-4 sm:mb-6">
