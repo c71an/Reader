@@ -181,6 +181,8 @@ func (d *DB) initSchema() error {
 
 	// 数据库升级迁移: 确保 feeds 表包含 max_articles 字段（默认 -1 代表保留全部）
 	_, _ = d.Exec("ALTER TABLE feeds ADD COLUMN max_articles INTEGER DEFAULT -1;")
+	// 修正历史默认值：将曾作为默认值的 0 或 NULL 统一更新为 -1（即空值/保留全部）
+	_, _ = d.Exec("UPDATE feeds SET max_articles = -1 WHERE max_articles IS NULL OR max_articles = 0;")
 
 	// 自动清理历史上因未开启外键约束而遗留在数据库中的孤儿文章与孤儿状态
 	_, _ = d.Exec(`

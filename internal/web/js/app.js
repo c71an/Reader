@@ -545,7 +545,7 @@
             title: feed.title || '',
             feed_url: feed.feed_url || '',
             category_name: feed.category_name || '',
-            max_articles: feed.max_articles != null ? feed.max_articles : null
+            max_articles: (feed.max_articles != null && feed.max_articles >= 0) ? feed.max_articles : null
           };
           this.dbArticles = [];
           this.dbArticlesTotal = 0;
@@ -566,8 +566,8 @@
 
         isDbFeedModified() {
           if (!this.dbCurrentFeed) return false;
-          const currMax = this.dbCurrentFeed.max_articles != null ? String(this.dbCurrentFeed.max_articles) : '';
-          const editMax = this.dbEditForm.max_articles != null && this.dbEditForm.max_articles !== '' ? String(this.dbEditForm.max_articles) : '';
+          const currMax = (this.dbCurrentFeed && this.dbCurrentFeed.max_articles != null && this.dbCurrentFeed.max_articles >= 0) ? String(this.dbCurrentFeed.max_articles) : '';
+          const editMax = (this.dbEditForm.max_articles != null && this.dbEditForm.max_articles !== '' && this.dbEditForm.max_articles >= 0) ? String(this.dbEditForm.max_articles) : '';
           return (this.dbEditForm.title !== (this.dbCurrentFeed.title || '')) ||
                  (this.dbEditForm.feed_url !== (this.dbCurrentFeed.feed_url || '')) ||
                  (this.dbEditForm.category_name !== (this.dbCurrentFeed.category_name || '')) ||
@@ -583,24 +583,24 @@
             maxArticles = isNaN(parsed) || parsed < 0 ? 0 : parsed;
           }
           this.dbEditForm.max_articles = maxArticles;
-          inputEl.value = maxArticles != null ? maxArticles : '';
+          inputEl.value = (maxArticles != null && maxArticles >= 0) ? maxArticles : '';
           await this.saveFeedSettingsInDbView();
           inputEl.blur();
         },
 
         cancelMaxArticles(inputEl) {
           inputEl._confirmed = false;
-          const curr = (this.dbCurrentFeed && this.dbCurrentFeed.max_articles != null) ? this.dbCurrentFeed.max_articles : '';
+          const curr = (this.dbCurrentFeed && this.dbCurrentFeed.max_articles != null && this.dbCurrentFeed.max_articles >= 0) ? this.dbCurrentFeed.max_articles : '';
           inputEl.value = curr;
-          this.dbEditForm.max_articles = (this.dbCurrentFeed && this.dbCurrentFeed.max_articles != null) ? this.dbCurrentFeed.max_articles : null;
+          this.dbEditForm.max_articles = (this.dbCurrentFeed && this.dbCurrentFeed.max_articles != null && this.dbCurrentFeed.max_articles >= 0) ? this.dbCurrentFeed.max_articles : null;
           inputEl.blur();
         },
 
         onMaxArticlesBlur(inputEl) {
           if (!inputEl._confirmed) {
-            const curr = (this.dbCurrentFeed && this.dbCurrentFeed.max_articles != null) ? this.dbCurrentFeed.max_articles : '';
+            const curr = (this.dbCurrentFeed && this.dbCurrentFeed.max_articles != null && this.dbCurrentFeed.max_articles >= 0) ? this.dbCurrentFeed.max_articles : '';
             inputEl.value = curr;
-            this.dbEditForm.max_articles = (this.dbCurrentFeed && this.dbCurrentFeed.max_articles != null) ? this.dbCurrentFeed.max_articles : null;
+            this.dbEditForm.max_articles = (this.dbCurrentFeed && this.dbCurrentFeed.max_articles != null && this.dbCurrentFeed.max_articles >= 0) ? this.dbCurrentFeed.max_articles : null;
           }
           inputEl._confirmed = false;
         },
