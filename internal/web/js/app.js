@@ -519,6 +519,25 @@
           }
         },
 
+        confirmFeedSchedule(feed, inputEl) {
+          inputEl._confirmed = true;
+          this.updateFeedSchedule(feed, inputEl.value);
+          inputEl.blur();
+        },
+
+        cancelFeedSchedule(feed, inputEl) {
+          inputEl._confirmed = false;
+          inputEl.value = feed.schedule_type === 'paused' ? '' : (feed.schedule_value || '');
+          inputEl.blur();
+        },
+
+        onFeedScheduleBlur(feed, inputEl) {
+          if (!inputEl._confirmed) {
+            inputEl.value = feed.schedule_type === 'paused' ? '' : (feed.schedule_value || '');
+          }
+          inputEl._confirmed = false;
+        },
+
         // 文章与订阅源信息查看/编辑 (合并窗口)
         async openDbView(feed) {
           this.dbCurrentFeed = feed;
@@ -526,7 +545,7 @@
             title: feed.title || '',
             feed_url: feed.feed_url || '',
             category_name: feed.category_name || '',
-            max_articles: feed.max_articles !== undefined ? feed.max_articles : 0
+            max_articles: feed.max_articles != null ? feed.max_articles : null
           };
           this.dbArticles = [];
           this.dbArticlesTotal = 0;
@@ -547,16 +566,53 @@
 
         isDbFeedModified() {
           if (!this.dbCurrentFeed) return false;
+          const currMax = this.dbCurrentFeed.max_articles != null ? String(this.dbCurrentFeed.max_articles) : '';
+          const editMax = this.dbEditForm.max_articles != null && this.dbEditForm.max_articles !== '' ? String(this.dbEditForm.max_articles) : '';
           return (this.dbEditForm.title !== (this.dbCurrentFeed.title || '')) ||
                  (this.dbEditForm.feed_url !== (this.dbCurrentFeed.feed_url || '')) ||
                  (this.dbEditForm.category_name !== (this.dbCurrentFeed.category_name || '')) ||
-                 (Number(this.dbEditForm.max_articles || 0) !== Number(this.dbCurrentFeed.max_articles || 0));
+                 (editMax !== currMax);
+        },
+
+        async confirmMaxArticles(inputEl) {
+          inputEl._confirmed = true;
+          const rawVal = (inputEl.value || '').trim();
+          let maxArticles = null;
+          if (rawVal !== '') {
+            const parsed = parseInt(rawVal, 10);
+            maxArticles = isNaN(parsed) || parsed < 0 ? 0 : parsed;
+          }
+          this.dbEditForm.max_articles = maxArticles;
+          inputEl.value = maxArticles != null ? maxArticles : '';
+          await this.saveFeedSettingsInDbView();
+          inputEl.blur();
+        },
+
+        cancelMaxArticles(inputEl) {
+          inputEl._confirmed = false;
+          const curr = (this.dbCurrentFeed && this.dbCurrentFeed.max_articles != null) ? this.dbCurrentFeed.max_articles : '';
+          inputEl.value = curr;
+          this.dbEditForm.max_articles = (this.dbCurrentFeed && this.dbCurrentFeed.max_articles != null) ? this.dbCurrentFeed.max_articles : null;
+          inputEl.blur();
+        },
+
+        onMaxArticlesBlur(inputEl) {
+          if (!inputEl._confirmed) {
+            const curr = (this.dbCurrentFeed && this.dbCurrentFeed.max_articles != null) ? this.dbCurrentFeed.max_articles : '';
+            inputEl.value = curr;
+            this.dbEditForm.max_articles = (this.dbCurrentFeed && this.dbCurrentFeed.max_articles != null) ? this.dbCurrentFeed.max_articles : null;
+          }
+          inputEl._confirmed = false;
         },
 
         async saveFeedSettingsInDbView() {
           if (!this.dbCurrentFeed) return;
           if (!this.dbEditForm.feed_url) return this.toast('源地址不能为空', 'warning');
-          const maxArticles = Math.max(0, parseInt(this.dbEditForm.max_articles, 10) || 0);
+          let maxArticles = null;
+          if (this.dbEditForm.max_articles !== null && this.dbEditForm.max_articles !== undefined && this.dbEditForm.max_articles !== '') {
+            const p = parseInt(this.dbEditForm.max_articles, 10);
+            maxArticles = isNaN(p) || p < 0 ? 0 : p;
+          }
           try {
             await this.api(`/api/admin/feeds/${this.dbCurrentFeed.id}`, {
               method: 'PUT',

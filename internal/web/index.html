@@ -790,10 +790,11 @@
                       <td class="w-44 px-3 py-2 whitespace-nowrap overflow-hidden" @click.stop>
                         <input type="text"
                                 :value="feed.schedule_type === 'paused' ? '' : (feed.schedule_value || '')"
-                                @change="updateFeedSchedule(feed, $event.target.value)"
-                                @keydown.enter="$event.target.blur()"
+                                @keydown.enter.prevent="confirmFeedSchedule(feed, $event.target)"
+                                @keydown.escape.prevent="cancelFeedSchedule(feed, $event.target)"
+                                @blur="onFeedScheduleBlur(feed, $event.target)"
                                 placeholder="已暂停"
-                                title="回车或失焦保存，留空为暂停"
+                                title="回车保存，Esc或点击外部撤销，留空为暂停"
                                 class="w-full px-2.5 py-1 text-xs font-mono rounded-md border transition focus:outline-none focus:ring-1"
                                 :class="feed.schedule_type === 'paused' 
                                   ? 'border-dashed border-slate-300 dark:border-slate-700 text-slate-400 dark:text-slate-500 bg-slate-50/70 dark:bg-slate-800/40 placeholder-slate-400 dark:placeholder-slate-500 focus:border-slate-400 focus:bg-white dark:focus:bg-slate-800 focus:text-slate-800 dark:focus:text-slate-100' 
@@ -870,10 +871,11 @@
                         <span class="text-slate-400 dark:text-slate-500 text-[10px] shrink-0 font-medium">调度:</span>
                         <input type="text"
                                :value="feed.schedule_type === 'paused' ? '' : (feed.schedule_value || '')"
-                               @change="updateFeedSchedule(feed, $event.target.value)"
-                               @keydown.enter="$event.target.blur()"
+                               @keydown.enter.prevent="confirmFeedSchedule(feed, $event.target)"
+                               @keydown.escape.prevent="cancelFeedSchedule(feed, $event.target)"
+                               @blur="onFeedScheduleBlur(feed, $event.target)"
                                placeholder="已暂停"
-                               title="回车或失焦保存，留空为暂停"
+                               title="回车保存，Esc或点击外部撤销，留空为暂停"
                                class="w-32 px-1.5 py-0.5 text-[11px] font-mono rounded border transition focus:outline-none focus:ring-1"
                                :class="feed.schedule_type === 'paused' 
                                  ? 'border-dashed border-slate-300 dark:border-slate-700 text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/40 placeholder-slate-400 dark:placeholder-slate-500 focus:border-slate-400 focus:bg-white dark:focus:bg-slate-800 focus:text-slate-800 dark:focus:text-slate-100' 
@@ -1240,8 +1242,9 @@
             <div class="flex items-center space-x-1 min-w-0 flex-1 sm:flex-initial">
               <input type="text" 
                      x-model="dbEditForm.title" 
+                     @keydown.enter="saveFeedSettingsInDbView(); $event.target.blur()"
                      placeholder="订阅源自定义标题" 
-                     title="可直接修改自定义标题"
+                     title="可直接修改自定义标题，回车保存"
                      class="font-bold text-slate-900 dark:text-slate-100 text-sm sm:text-base border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 focus:border-slate-400 rounded px-2 py-0.5 bg-white dark:bg-slate-800 transition w-full sm:w-72">
             </div>
             
@@ -1255,6 +1258,7 @@
                   <input type="text" 
                          x-model="dbEditForm.category_name" 
                          @focus="open = true"
+                         @keydown.enter="open = false; saveFeedSettingsInDbView(); $event.target.blur()"
                          placeholder="未分类" 
                          title="可直接输入新分类或点击右侧箭头选择已有分类"
                          class="w-full text-xs text-slate-700 dark:text-slate-200 px-2 py-1 focus:outline-none bg-transparent">
@@ -1278,7 +1282,7 @@
                     选择已有分类 (或直接输入)
                   </div>
                   <button type="button" 
-                          @click="dbEditForm.category_name = ''; open = false"
+                          @click="dbEditForm.category_name = ''; open = false; saveFeedSettingsInDbView()"
                           class="w-full text-left px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white flex items-center justify-between transition"
                           :class="!dbEditForm.category_name ? 'font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-700' : ''">
                     <span>📁 (未分类)</span>
@@ -1286,7 +1290,7 @@
                   </button>
                   <template x-for="cat in computedData.categoryList.filter(c => c.name !== '未分类')" :key="cat.name">
                     <button type="button" 
-                            @click="dbEditForm.category_name = cat.name; open = false"
+                            @click="dbEditForm.category_name = cat.name; open = false; saveFeedSettingsInDbView()"
                             class="w-full text-left px-2.5 py-1.5 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white flex items-center justify-between transition"
                             :class="dbEditForm.category_name === cat.name ? 'font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-700' : ''">
                       <span class="truncate" x-text="'📁 ' + cat.name"></span>
@@ -1304,8 +1308,8 @@
               <span class="text-slate-400 dark:text-slate-500 text-[11px] shrink-0">源地址:</span>
               <input type="text" 
                      x-model="dbEditForm.feed_url" 
-                     @keydown.enter="saveFeedSettingsInDbView()"
-                     title="源地址 (Feed URL / RSSHub)"
+                     @keydown.enter="saveFeedSettingsInDbView(); $event.target.blur()"
+                     title="源地址 (Feed URL / RSSHub)，回车保存"
                      class="font-mono text-[11px] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded px-2 py-0.5 w-60 sm:w-96 focus:outline-none focus:border-slate-400 bg-white dark:bg-slate-800 transition truncate">
               <button type="button" @click.stop="copyText(dbEditForm.feed_url, '订阅链接已复制')" class="text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white shrink-0 p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 transition" title="复制订阅链接">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
@@ -1320,17 +1324,12 @@
               <span class="text-slate-400 dark:text-slate-500 text-[11px] shrink-0">最大文章数:</span>
               <input type="number" 
                      min="0"
-                     x-model.number="dbEditForm.max_articles" 
-                     @keydown.enter="saveFeedSettingsInDbView()"
+                     :value="dbEditForm.max_articles != null ? dbEditForm.max_articles : ''" 
+                     @keydown.enter.prevent="confirmMaxArticles($event.target)"
+                     @keydown.escape.prevent="cancelMaxArticles($event.target)"
+                     @blur="onMaxArticlesBlur($event.target)"
                      class="font-mono text-[11px] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded px-2 py-0.5 w-16 sm:w-20 focus:outline-none focus:border-slate-400 bg-white dark:bg-slate-800 transition">
             </div>
-
-            <!-- 有改动时高亮保存按钮 -->
-            <button x-show="isDbFeedModified()" 
-                    @click="saveFeedSettingsInDbView()" 
-                    class="px-2.5 py-0.5 rounded text-[11px] font-medium bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 shadow-xs transition flex items-center space-x-1">
-              <span>✓ 保存修改</span>
-            </button>
           </div>
         </div>
 

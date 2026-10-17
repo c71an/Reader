@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -218,15 +219,20 @@ func (h *AdminHandler) UpdateFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	var req struct {
 		Title         string  `json:"title"`
 		FeedURL       string  `json:"feed_url"`
 		CategoryName  *string `json:"category_name"`
 		ScheduleType  string  `json:"schedule_type"`
 		ScheduleValue string  `json:"schedule_value"`
-		MaxArticles   *int    `json:"max_articles"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(bodyBytes, &req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -237,13 +243,26 @@ func (h *AdminHandler) UpdateFeed(w http.ResponseWriter, r *http.Request) {
 	if req.FeedURL != "" {
 		feed.FeedURL = req.FeedURL
 	}
-	if req.MaxArticles != nil {
-		if *req.MaxArticles < 0 {
-			feed.MaxArticles = 0
-		} else {
-			feed.MaxArticles = *req.MaxArticles
+
+	var rawMap map[string]json.RawMessage
+	if err := json.Unmarshal(bodyBytes, &rawMap); err == nil {
+		if raw, ok := rawMap["max_articles"]; ok {
+			trimmed := strings.TrimSpace(string(raw))
+			if trimmed == "null" || trimmed == "" {
+				feed.MaxArticles = nil
+			} else {
+				var val int
+				if err := json.Unmarshal(raw, &val); err == nil {
+					if val < 0 {
+						feed.MaxArticles = nil
+					} else {
+						feed.MaxArticles = &val
+					}
+				}
+			}
 		}
 	}
+
 	if req.ScheduleType != "" {
 		if req.ScheduleType != "paused" {
 			feed.ScheduleType = "cron"
@@ -276,9 +295,9 @@ func (h *AdminHandler) UpdateFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 如果设置了最大文章数限制，保存后立即清理超出的旧文章
-	if feed.MaxArticles > 0 {
-		_, _ = h.db.TrimFeedArticles(feed.ID, feed.MaxArticles)
+	// 如果设置了最大文章数限制（>= 0），保存后立即清理超出的旧文章；若为 0 则清空
+	if feed.MaxArticles != nil && *feed.MaxArticles >= 0 {
+		_, _ = h.db.TrimFeedArticles(feed.ID, *feed.MaxArticles)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

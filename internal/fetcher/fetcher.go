@@ -170,8 +170,8 @@ func (f *Fetcher) FetchFeed(ctx context.Context, feed *db.Feed) (int, error) {
 		return 0, fmt.Errorf("failed to save articles: %w", err)
 	}
 
-	if feed.MaxArticles > 0 {
-		_, _ = f.db.TrimFeedArticles(feed.ID, feed.MaxArticles)
+	if feed.MaxArticles != nil && *feed.MaxArticles >= 0 {
+		_, _ = f.db.TrimFeedArticles(feed.ID, *feed.MaxArticles)
 	}
 
 	etag := resp.Header.Get("ETag")

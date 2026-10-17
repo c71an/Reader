@@ -40,7 +40,7 @@ type Feed struct {
 	CategorySortOrder int        `json:"category_sort_order"`
 	ScheduleType      string     `json:"schedule_type"`  // "cron" 或 "paused"
 	ScheduleValue     string     `json:"schedule_value"` // 如 "0 8 * ~30m", "0 10 0"
-	MaxArticles       int        `json:"max_articles"`   // 订阅源保留文章数量上限，0 表示不限
+	MaxArticles       *int       `json:"max_articles"`   // 订阅源保留文章数量上限，nil 表示不限（保留全部），0 表示只保留0篇（清空）
 	LastFetchedAt     *time.Time `json:"last_fetched_at"`
 	LastError         string     `json:"last_error"`
 	Etag              string     `json:"etag"`
@@ -118,7 +118,7 @@ func (d *DB) initSchema() error {
 		category_id INTEGER,
 		schedule_type TEXT NOT NULL DEFAULT 'cron',
 		schedule_value TEXT NOT NULL DEFAULT '0 8 * ~30m',
-		max_articles INTEGER NOT NULL DEFAULT 0,
+		max_articles INTEGER DEFAULT -1,
 		last_fetched_at DATETIME,
 		last_error TEXT DEFAULT '',
 		etag TEXT DEFAULT '',
@@ -179,8 +179,8 @@ func (d *DB) initSchema() error {
 		_, _ = d.Exec("INSERT OR IGNORE INTO user_tokens (user_id, token, client_type) SELECT id, auth_token, 'legacy' FROM users WHERE auth_token != '';")
 	}
 
-	// 数据库升级迁移: 确保 feeds 表包含 max_articles 字段
-	_, _ = d.Exec("ALTER TABLE feeds ADD COLUMN max_articles INTEGER NOT NULL DEFAULT 0;")
+	// 数据库升级迁移: 确保 feeds 表包含 max_articles 字段（默认 -1 代表保留全部）
+	_, _ = d.Exec("ALTER TABLE feeds ADD COLUMN max_articles INTEGER DEFAULT -1;")
 
 	// 自动清理历史上因未开启外键约束而遗留在数据库中的孤儿文章与孤儿状态
 	_, _ = d.Exec(`

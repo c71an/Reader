@@ -151,10 +151,11 @@ func TestTrimFeedArticles(t *testing.T) {
 	}
 	defer database.Close()
 
+	maxFive := 5
 	feed := &Feed{
 		Title:       "Test Trim Feed",
 		FeedURL:     "https://trim.example.com/rss",
-		MaxArticles: 5,
+		MaxArticles: &maxFive,
 	}
 	if err := database.CreateFeed(feed); err != nil {
 		t.Fatalf("CreateFeed failed: %v", err)
@@ -216,13 +217,27 @@ func TestTrimFeedArticles(t *testing.T) {
 		}
 	}
 
-	// 测试 maxArticles = 0 时不进行任何删除
+	// 测试 maxArticles < 0 (如 -1) 时不进行任何删除 (保留全部)
+	deletedNeg, err := database.TrimFeedArticles(feed.ID, -1)
+	if err != nil {
+		t.Fatalf("TrimFeedArticles with -1 failed: %v", err)
+	}
+	if deletedNeg != 0 {
+		t.Errorf("Expected 0 deleted articles when maxArticles=-1, got %d", deletedNeg)
+	}
+
+	// 测试 maxArticles = 0 时清空全部文章 (只保留 0 篇)
 	deletedZero, err := database.TrimFeedArticles(feed.ID, 0)
 	if err != nil {
 		t.Fatalf("TrimFeedArticles with 0 failed: %v", err)
 	}
-	if deletedZero != 0 {
-		t.Errorf("Expected 0 deleted articles when maxArticles=0, got %d", deletedZero)
+	if deletedZero != 5 {
+		t.Errorf("Expected 5 deleted articles when maxArticles=0, got %d", deletedZero)
+	}
+
+	_ = database.QueryRow("SELECT COUNT(*) FROM articles WHERE feed_id = ?", feed.ID).Scan(&count)
+	if count != 0 {
+		t.Errorf("Expected 0 remaining articles when maxArticles=0, got %d", count)
 	}
 }
 

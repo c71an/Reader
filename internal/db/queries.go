@@ -8,10 +8,14 @@ import (
 
 // 订阅源 CRUD
 func (d *DB) CreateFeed(feed *Feed) error {
+	maxArticles := -1
+	if feed.MaxArticles != nil {
+		maxArticles = *feed.MaxArticles
+	}
 	res, err := d.Exec(`
 		INSERT INTO feeds (title, feed_url, site_url, category_id, schedule_type, schedule_value, max_articles)
 		VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, feed.Title, feed.FeedURL, feed.SiteURL, feed.CategoryID, feed.ScheduleType, feed.ScheduleValue, feed.MaxArticles)
+	`, feed.Title, feed.FeedURL, feed.SiteURL, feed.CategoryID, feed.ScheduleType, feed.ScheduleValue, maxArticles)
 	if err != nil {
 		return err
 	}
@@ -20,10 +24,14 @@ func (d *DB) CreateFeed(feed *Feed) error {
 }
 
 func (d *DB) UpdateFeed(feed *Feed) error {
+	maxArticles := -1
+	if feed.MaxArticles != nil {
+		maxArticles = *feed.MaxArticles
+	}
 	_, err := d.Exec(`
 		UPDATE feeds SET title = ?, feed_url = ?, site_url = ?, category_id = ?, schedule_type = ?, schedule_value = ?, max_articles = ?
 		WHERE id = ?
-	`, feed.Title, feed.FeedURL, feed.SiteURL, feed.CategoryID, feed.ScheduleType, feed.ScheduleValue, feed.MaxArticles, feed.ID)
+	`, feed.Title, feed.FeedURL, feed.SiteURL, feed.CategoryID, feed.ScheduleType, feed.ScheduleValue, maxArticles, feed.ID)
 	return err
 }
 
@@ -54,9 +62,12 @@ func (d *DB) DeleteFeed(feedID int64) error {
 	return tx.Commit()
 }
 
-// TrimFeedArticles 将指定订阅源的文章保留在最新的 maxArticles 篇之内，超出数量的旧文章直接从数据库移除（标星与未读文章不豁免）
+// TrimFeedArticles 将指定订阅源的文章保留在最新的 maxArticles 篇之内。
+// 若 maxArticles == 0，则清空该订阅源的所有文章；
+// 若 maxArticles > 0，则保留最新的 maxArticles 篇，其余旧文章直接从数据库物理删除；
+// 若 maxArticles < 0，则不清理（保留全部）。
 func (d *DB) TrimFeedArticles(feedID int64, maxArticles int) (int64, error) {
-	if maxArticles <= 0 {
+	if maxArticles < 0 {
 		return 0, nil
 	}
 	tx, err := d.Begin()
@@ -65,20 +76,30 @@ func (d *DB) TrimFeedArticles(feedID int64, maxArticles int) (int64, error) {
 	}
 	defer tx.Rollback()
 
-	res, err := tx.Exec(`
-		DELETE FROM articles 
-		WHERE feed_id = ? 
-		  AND id NOT IN (
-			SELECT id FROM (
-				SELECT id FROM articles 
-				WHERE feed_id = ? 
-				ORDER BY published_at DESC, id DESC 
-				LIMIT ?
-			)
-		  )
-	`, feedID, feedID, maxArticles)
-	if err != nil {
-		return 0, err
+	var res sql.Result
+	if maxArticles == 0 {
+		var err error
+		res, err = tx.Exec("DELETE FROM articles WHERE feed_id = ?", feedID)
+		if err != nil {
+			return 0, err
+		}
+	} else {
+		var err error
+		res, err = tx.Exec(`
+			DELETE FROM articles 
+			WHERE feed_id = ? 
+			  AND id NOT IN (
+				SELECT id FROM (
+					SELECT id FROM articles 
+					WHERE feed_id = ? 
+					ORDER BY published_at DESC, id DESC 
+					LIMIT ?
+				)
+			  )
+		`, feedID, feedID, maxArticles)
+		if err != nil {
+			return 0, err
+		}
 	}
 
 	// 级联清理可能遗留的孤儿 article_states
@@ -104,9 +125,10 @@ func scanFeed(s scanner) (*Feed, error) {
 	var catName string
 	var catID sql.NullInt64
 	var lastFetched sql.NullTime
+	var maxArticles sql.NullInt64
 
 	err := s.Scan(&f.ID, &f.Title, &f.FeedURL, &f.SiteURL, &catID, &catName, &f.CategorySortOrder,
-		&f.ScheduleType, &f.ScheduleValue, &f.MaxArticles, &lastFetched, &f.LastError, &f.Etag, &f.LastModified, &f.CreatedAt)
+		&f.ScheduleType, &f.ScheduleValue, &maxArticles, &lastFetched, &f.LastError, &f.Etag, &f.LastModified, &f.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -116,6 +138,10 @@ func scanFeed(s scanner) (*Feed, error) {
 	}
 	if lastFetched.Valid {
 		f.LastFetchedAt = &lastFetched.Time
+	}
+	if maxArticles.Valid && maxArticles.Int64 >= 0 {
+		v := int(maxArticles.Int64)
+		f.MaxArticles = &v
 	}
 	return &f, nil
 }
@@ -162,9 +188,10 @@ func (d *DB) GetAllFeeds() ([]*Feed, error) {
 		var catName string
 		var catID sql.NullInt64
 		var lastFetched sql.NullTime
+		var maxArticles sql.NullInt64
 
 		if err := rows.Scan(&f.ID, &f.Title, &f.FeedURL, &f.SiteURL, &catID, &catName, &f.CategorySortOrder,
-			&f.ScheduleType, &f.ScheduleValue, &f.MaxArticles, &lastFetched, &f.LastError, &f.Etag, &f.LastModified, &f.CreatedAt, &f.UnreadCount); err != nil {
+			&f.ScheduleType, &f.ScheduleValue, &maxArticles, &lastFetched, &f.LastError, &f.Etag, &f.LastModified, &f.CreatedAt, &f.UnreadCount); err != nil {
 			return nil, err
 		}
 		if catID.Valid {
@@ -173,6 +200,10 @@ func (d *DB) GetAllFeeds() ([]*Feed, error) {
 		}
 		if lastFetched.Valid {
 			f.LastFetchedAt = &lastFetched.Time
+		}
+		if maxArticles.Valid && maxArticles.Int64 >= 0 {
+			v := int(maxArticles.Int64)
+			f.MaxArticles = &v
 		}
 		feeds = append(feeds, &f)
 	}
