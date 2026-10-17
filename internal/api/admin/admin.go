@@ -224,6 +224,7 @@ func (h *AdminHandler) UpdateFeed(w http.ResponseWriter, r *http.Request) {
 		CategoryName  *string `json:"category_name"`
 		ScheduleType  string  `json:"schedule_type"`
 		ScheduleValue string  `json:"schedule_value"`
+		MaxArticles   *int    `json:"max_articles"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -235,6 +236,13 @@ func (h *AdminHandler) UpdateFeed(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.FeedURL != "" {
 		feed.FeedURL = req.FeedURL
+	}
+	if req.MaxArticles != nil {
+		if *req.MaxArticles < 0 {
+			feed.MaxArticles = 0
+		} else {
+			feed.MaxArticles = *req.MaxArticles
+		}
 	}
 	if req.ScheduleType != "" {
 		if req.ScheduleType != "paused" {
@@ -266,6 +274,11 @@ func (h *AdminHandler) UpdateFeed(w http.ResponseWriter, r *http.Request) {
 	if err := h.db.UpdateFeed(feed); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	// 如果设置了最大文章数限制，保存后立即清理超出的旧文章
+	if feed.MaxArticles > 0 {
+		_, _ = h.db.TrimFeedArticles(feed.ID, feed.MaxArticles)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

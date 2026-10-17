@@ -141,3 +141,88 @@ func TestPaginationContinuation(t *testing.T) {
 	}
 }
 
+func TestTrimFeedArticles(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test_trim.db")
+
+	database, err := InitDB(dbPath, "admin", "admin123")
+	if err != nil {
+		t.Fatalf("InitDB failed: %v", err)
+	}
+	defer database.Close()
+
+	feed := &Feed{
+		Title:       "Test Trim Feed",
+		FeedURL:     "https://trim.example.com/rss",
+		MaxArticles: 5,
+	}
+	if err := database.CreateFeed(feed); err != nil {
+		t.Fatalf("CreateFeed failed: %v", err)
+	}
+
+	baseTime := time.Date(2026, 10, 10, 10, 0, 0, 0, time.UTC)
+	var articles []*Article
+	for i := 1; i <= 10; i++ {
+		articles = append(articles, &Article{
+			FeedID:      feed.ID,
+			GUID:        fmt.Sprintf("guid-%d", i),
+			Title:       fmt.Sprintf("Article %d", i),
+			URL:         fmt.Sprintf("https://trim.example.com/%d", i),
+			Content:     "Content",
+			PublishedAt: baseTime.Add(time.Duration(i) * time.Hour), // 1h -> 10h (10 is newest)
+		})
+	}
+	if _, err := database.SaveArticles(articles); err != nil {
+		t.Fatalf("SaveArticles failed: %v", err)
+	}
+
+	// 此时数据库应有 10 篇文章
+	var count int
+	_ = database.QueryRow("SELECT COUNT(*) FROM articles WHERE feed_id = ?", feed.ID).Scan(&count)
+	if count != 10 {
+		t.Fatalf("Expected 10 articles, got %d", count)
+	}
+
+	// 裁剪至保留最新的 5 篇
+	deleted, err := database.TrimFeedArticles(feed.ID, 5)
+	if err != nil {
+		t.Fatalf("TrimFeedArticles failed: %v", err)
+	}
+	if deleted != 5 {
+		t.Errorf("Expected 5 deleted articles, got %d", deleted)
+	}
+
+	// 验证剩余 5 篇文章必须是 6, 7, 8, 9, 10
+	rows, err := database.Query("SELECT title FROM articles WHERE feed_id = ? ORDER BY published_at ASC", feed.ID)
+	if err != nil {
+		t.Fatalf("Query remaining articles failed: %v", err)
+	}
+	defer rows.Close()
+
+	var remainingTitles []string
+	for rows.Next() {
+		var title string
+		_ = rows.Scan(&title)
+		remainingTitles = append(remainingTitles, title)
+	}
+
+	expected := []string{"Article 6", "Article 7", "Article 8", "Article 9", "Article 10"}
+	if len(remainingTitles) != len(expected) {
+		t.Fatalf("Expected %d remaining articles, got %d", len(expected), len(remainingTitles))
+	}
+	for i, exp := range expected {
+		if remainingTitles[i] != exp {
+			t.Errorf("Expected title %s at index %d, got %s", exp, i, remainingTitles[i])
+		}
+	}
+
+	// 测试 maxArticles = 0 时不进行任何删除
+	deletedZero, err := database.TrimFeedArticles(feed.ID, 0)
+	if err != nil {
+		t.Fatalf("TrimFeedArticles with 0 failed: %v", err)
+	}
+	if deletedZero != 0 {
+		t.Errorf("Expected 0 deleted articles when maxArticles=0, got %d", deletedZero)
+	}
+}
+

@@ -525,7 +525,8 @@
           this.dbEditForm = {
             title: feed.title || '',
             feed_url: feed.feed_url || '',
-            category_name: feed.category_name || ''
+            category_name: feed.category_name || '',
+            max_articles: feed.max_articles !== undefined ? feed.max_articles : 0
           };
           this.dbArticles = [];
           this.dbArticlesTotal = 0;
@@ -548,26 +549,35 @@
           if (!this.dbCurrentFeed) return false;
           return (this.dbEditForm.title !== (this.dbCurrentFeed.title || '')) ||
                  (this.dbEditForm.feed_url !== (this.dbCurrentFeed.feed_url || '')) ||
-                 (this.dbEditForm.category_name !== (this.dbCurrentFeed.category_name || ''));
+                 (this.dbEditForm.category_name !== (this.dbCurrentFeed.category_name || '')) ||
+                 (Number(this.dbEditForm.max_articles || 0) !== Number(this.dbCurrentFeed.max_articles || 0));
         },
 
         async saveFeedSettingsInDbView() {
           if (!this.dbCurrentFeed) return;
           if (!this.dbEditForm.feed_url) return this.toast('源地址不能为空', 'warning');
+          const maxArticles = Math.max(0, parseInt(this.dbEditForm.max_articles, 10) || 0);
           try {
             await this.api(`/api/admin/feeds/${this.dbCurrentFeed.id}`, {
               method: 'PUT',
               body: {
                 title: this.dbEditForm.title,
                 feed_url: this.dbEditForm.feed_url,
-                category_name: this.dbEditForm.category_name
+                category_name: this.dbEditForm.category_name,
+                max_articles: maxArticles
               }
             });
             this.dbCurrentFeed.title = this.dbEditForm.title;
             this.dbCurrentFeed.feed_url = this.dbEditForm.feed_url;
             this.dbCurrentFeed.category_name = this.dbEditForm.category_name;
+            this.dbCurrentFeed.max_articles = maxArticles;
+            this.dbEditForm.max_articles = maxArticles;
             this.toast('订阅源配置已保存', 'success');
             await this.loadFeeds();
+            // 重新刷新当前弹窗中的数据库文章列表与总数
+            const data = await this.api(`/api/admin/feeds/${this.dbCurrentFeed.id}/articles?limit=100`);
+            this.dbArticles = data.articles || [];
+            this.dbArticlesTotal = data.total || 0;
           } catch (e) {
             this.toast('保存配置失败: ' + e.message, 'error');
           }

@@ -1304,6 +1304,7 @@
               <span class="text-slate-400 dark:text-slate-500 text-[11px] shrink-0">源地址:</span>
               <input type="text" 
                      x-model="dbEditForm.feed_url" 
+                     @keydown.enter="saveFeedSettingsInDbView()"
                      title="源地址 (Feed URL / RSSHub)"
                      class="font-mono text-[11px] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded px-2 py-0.5 w-60 sm:w-96 focus:outline-none focus:border-slate-400 bg-white dark:bg-slate-800 transition truncate">
               <button type="button" @click.stop="copyText(dbEditForm.feed_url, '订阅链接已复制')" class="text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white shrink-0 p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 transition" title="复制订阅链接">
@@ -1312,6 +1313,16 @@
               <a x-show="dbCurrentFeed.site_url" :href="dbCurrentFeed.site_url" target="_blank" class="text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white shrink-0 p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 transition" title="打开网站主页">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
               </a>
+            </div>
+
+            <!-- 最大文章数 -->
+            <div class="flex items-center space-x-1.5 shrink-0">
+              <span class="text-slate-400 dark:text-slate-500 text-[11px] shrink-0">最大文章数:</span>
+              <input type="number" 
+                     min="0"
+                     x-model.number="dbEditForm.max_articles" 
+                     @keydown.enter="saveFeedSettingsInDbView()"
+                     class="font-mono text-[11px] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded px-2 py-0.5 w-16 sm:w-20 focus:outline-none focus:border-slate-400 bg-white dark:bg-slate-800 transition">
             </div>
 
             <!-- 有改动时高亮保存按钮 -->
