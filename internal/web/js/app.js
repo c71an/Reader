@@ -910,6 +910,9 @@
 
             if (!rawSrc) continue;
 
+            // 反转义 HTML 实体（特别是 URL query 中的 &amp; -> &，防止 CDN 签名失效导致 403）
+            rawSrc = rawSrc.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+
             const fullSrc = resolveUrl(rawSrc, item.url);
             if (!firstFallbackImg) firstFallbackImg = fullSrc;
 
@@ -979,7 +982,7 @@
             // 补全相对路径
             if (articleBaseUrl) {
               newAttrs = newAttrs.replace(/\s+src=(["'])([\s\S]*?)\1/gi, (srcMatch, quote, srcVal) => {
-                const trimmed = srcVal.trim();
+                const trimmed = srcVal.trim().replace(/&amp;/g, '&');
                 if (trimmed && !trimmed.startsWith('http://') && !trimmed.startsWith('https://') && !trimmed.startsWith('data:') && !trimmed.startsWith('//')) {
                   try {
                     const resolved = new URL(trimmed, articleBaseUrl).href;
@@ -1016,7 +1019,7 @@
               let posterUrl = '';
               const posterMatch = cleanedAttrs.match(/\bposter=(["'])([\s\S]*?)\1/i);
               if (posterMatch && posterMatch[2]) {
-                posterUrl = posterMatch[2].trim();
+                posterUrl = posterMatch[2].trim().replace(/&amp;/g, '&');
                 if (articleBaseUrl && posterUrl && !posterUrl.startsWith('http://') && !posterUrl.startsWith('https://') && !posterUrl.startsWith('data:') && !posterUrl.startsWith('//')) {
                   try {
                     posterUrl = new URL(posterUrl, articleBaseUrl).href;
