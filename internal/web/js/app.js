@@ -1076,9 +1076,14 @@
             // 判定是否为 Live 实况图：
             // 1. 标签或子源明确包含 livephoto 路径参数
             // 2. 视频资源为苹果 Live Photo 标准的 .mov 格式
-            // 3. 文章标题包含 [Live Photo] 且不是普通 mp4 流媒体视频
+            // 3. 文章标题包含 [Live Photo]，且没有常规视频特征（如 .mp4、video/mp4、video/webm、video/ 或已自带 controls 控制条）
+            const isStandardVideo = fullTagContent.includes('.mp4') ||
+                                    fullTagContent.includes('video/mp4') ||
+                                    fullTagContent.includes('video/webm') ||
+                                    fullTagContent.includes('video/ogg') ||
+                                    /controls\b/i.test(attrs);
             const isLive = /livephoto|\.mov\b/i.test(fullTagContent) || 
-                          (Boolean(this.readerArticle?.title?.includes('[Live Photo]')) && !fullTagContent.includes('.mp4'));
+                          (Boolean(this.readerArticle?.title?.includes('[Live Photo]')) && !isStandardVideo);
 
             if (isLive) {
               // 提取 poster 作为静止状态下的高清封面图
