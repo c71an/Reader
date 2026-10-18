@@ -186,8 +186,11 @@ func (d *DB) buildStreamFilterWhere(filter StreamQueryFilter) ([]string, []inter
 
 // 查询文章流内容 (用于 Google Reader API stream/contents)
 func (d *DB) GetStreamItems(filter StreamQueryFilter) ([]*StreamItem, error) {
-	if filter.Limit <= 0 || filter.Limit > 10000 {
+	if filter.Limit <= 0 {
 		filter.Limit = 50
+	} else if filter.Limit > 500 {
+		// 单次查询正文流上限设为 500 篇，防止客户端大批量请求导致内存瞬间暴涨 (OOM)
+		filter.Limit = 500
 	}
 
 	whereClauses, args := d.buildStreamFilterWhere(filter)
@@ -232,8 +235,10 @@ func (d *DB) GetStreamItems(filter StreamQueryFilter) ([]*StreamItem, error) {
 
 // 查询轻量文章 ID 引用列表 (用于 GET /reader/api/0/stream/items/ids)
 func (d *DB) GetStreamItemIDs(filter StreamQueryFilter) ([]*StreamItemIDRef, error) {
-	if filter.Limit <= 0 || filter.Limit > 10000 {
+	if filter.Limit <= 0 {
 		filter.Limit = 1000
+	} else if filter.Limit > 5000 {
+		filter.Limit = 5000
 	}
 
 	whereClauses, args := d.buildStreamFilterWhere(filter)

@@ -210,6 +210,49 @@ func (d *DB) GetAllFeeds() ([]*Feed, error) {
 	return feeds, nil
 }
 
+// GetAllFeedsBasic 返回订阅源基础列表，不执行昂贵的未读计数相关子查询 (专供后台调度引擎与导出使用)
+func (d *DB) GetAllFeedsBasic() ([]*Feed, error) {
+	rows, err := d.Query(`
+		SELECT f.id, f.title, f.feed_url, f.site_url, f.category_id, COALESCE(c.name, ''), COALESCE(c.sort_order, 0),
+		       f.schedule_type, f.schedule_value, f.max_articles, f.last_fetched_at, f.last_error, f.etag, f.last_modified, f.created_at,
+		       0 as unread_count
+		FROM feeds f
+		LEFT JOIN categories c ON f.category_id = c.id
+		ORDER BY COALESCE(c.sort_order, 0) ASC, f.id ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var feeds []*Feed
+	for rows.Next() {
+		var f Feed
+		var catName string
+		var catID sql.NullInt64
+		var lastFetched sql.NullTime
+		var maxArticles sql.NullInt64
+
+		if err := rows.Scan(&f.ID, &f.Title, &f.FeedURL, &f.SiteURL, &catID, &catName, &f.CategorySortOrder,
+			&f.ScheduleType, &f.ScheduleValue, &maxArticles, &lastFetched, &f.LastError, &f.Etag, &f.LastModified, &f.CreatedAt, &f.UnreadCount); err != nil {
+			return nil, err
+		}
+		if catID.Valid {
+			f.CategoryID = &catID.Int64
+			f.CategoryName = catName
+		}
+		if lastFetched.Valid {
+			f.LastFetchedAt = &lastFetched.Time
+		}
+		if maxArticles.Valid && maxArticles.Int64 >= 0 {
+			v := int(maxArticles.Int64)
+			f.MaxArticles = &v
+		}
+		feeds = append(feeds, &f)
+	}
+	return feeds, nil
+}
+
 func (d *DB) UpdateFeedFetchStatus(feedID int64, lastFetched time.Time, lastError, etag, lastModified string) error {
 	_, err := d.Exec(`
 		UPDATE feeds SET last_fetched_at = ?, last_error = ?, etag = ?, last_modified = ?

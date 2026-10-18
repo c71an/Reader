@@ -75,7 +75,11 @@ func (f *Fetcher) FetchFeed(ctx context.Context, feed *db.Feed) (int, error) {
 		_ = f.db.UpdateFeedFetchStatus(feed.ID, now, err.Error(), feed.Etag, feed.LastModified)
 		return 0, fmt.Errorf("http request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		// 排空剩余流数据并关闭响应体，确保底层的 HTTP TCP/TLS 连接能被 Transport 连接池复用，杜绝连接与缓冲区内存泄漏
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 64<<10))
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode == http.StatusNotModified {
 		// 内容未变

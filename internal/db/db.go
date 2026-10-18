@@ -70,15 +70,16 @@ func InitDB(dbPath, defaultUser, defaultPass string) (*DB, error) {
 		return nil, fmt.Errorf("failed to create db directory: %w", err)
 	}
 
-	dsn := fmt.Sprintf("%s?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=foreign_keys(1)", dbPath)
+	dsn := fmt.Sprintf("%s?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=foreign_keys(1)&_pragma=cache_size(-2000)", dbPath)
 	database, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite database: %w", err)
 	}
 
-	// 限制单个写锁连接池体验最佳
-	database.SetMaxOpenConns(25)
-	database.SetMaxIdleConns(5)
+	// 针对 modernc.org/sqlite 纯 Go 移植版优化：
+	// 保持 MaxOpenConns 与 MaxIdleConns 一致，避免频繁创建/销毁连接导致 libc 虚拟内存池无限膨胀
+	database.SetMaxOpenConns(10)
+	database.SetMaxIdleConns(10)
 	database.SetConnMaxLifetime(time.Hour)
 
 	d := &DB{database}

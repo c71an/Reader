@@ -72,7 +72,7 @@ func (h *Handler) UserInfoHandler(w http.ResponseWriter, r *http.Request) {
 
 // SubscriptionListHandler 返回 GET /reader/api/0/subscription/list
 func (h *Handler) SubscriptionListHandler(w http.ResponseWriter, r *http.Request) {
-	feeds, err := h.db.GetAllFeeds()
+	feeds, err := h.db.GetAllFeedsBasic()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -153,7 +153,7 @@ func (h *Handler) UnreadCountHandler(w http.ResponseWriter, r *http.Request) {
 
 // SubscriptionExportHandler 导出 OPML 文件 (GET /reader/api/0/subscription/export)
 func (h *Handler) SubscriptionExportHandler(w http.ResponseWriter, r *http.Request) {
-	feeds, err := h.db.GetAllFeeds()
+	feeds, err := h.db.GetAllFeedsBasic()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

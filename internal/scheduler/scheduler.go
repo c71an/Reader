@@ -70,7 +70,7 @@ func (s *Scheduler) Stop() {
 
 // checkAndFetchAll 检查每个订阅是否到了拉取时间
 func (s *Scheduler) checkAndFetchAll() {
-	feeds, err := s.db.GetAllFeeds()
+	feeds, err := s.db.GetAllFeedsBasic()
 	if err != nil {
 		log.Printf("[Scheduler] Error fetching feeds list: %v\n", err)
 		return
@@ -101,8 +101,11 @@ func (s *Scheduler) checkAndFetchAll() {
 				}
 				log.Printf("[Scheduler] Feed [%d] %s matched trigger, applying %v random jitter...\n", fID, fTitle, jitter)
 
+				timer := time.NewTimer(jitter)
+				defer timer.Stop()
+
 				select {
-				case <-time.After(jitter):
+				case <-timer.C:
 				case <-s.stopChan:
 					s.mu.Lock()
 					delete(s.isBusy, fID)

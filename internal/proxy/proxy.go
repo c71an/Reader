@@ -218,6 +218,7 @@ func (p *ImageProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			upstreamResp = resp
 			break
 		}
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
 		_ = resp.Body.Close()
 	}
 
@@ -225,7 +226,10 @@ func (p *ImageProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to fetch image from upstream candidates", http.StatusBadGateway)
 		return
 	}
-	defer upstreamResp.Body.Close()
+	defer func() {
+		_, _ = io.Copy(io.Discard, io.LimitReader(upstreamResp.Body, 32<<10))
+		_ = upstreamResp.Body.Close()
+	}()
 
 	// 透传 Content-Type，默认为 image/jpeg
 	contentType := upstreamResp.Header.Get("Content-Type")
