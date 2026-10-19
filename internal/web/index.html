@@ -104,7 +104,7 @@
     .reader-content * {
       font-family: inherit !important;
     }
-    .reader-content *:not(a):not(code):not(pre):not(kbd):not(mark):not(tr) {
+    .reader-content *:not(a):not(code):not(pre):not(kbd):not(mark):not(tr):not(img) {
       background-color: transparent !important;
       background: transparent !important;
     }
@@ -117,6 +117,11 @@
       margin: 1.25rem auto;
       display: block;
       box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+      box-sizing: border-box;
+    }
+    .dark .reader-content img {
+      background-color: #ffffff;
+      padding: 0.5rem;
     }
     .reader-content video {
       width: 100% !important;
