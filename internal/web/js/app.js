@@ -1124,38 +1124,31 @@
                 </button>
               </div>`;
             } else {
-              // 9GAG 风格模式：无进度条控件、不自动播放、不循环、默认静音
+              // 9GAG 风格模式：无进度条控件、不自动播放、不循环、默认静音、无画面居中播放按钮
               cleanedAttrs = cleanedAttrs.replace(/\s+controls(=["'][^"']*["'])?/gi, '')
                                          .replace(/\s+autoplay(=["'][^"']*["'])?/gi, '')
                                          .replace(/\s+loop(=["'][^"']*["'])?/gi, '');
               if (!cleanedAttrs.includes('muted')) cleanedAttrs += ' muted';
               if (!cleanedAttrs.includes('preload')) cleanedAttrs += ' preload="metadata"';
               if (!cleanedAttrs.includes('playsinline')) cleanedAttrs += ' playsinline webkit-playsinline';
-
-              // 播放/暂停状态联动中央播放图标
-              cleanedAttrs += ' onplay="const btn = this.parentElement.querySelector(\'.reader-video-play-btn\'); if (btn) btn.style.opacity = \'0\';"';
-              cleanedAttrs += ' onpause="const btn = this.parentElement.querySelector(\'.reader-video-play-btn\'); if (btn) btn.style.opacity = \'1\';"';
-              cleanedAttrs += ' onended="this.currentTime = 0; const btn = this.parentElement.querySelector(\'.reader-video-play-btn\'); if (btn) btn.style.opacity = \'1\';"';
+              cleanedAttrs += ' onended="this.currentTime = 0;"';
 
               return `<div class="relative reader-video-container my-4 rounded-xl overflow-hidden select-none cursor-pointer group bg-black"
                            onclick="const v = this.querySelector('video'); if (v) { if (v.ended) v.currentTime = 0; v.paused ? v.play() : v.pause(); }">
                 <video ${cleanedAttrs.trim()} class="w-full h-auto block rounded-xl">${inner}</video>
-                <!-- 画面中央：暂停/未播放提示按钮 -->
-                <div class="reader-video-play-btn absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-200">
-                  <div class="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center text-white shadow-lg">
-                    <svg class="w-6 h-6 translate-x-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                  </div>
-                </div>
-                <!-- 左下角：9GAG 风格毛玻璃声音开关 (默认静音) -->
+                <!-- 左下角：复刻 9GAG 风格实心圆形声音控制按钮 (适当放大、默认静音) -->
                 <button type="button" 
                         onclick="event.stopPropagation(); const v = this.parentElement.querySelector('video'); v.muted = !v.muted; this.querySelector('.icon-mute').classList.toggle('hidden', !v.muted); this.querySelector('.icon-sound').classList.toggle('hidden', v.muted);"
-                        class="absolute bottom-3 left-3 w-8 h-8 rounded-full bg-black/60 backdrop-blur-md text-white flex items-center justify-center shadow-md hover:bg-black/80 active:scale-90 transition">
-                  <svg class="w-4 h-4 icon-mute" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>
+                        class="absolute bottom-3.5 left-3.5 sm:bottom-4 sm:left-4 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-black/75 hover:bg-black/90 backdrop-blur-sm text-white flex items-center justify-center shadow-lg active:scale-95 transition">
+                  <!-- 复刻图1：实心静音喇叭 (斜杠穿透并带有切角微距) -->
+                  <svg class="w-5.5 h-5.5 sm:w-6 sm:h-6 text-white icon-mute shrink-0" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                    <line x1="3.5" y1="3.5" x2="20.5" y2="20.5" stroke="rgba(0,0,0,0.85)" stroke-width="4.5" stroke-linecap="round"/>
+                    <line x1="3.5" y1="3.5" x2="20.5" y2="20.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
                   </svg>
-                  <svg class="w-4 h-4 icon-sound hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                  <!-- 复刻图2：实心发声喇叭 (实心双层声波) -->
+                  <svg class="w-5.5 h-5.5 sm:w-6 sm:h-6 text-white icon-sound hidden shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
                   </svg>
                 </button>
               </div>`;

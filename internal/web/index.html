@@ -548,11 +548,11 @@
 
                     <!-- 右侧正方形缩略图 -->
                     <template x-if="item._thumbnail">
-                      <div class="relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200/80 dark:border-neutral-700/80">
+                      <div class="relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden shrink-0 bg-neutral-100 dark:bg-white border border-neutral-200/80 dark:border-neutral-700/80">
                         <img :src="item._thumbnail" 
                              loading="lazy" 
                              referrerpolicy="no-referrer" 
-                             class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                             class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 dark:bg-white"
                              @error="item._thumbnail = ''; $event.target.closest('.relative')?.remove()">
                       </div>
                     </template>
