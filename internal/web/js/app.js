@@ -1133,6 +1133,8 @@
               if (!cleanedAttrs.includes('playsinline')) cleanedAttrs += ' playsinline webkit-playsinline';
               cleanedAttrs += ' onended="this.currentTime = 0;"';
 
+              const maskId = 'mute-cutout-' + Math.random().toString(36).slice(2, 8);
+
               return `<div class="relative reader-video-container my-4 rounded-xl overflow-hidden select-none cursor-pointer group bg-black"
                            onclick="const v = this.querySelector('video'); if (v) { if (v.ended) v.currentTime = 0; v.paused ? v.play() : v.pause(); }">
                 <video ${cleanedAttrs.trim()} class="w-full h-auto block rounded-xl">${inner}</video>
@@ -1140,10 +1142,15 @@
                 <button type="button" 
                         onclick="event.stopPropagation(); const v = this.parentElement.querySelector('video'); v.muted = !v.muted; this.querySelector('.icon-mute').classList.toggle('hidden', !v.muted); this.querySelector('.icon-sound').classList.toggle('hidden', v.muted);"
                         class="absolute bottom-3.5 left-3.5 sm:bottom-4 sm:left-4 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-black/75 hover:bg-black/90 backdrop-blur-sm text-white flex items-center justify-center shadow-lg active:scale-95 transition">
-                  <!-- 复刻图1：实心静音喇叭 (斜杠穿透并带有切角微距) -->
+                  <!-- 复刻图1：实心静音喇叭 (使用 SVG Mask 几何镂空，斜杠纯白彻底无黑边) -->
                   <svg class="w-5.5 h-5.5 sm:w-6 sm:h-6 text-white icon-mute shrink-0" viewBox="0 0 24 24">
-                    <path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-                    <line x1="3.5" y1="3.5" x2="20.5" y2="20.5" stroke="rgba(0,0,0,0.85)" stroke-width="4.5" stroke-linecap="round"/>
+                    <defs>
+                      <mask id="${maskId}">
+                        <rect width="24" height="24" fill="white"/>
+                        <line x1="3.5" y1="3.5" x2="20.5" y2="20.5" stroke="black" stroke-width="2.6" stroke-linecap="round"/>
+                      </mask>
+                    </defs>
+                    <path fill="currentColor" mask="url(#${maskId})" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
                     <line x1="3.5" y1="3.5" x2="20.5" y2="20.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
                   </svg>
                   <!-- 复刻图2：实心发声喇叭 (实心双层声波) -->
