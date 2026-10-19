@@ -14,7 +14,7 @@
         timelineContinuation: '',
         timelineHasMore: true,
         timelineLoading: false,
-        timelineFilter: 'all', // 'all' | 'unread' | 'starred'
+        timelineFilter: 'unread', // 'unread' | 'all' | 'starred'
         timelineSelectedCategory: 'all',
         timelineSelectedFeedId: null,
         timelineCollapsedCategories: {},

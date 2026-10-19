@@ -443,22 +443,17 @@
         
         <!-- 顶栏快速操作与过滤 (全端吸顶固定，单行紧凑排列) -->
         <div class="flex items-center justify-between gap-1.5 sm:gap-2 mb-2 pb-2.5 border-b border-neutral-200/80 dark:border-neutral-800/80 overflow-x-auto no-scrollbar py-0.5 sticky top-[57px] sm:top-[65px] z-20 bg-neutral-50 dark:bg-neutral-950 pt-4 -mt-4 sm:pt-8 sm:-mt-8 will-change-transform transform-gpu">
-          <!-- 左侧状态与分类切换 -->
+          <!-- 左侧状态与分类切换 (未读优先，隐藏星标) -->
           <div class="flex items-center space-x-1 sm:space-x-1.5 shrink-0">
-            <button @click="setTimelineFilter('all')"
-                    class="px-2.5 sm:w-14 h-7 rounded-full text-xs font-medium transition shrink-0 flex items-center justify-center"
-                    :class="timelineFilter === 'all' ? 'bg-black dark:bg-white text-white dark:text-black shadow-xs' : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800'">
-              全部
-            </button>
             <button @click="setTimelineFilter('unread')"
                     class="px-2.5 sm:w-14 h-7 rounded-full text-xs font-medium transition shrink-0 flex items-center justify-center"
                     :class="timelineFilter === 'unread' ? 'bg-black dark:bg-white text-white dark:text-black shadow-xs' : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800'">
               未读
             </button>
-            <button @click="setTimelineFilter('starred')"
+            <button @click="setTimelineFilter('all')"
                     class="px-2.5 sm:w-14 h-7 rounded-full text-xs font-medium transition shrink-0 flex items-center justify-center"
-                    :class="timelineFilter === 'starred' ? 'bg-black dark:bg-white text-white dark:text-black shadow-xs' : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800'">
-              星标
+                    :class="timelineFilter === 'all' ? 'bg-black dark:bg-white text-white dark:text-black shadow-xs' : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800'">
+              全部
             </button>
 
             <!-- 窄屏专用：状态药丸标签与分类入口 (点击名称开窗，点击 ✕ 清除回到全部) -->
@@ -1621,15 +1616,6 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </button>
           <div class="w-px h-4 bg-neutral-200 dark:neutral-700 mx-1"></div>
-          <!-- 标星 -->
-          <button @click="toggleReaderArticleStar()" 
-                  class="p-1.5 rounded-lg transition hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                  :class="readerArticle && readerArticle.is_starred ? 'text-black dark:text-white' : 'text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200'" 
-                  title="标星收藏">
-            <svg class="w-4 h-4" :fill="readerArticle && readerArticle.is_starred ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
-            </svg>
-          </button>
           <!-- 标记已读/未读 -->
           <button @click="toggleReaderArticleRead()" 
                   class="p-1.5 text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition" 
