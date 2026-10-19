@@ -1164,8 +1164,8 @@
 
           // 5. 自动为所有 <table> 标签包裹横向滚动容器，并清洗写死的固定宽度
           html = html.replace(/<table\b([\s\S]*?)<\/table>/gi, (match) => {
-            let cleaned = match.replace(/\s+width=(["'])\d+["']/gi, '')
-                               .replace(/width:\s*\d+px;?/gi, '');
+            let cleaned = match.replace(/\s+width=([""'])[\d.]+(%|px|pt)?\1/gi, '')
+                               .replace(/(?:min-|max-)?width:\s*[\d.]+(px|pt|cm|in|em|rem|%);?/gi, '');
             return `<div class="reader-table-wrapper">${cleaned}</div>`;
           });
 
