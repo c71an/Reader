@@ -124,7 +124,10 @@
           try {
             this.profile = await this.api('/api/admin/profile');
             this.isLoggedIn = true;
-            this.loadFeeds();
+            await this.loadFeeds();
+            // 智能流转：有未读时优先展示【未读】，无未读时自动展示【全部】
+            const totalUnread = this.feeds.reduce((sum, f) => sum + (f.unread_count || 0), 0);
+            this.timelineFilter = totalUnread > 0 ? 'unread' : 'all';
             this.initTimelineObserver();
             this.loadTimeline(true);
           } catch (_) {
@@ -1415,6 +1418,13 @@
               this.readerClosing = false;
             }, 200);
           }
+
+          // 若当前处于未读模式且所有文章均已读完，退出阅读器时自动流转为【全部】
+          const totalUnread = this.feeds.reduce((sum, f) => sum + (f.unread_count || 0), 0);
+          if (this.timelineFilter === 'unread' && totalUnread === 0) {
+            this.timelineFilter = 'all';
+            this.loadTimeline(true);
+          }
         },
 
         prevArticle() {
@@ -1489,9 +1499,11 @@
             this.timelineItems.forEach(it => { it.is_read = true; });
             await this.loadFeeds();
             this.toast('已全部标记为已读', 'success');
-            if (this.timelineFilter === 'unread') {
-              this.loadTimeline(true);
+            const totalUnread = this.feeds.reduce((sum, f) => sum + (f.unread_count || 0), 0);
+            if (this.timelineFilter === 'unread' && totalUnread === 0) {
+              this.timelineFilter = 'all';
             }
+            this.loadTimeline(true);
           } catch (e) {
             this.toast('操作失败: ' + e.message, 'error');
           }
