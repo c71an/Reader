@@ -1,4 +1,4 @@
-﻿package main
+package main
 
 import (
 	"context"
@@ -50,7 +50,7 @@ func main() {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	// CORS 跨域支持 (支持 Reeder 或 Web 客户端)
+	// CORS 跨域支持
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},

@@ -9,15 +9,15 @@ import (
 
 type StreamQueryFilter struct {
 	UserID        int64
-	StreamID      string  // 如 "user/-/state/com.google/reading-list", "feed/123", "user/-/label/CategoryName"
-	ItemIDs       []int64 // 指定查询文章 ID 列表 (用于 stream/items/contents)
-	ExcludeTarget string  // 如 "user/-/state/com.google/read" (过滤未读)
-	FilterTarget  string  // 如 "user/-/state/com.google/starred"
-	StartTime     int64   // ot (获取指定时间之后的文章)
-	StopTime      int64   // nt (获取指定时间之前的文章)
+	StreamID      string  // 如 "feed/123", "user/-/label/CategoryName"
+	ItemIDs       []int64 // 指定查询文章 ID 列表
+	ExcludeTarget string  // 排除目标 (如过滤未读)
+	FilterTarget  string  // 包含目标
+	StartTime     int64   // 获取指定时间之后的文章
+	StopTime      int64   // 获取指定时间之前的文章
 	Limit         int
-	Continuation  string // 复合游标字符串，格式 "{timestamp}_{id}" 或兼容纯数字 id
-	OrderOldest   bool   // r == "o"
+	Continuation  string // 复合游标字符串，格式 "{timestamp}_{id}" 或纯数字 id
+	OrderOldest   bool
 }
 
 type StreamItem struct {
@@ -34,13 +34,6 @@ type StreamItem struct {
 	PublishedAt  time.Time `json:"published_at"`
 	IsRead       bool      `json:"is_read"`
 	IsStarred    bool      `json:"is_starred"`
-}
-
-type StreamItemIDRef struct {
-	ID           int64
-	FeedID       int64
-	CategoryName string
-	PublishedAt  time.Time
 }
 
 func normalizeTimestamp(ts int64) time.Time {
@@ -61,14 +54,14 @@ func (d *DB) buildStreamFilterWhere(filter StreamQueryFilter) ([]string, []inter
 	whereClauses := []string{"1=1"}
 	args := []interface{}{filter.UserID}
 
-	// 1. ExcludeTarget (xt: 排除目标)
+	// 1. ExcludeTarget (排除已读或特定源)
 	if filter.ExcludeTarget != "" {
 		switch filter.ExcludeTarget {
-		case "user/-/state/com.google/read":
+		case "user/-/state/com.google/read", "read":
 			whereClauses = append(whereClauses, "(s.is_read IS NULL OR s.is_read = 0)")
-		case "user/-/state/com.google/unread":
+		case "user/-/state/com.google/unread", "unread":
 			whereClauses = append(whereClauses, "s.is_read = 1")
-		case "user/-/state/com.google/starred":
+		case "user/-/state/com.google/starred", "starred":
 			whereClauses = append(whereClauses, "(s.is_starred IS NULL OR s.is_starred = 0)")
 		default:
 			if strings.HasPrefix(filter.ExcludeTarget, "feed/") {
@@ -84,19 +77,19 @@ func (d *DB) buildStreamFilterWhere(filter StreamQueryFilter) ([]string, []inter
 		}
 	}
 
-	// 2. FilterTarget (it: 包含目标)
+	// 2. FilterTarget (仅包含已读或星标)
 	if filter.FilterTarget != "" {
 		switch filter.FilterTarget {
-		case "user/-/state/com.google/read":
+		case "user/-/state/com.google/read", "read":
 			whereClauses = append(whereClauses, "s.is_read = 1")
-		case "user/-/state/com.google/unread":
+		case "user/-/state/com.google/unread", "unread":
 			whereClauses = append(whereClauses, "(s.is_read IS NULL OR s.is_read = 0)")
-		case "user/-/state/com.google/starred":
+		case "user/-/state/com.google/starred", "starred":
 			whereClauses = append(whereClauses, "s.is_starred = 1")
 		}
 	}
 
-	// 3. 明确指定文章 ID 列表 (stream/items/contents 批量获取)
+	// 3. 明确指定文章 ID 列表
 	if len(filter.ItemIDs) > 0 {
 		placeholders := make([]string, len(filter.ItemIDs))
 		for i, id := range filter.ItemIDs {
@@ -121,22 +114,22 @@ func (d *DB) buildStreamFilterWhere(filter StreamQueryFilter) ([]string, []inter
 		categoryName := strings.TrimSpace(sID[idx+len("/label/"):])
 		whereClauses = append(whereClauses, "c.name = ?")
 		args = append(args, categoryName)
-	} else if sID == "user/-/state/com.google/starred" {
+	} else if sID == "user/-/state/com.google/starred" || sID == "starred" {
 		whereClauses = append(whereClauses, "s.is_starred = 1")
-	} else if sID == "user/-/state/com.google/read" {
+	} else if sID == "user/-/state/com.google/read" || sID == "read" {
 		whereClauses = append(whereClauses, "s.is_read = 1")
-	} else if sID == "user/-/state/com.google/unread" {
+	} else if sID == "user/-/state/com.google/unread" || sID == "unread" {
 		whereClauses = append(whereClauses, "(s.is_read IS NULL OR s.is_read = 0)")
 	}
 
-	// 5. StartTime (ot: 爬取/发布在指定时间之后的条目)
+	// 5. StartTime (发布在指定时间之后的条目)
 	if filter.StartTime > 0 {
 		startT := normalizeTimestamp(filter.StartTime)
 		whereClauses = append(whereClauses, "a.published_at >= ?")
 		args = append(args, startT)
 	}
 
-	// 6. StopTime (nt: 爬取/发布在指定时间之前的条目)
+	// 6. StopTime (发布在指定时间之前的条目)
 	if filter.StopTime > 0 {
 		stopT := normalizeTimestamp(filter.StopTime)
 		whereClauses = append(whereClauses, "a.published_at <= ?")
@@ -156,7 +149,6 @@ func (d *DB) buildStreamFilterWhere(filter StreamQueryFilter) ([]string, []inter
 				contID = id
 			}
 		} else if id, err := strconv.ParseInt(filter.Continuation, 10, 64); err == nil && id > 0 {
-			// 兼容旧版仅传纯数字 ID: 尝试从 articles 表中查出该 ID 对应的 published_at
 			contID = id
 			var pubAt time.Time
 			if err := d.QueryRow("SELECT published_at FROM articles WHERE id = ?", id).Scan(&pubAt); err == nil {
@@ -184,12 +176,11 @@ func (d *DB) buildStreamFilterWhere(filter StreamQueryFilter) ([]string, []inter
 	return whereClauses, args
 }
 
-// 查询文章流内容 (用于 Google Reader API stream/contents)
+// 查询时间线文章流内容
 func (d *DB) GetStreamItems(filter StreamQueryFilter) ([]*StreamItem, error) {
 	if filter.Limit <= 0 {
 		filter.Limit = 50
 	} else if filter.Limit > 500 {
-		// 单次查询正文流上限设为 500 篇，防止客户端大批量请求导致内存瞬间暴涨 (OOM)
 		filter.Limit = 500
 	}
 
@@ -231,49 +222,6 @@ func (d *DB) GetStreamItems(filter StreamQueryFilter) ([]*StreamItem, error) {
 		items = append(items, &item)
 	}
 	return items, nil
-}
-
-// 查询轻量文章 ID 引用列表 (用于 GET /reader/api/0/stream/items/ids)
-func (d *DB) GetStreamItemIDs(filter StreamQueryFilter) ([]*StreamItemIDRef, error) {
-	if filter.Limit <= 0 {
-		filter.Limit = 1000
-	} else if filter.Limit > 5000 {
-		filter.Limit = 5000
-	}
-
-	whereClauses, args := d.buildStreamFilterWhere(filter)
-
-	orderDir := "DESC"
-	if filter.OrderOldest {
-		orderDir = "ASC"
-	}
-
-	query := fmt.Sprintf(`
-		SELECT a.id, a.feed_id, COALESCE(c.name, ''), a.published_at
-		FROM articles a
-		JOIN feeds f ON a.feed_id = f.id
-		LEFT JOIN categories c ON f.category_id = c.id
-		LEFT JOIN article_states s ON a.id = s.article_id AND s.user_id = ?
-		WHERE %s
-		ORDER BY a.published_at %s, a.id %s
-		LIMIT %d
-	`, strings.Join(whereClauses, " AND "), orderDir, orderDir, filter.Limit)
-
-	rows, err := d.Query(query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var list []*StreamItemIDRef
-	for rows.Next() {
-		var ref StreamItemIDRef
-		if err := rows.Scan(&ref.ID, &ref.FeedID, &ref.CategoryName, &ref.PublishedAt); err != nil {
-			return nil, err
-		}
-		list = append(list, &ref)
-	}
-	return list, nil
 }
 
 // 批量标记文章已读/未读 (事务优化性能)
@@ -350,6 +298,7 @@ func (d *DB) SetArticlesStarred(userID int64, articleIDs []int64, isStarred bool
 	return tx.Commit()
 }
 
+
 // 标记指定 Feed 的所有文章为已读
 func (d *DB) MarkFeedAllRead(userID, feedID int64, beforeTimestamp int64) error {
 	beforeTime := normalizeTimestamp(beforeTimestamp)
@@ -383,19 +332,6 @@ func (d *DB) MarkCategoryAllRead(userID, categoryID int64, beforeTimestamp int64
 	return err
 }
 
-// 标记所有已星标文章为已读
-func (d *DB) MarkStarredAllRead(userID int64, beforeTimestamp int64) error {
-	beforeTime := normalizeTimestamp(beforeTimestamp)
-
-	_, err := d.Exec(`
-		UPDATE article_states SET is_read = 1, read_at = CURRENT_TIMESTAMP
-		WHERE user_id = ? AND is_starred = 1 AND article_id IN (
-			SELECT id FROM articles WHERE published_at <= ?
-		)
-	`, userID, beforeTime)
-	return err
-}
-
 // 标记全部文章为已读
 func (d *DB) MarkAllArticlesRead(userID int64, beforeTimestamp int64) error {
 	beforeTime := normalizeTimestamp(beforeTimestamp)
@@ -410,114 +346,4 @@ func (d *DB) MarkAllArticlesRead(userID int64, beforeTimestamp int64) error {
 			read_at = CURRENT_TIMESTAMP
 	`, userID, beforeTime)
 	return err
-}
-
-type UnreadCountItem struct {
-	ID                      string `json:"id"`
-	Count                   int    `json:"count"`
-	NewestItemTimestampUsec string `json:"newestItemTimestampUsec"`
-}
-
-// 获取未读总数与各个 Feed 及分类的未读统计
-func (d *DB) GetUnreadCounts(userID int64) ([]UnreadCountItem, int, error) {
-	// 1. 各个 Feed 的未读统计以及最新条目时间戳
-	feedRows, err := d.Query(`
-		SELECT f.id,
-		       COUNT(CASE WHEN s.is_read IS NULL OR s.is_read = 0 THEN a.id END) as unread_count,
-		       COALESCE(MAX(a.published_at), '') as newest_time
-		FROM feeds f
-		LEFT JOIN articles a ON a.feed_id = f.id
-		LEFT JOIN article_states s ON s.article_id = a.id AND s.user_id = ?
-		GROUP BY f.id
-	`, userID)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer feedRows.Close()
-
-	var result []UnreadCountItem
-	total := 0
-	var maxTime time.Time
-
-	for feedRows.Next() {
-		var feedID int64
-		var count int
-		var newestTimeStr string
-		if err := feedRows.Scan(&feedID, &count, &newestTimeStr); err != nil {
-			return nil, 0, err
-		}
-
-		usecStr := "0"
-		if newestTimeStr != "" {
-			if t, err := time.Parse(time.RFC3339, newestTimeStr); err == nil {
-				usecStr = fmt.Sprintf("%d", t.UnixNano()/1000)
-				if t.After(maxTime) {
-					maxTime = t
-				}
-			} else if t, err := time.Parse("2006-01-02 15:04:05", newestTimeStr); err == nil {
-				usecStr = fmt.Sprintf("%d", t.UnixNano()/1000)
-				if t.After(maxTime) {
-					maxTime = t
-				}
-			}
-		}
-
-		result = append(result, UnreadCountItem{
-			ID:                      fmt.Sprintf("feed/%d", feedID),
-			Count:                   count,
-			NewestItemTimestampUsec: usecStr,
-		})
-		total += count
-	}
-
-	// 2. 各个分类下的未读统计
-	catRows, err := d.Query(`
-		SELECT c.name,
-		       COUNT(CASE WHEN s.is_read IS NULL OR s.is_read = 0 THEN a.id END) as unread_count,
-		       COALESCE(MAX(a.published_at), '') as newest_time
-		FROM categories c
-		JOIN feeds f ON f.category_id = c.id
-		LEFT JOIN articles a ON a.feed_id = f.id
-		LEFT JOIN article_states s ON s.article_id = a.id AND s.user_id = ?
-		GROUP BY c.name
-	`, userID)
-	if err == nil {
-		defer catRows.Close()
-		for catRows.Next() {
-			var catName string
-			var catCount int
-			var catTimeStr string
-			if err := catRows.Scan(&catName, &catCount, &catTimeStr); err == nil && catName != "" {
-				usecStr := "0"
-				if catTimeStr != "" {
-					if t, err := time.Parse(time.RFC3339, catTimeStr); err == nil {
-						usecStr = fmt.Sprintf("%d", t.UnixNano()/1000)
-					} else if t, err := time.Parse("2006-01-02 15:04:05", catTimeStr); err == nil {
-						usecStr = fmt.Sprintf("%d", t.UnixNano()/1000)
-					}
-				}
-				result = append(result, UnreadCountItem{
-					ID:                      fmt.Sprintf("user/-/label/%s", catName),
-					Count:                   catCount,
-					NewestItemTimestampUsec: usecStr,
-				})
-			}
-		}
-	}
-
-	// 3. 全局阅读列表未读总数
-	maxUsecStr := "0"
-	if !maxTime.IsZero() {
-		maxUsecStr = fmt.Sprintf("%d", maxTime.UnixNano()/1000)
-	} else {
-		maxUsecStr = fmt.Sprintf("%d", time.Now().UnixNano()/1000)
-	}
-
-	result = append(result, UnreadCountItem{
-		ID:                      "user/-/state/com.google/reading-list",
-		Count:                   total,
-		NewestItemTimestampUsec: maxUsecStr,
-	})
-
-	return result, total, nil
 }
