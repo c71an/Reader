@@ -1,4 +1,4 @@
-    function readerApp() {
+﻿    function readerApp() {
       return {
         isLoggedIn: false,
         authChecking: true,
@@ -28,7 +28,6 @@
         menuOpen: false,
         modals: {
           add: false,
-          clientInfo: false,
           tokens: false,
           db: false,
           content: false,
@@ -814,7 +813,7 @@
         },
 
         async revokeOtherTokens() {
-          if (!confirm('确定要注销除当前设备外的所有其他设备吗？\n其他客户端（如手机端 Reeder）将被立即踢出并需要重新登录。')) {
+          if (!confirm('确定要注销除当前设备外的所有其他设备吗？\n其他已登录的浏览器会话将被立即登出。')) {
             return;
           }
           this.loading.tokens = true;
@@ -845,7 +844,7 @@
         getClientTypeName(type) {
           if (!type) return '通用客户端';
           const lower = type.toLowerCase();
-          if (lower === 'greader' || lower === 'reeder') return 'Reeder / Google Reader 客户端';
+          if (lower === 'greader' || lower === 'reeder') return '历史客户端会话';
           if (lower === 'web') return 'Web 网页控制台';
           if (lower === 'legacy') return '旧版本遗留会话 (Legacy)';
           return type;

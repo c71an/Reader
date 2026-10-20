@@ -1,4 +1,4 @@
-package admin
+﻿package admin
 
 import (
 	"context"
@@ -53,7 +53,7 @@ func (h *AdminHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 为 Web 端分配专属独立的 Session Token，避免多设备/Reeder 互相挤下线
+	// 为 Web 端分配专属独立的 Session Token，支持多浏览器并发登录
 	randBytes := make([]byte, 24)
 	_, _ = rand.Read(randBytes)
 	webToken := "web_session_" + hex.EncodeToString(randBytes)
@@ -534,7 +534,7 @@ func (h *AdminHandler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// 获取个人设置 (包含 Reeder 凭证及接入指引)
+// 获取当前登录用户个人资料
 func (h *AdminHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromContext(r.Context())
 	if user == nil {

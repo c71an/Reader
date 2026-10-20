@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
@@ -310,12 +310,7 @@
                 <span>设备与会话</span>
               </button>
 
-              <!-- Reeder 接入指引 -->
-              <button @click="modals.clientInfo = true; menuOpen = false" 
-                      class="w-full flex items-center space-x-2.5 px-3.5 py-2 text-xs sm:text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition text-left">
-                <svg class="w-4 h-4 text-neutral-400 dark:text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                <span>Reeder 接入指引</span>
-              </button>
+
             </div>
 
             <!-- 账号退出区 -->
@@ -1124,32 +1119,6 @@
         <button @click="saveCategorySettings()" :disabled="loading.category" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 disabled:opacity-50 text-white dark:text-slate-900 rounded-md text-sm font-medium transition flex items-center">
           <span x-text="loading.category ? '正在保存...' : '保存设置'"></span>
         </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Reeder 接入指导弹窗 -->
-  <div x-show="modals.clientInfo" 
-       @keydown.escape.window="modals.clientInfo = false" 
-       @click.self="modals.clientInfo = false"
-       class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-    <div class="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-xl shadow-2xl max-w-lg w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 max-h-[90vh] overflow-y-auto my-auto">
-      <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100 mb-2">Reeder 客户端连接配置</h3>
-      <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Reeder 完美原生支持 Google Reader API 规范，请在 Reeder 中直接添加账号：</p>
-      
-      <div class="bg-slate-50 dark:bg-slate-950 p-4 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-mono space-y-2 mb-4">
-        <div><span class="text-slate-400 dark:text-slate-500">账号类型:</span> <span class="font-bold text-slate-900 dark:text-white">Google Reader</span></div>
-        <div><span class="text-slate-400 dark:text-slate-500">Server (服务器地址):</span> <span class="text-slate-800 dark:text-slate-200" x-text="window.location.origin"></span></div>
-        <div><span class="text-slate-400 dark:text-slate-500">Username (用户名):</span> <span class="text-slate-800 dark:text-slate-200" x-text="profile.username"></span></div>
-        <div><span class="text-slate-400 dark:text-slate-500">Password (密码):</span> <span class="text-slate-800 dark:text-slate-200">您的控制台登录密码 (默认 admin123)</span></div>
-      </div>
-
-      <div class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-lg mb-6">
-        ℹ️ Reeder 会自动通过 <code>/accounts/ClientLogin</code> 完成认证并请求 <code>/reader/api/0/*</code> 接口，拉取所有分类文件夹、订阅源以及文章正文。
-      </div>
-
-      <div class="flex items-center justify-end pt-2">
-        <button @click="modals.clientInfo = false" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 rounded-md text-sm font-medium">完成</button>
       </div>
     </div>
   </div>
