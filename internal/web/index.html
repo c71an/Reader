@@ -573,9 +573,8 @@
         </template>
       </div>
 
-      <!-- 空列表状态 -->
-      <div x-show="timelineItems.length === 0 && !timelineLoading" class="py-16 text-center text-neutral-400 dark:text-neutral-500">
-        <div class="text-4xl mb-3">☕</div>
+      <!-- 空列表状态 (无咖啡图标，仅在时间流判定就绪且确实无文章时展示，杜绝启动闪现) -->
+      <div x-show="timelineReady && timelineItems.length === 0 && !timelineLoading" class="py-16 text-center text-neutral-400 dark:text-neutral-500">
         <div class="text-sm font-medium text-neutral-600 dark:text-neutral-300">暂无文章</div>
       </div>
 

@@ -13,7 +13,8 @@
         timelineItems: [],
         timelineContinuation: '',
         timelineHasMore: true,
-        timelineLoading: false,
+        timelineLoading: true,
+        timelineReady: false,
         timelineFilter: 'unread', // 'unread' | 'all' | 'starred'
         timelineSelectedCategory: 'all',
         timelineSelectedFeedId: null,
@@ -129,11 +130,12 @@
             const totalUnread = this.feeds.reduce((sum, f) => sum + (f.unread_count || 0), 0);
             this.timelineFilter = totalUnread > 0 ? 'unread' : 'all';
             this.initTimelineObserver();
-            this.loadTimeline(true);
+            await this.loadTimeline(true);
           } catch (_) {
             this.isLoggedIn = false;
           } finally {
             this.authChecking = false;
+            this.timelineReady = true;
           }
         },
 
