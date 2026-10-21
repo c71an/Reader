@@ -999,12 +999,12 @@
        @click="closeModalOnBackdrop($event, 'stagger')"
        class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
     <div class="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-xl shadow-2xl max-w-lg w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 max-h-[90vh] overflow-y-auto my-auto">
-      <div class="flex items-center justify-between mb-4">
+      <div class="flex items-start justify-between mb-4">
         <div>
           <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100">时间分配</h3>
           <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5" x-text="'针对：' + staggerTargetName + '（共 ' + staggerTargetFeeds.length + ' 个源）'"></p>
         </div>
-        <button @click="modals.stagger = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1" title="关闭">
+        <button @click="modals.stagger = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg transition" title="关闭">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
       </div>
@@ -1082,12 +1082,12 @@
        @click="closeModalOnBackdrop($event, 'category')"
        class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
     <div class="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-xl shadow-2xl max-w-md w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 max-h-[90vh] overflow-y-auto my-auto">
-      <div class="flex items-center justify-between mb-4">
+      <div class="flex items-start justify-between mb-4">
         <div>
           <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100">文件夹设置</h3>
           <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5" x-text="'当前文件夹：' + (categoryForm.current_name || '未分类')"></p>
         </div>
-        <button @click="modals.category = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1" title="关闭">
+        <button @click="modals.category = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg transition" title="关闭">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
       </div>
@@ -1122,7 +1122,7 @@
        class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
     <div class="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-xl shadow-2xl max-w-2xl w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 max-h-[90vh] flex flex-col my-auto">
       <!-- 弹窗顶栏 -->
-      <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+      <div class="flex items-start justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
         <div>
           <div class="flex items-center space-x-2">
             <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">设备管理</h3>
@@ -1483,7 +1483,7 @@
        style="z-index: 9999;"
        class="fixed inset-0 overflow-y-auto bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4">
     <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-4xl w-full h-[90vh] sm:max-h-[88vh] flex flex-col border border-slate-200 dark:border-slate-800 overflow-hidden my-auto">
-      <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex items-center justify-between">
+      <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex items-start justify-between">
         <div class="min-w-0 pr-2">
           <div class="flex items-center space-x-2">
             <span class="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 shrink-0">正文源码</span>
@@ -1559,21 +1559,8 @@
           </div>
         </div>
 
-        <!-- 右侧操作栏 (上一篇 / 下一篇 / 标星 / 未读切换 / 原文直达 / 桌面关闭) -->
+        <!-- 右侧操作栏 (未读切换 / 原文直达 / 桌面关闭) -->
         <div class="flex items-center space-x-1 sm:space-x-1.5 shrink-0">
-          <!-- 上一篇 -->
-          <button @click="prevArticle()" :disabled="readerIndex <= 0" 
-                  class="p-1.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-30 disabled:hover:bg-transparent rounded-lg transition" 
-                  title="上一篇 (← 或 K)">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
-          </button>
-          <!-- 下一篇 -->
-          <button @click="nextArticle()" :disabled="readerIndex >= timelineItems.length - 1 && !timelineHasMore" 
-                  class="p-1.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-30 disabled:hover:bg-transparent rounded-lg transition" 
-                  title="下一篇 (→ 或 J)">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-          </button>
-          <div class="w-px h-4 bg-neutral-200 dark:neutral-700 mx-1"></div>
           <!-- 标记已读/未读 -->
           <button @click="toggleReaderArticleRead()" 
                   class="p-1.5 text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition" 
