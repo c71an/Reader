@@ -269,6 +269,18 @@
       </div>
 
       <div class="flex items-center space-x-2 sm:space-x-3" x-show="isLoggedIn">
+        <!-- 订阅管理按钮 (独立放置于菜单按钮左侧) -->
+        <button @click="setTab(currentTab === 'manage' ? 'timeline' : 'manage')" 
+                class="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition cursor-pointer"
+                :class="currentTab === 'manage' ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 shadow-2xs' : 'text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800'"
+                :title="currentTab === 'manage' ? '返回时间线阅读' : '订阅管理'">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          </svg>
+          <span>订阅管理</span>
+        </button>
+
         <!-- 菜单下拉组件 (三条横线 logo) -->
         <div class="relative" @click.away="menuOpen = false">
           <button @click="menuOpen = !menuOpen" 
@@ -288,36 +300,22 @@
                x-transition:leave="transition ease-in duration-100"
                x-transition:leave-start="opacity-100 scale-100 translate-y-0"
                x-transition:leave-end="opacity-0 scale-95 translate-y-[-4px]"
-               class="absolute right-0 mt-2 w-52 sm:w-56 bg-white dark:bg-neutral-900 rounded-xl shadow-xl border border-neutral-200 dark:border-neutral-800 py-1.5 z-50 overflow-hidden divide-y divide-neutral-100 dark:divide-neutral-800/80">
+               class="absolute right-0 mt-2 w-44 sm:w-48 bg-white dark:bg-neutral-900 rounded-xl shadow-xl border border-neutral-200 dark:border-neutral-800 py-1.5 z-50 overflow-hidden divide-y divide-neutral-100 dark:divide-neutral-800/80">
             
-            <!-- 订阅操作区 -->
+            <!-- 设备管理 -->
             <div class="py-1">
-              <!-- 订阅管理 -->
-              <button @click="setTab('manage'); menuOpen = false" 
-                      class="w-full flex items-center space-x-2.5 px-3.5 py-2 text-xs sm:text-sm transition text-left"
-                      :class="currentTab === 'manage' ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white font-semibold' : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800/60'">
-                <svg class="w-4 h-4 text-neutral-400 dark:text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                <span>订阅管理</span>
-              </button>
-            </div>
-
-            <!-- 配置与指引区 -->
-            <div class="py-1">
-              <!-- 设备管理 -->
               <button @click="openTokensModal(); menuOpen = false" 
                       class="w-full flex items-center space-x-2.5 px-3.5 py-2 text-xs sm:text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition text-left">
                 <svg class="w-4 h-4 text-neutral-400 dark:text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
                 <span>设备管理</span>
               </button>
-
-
             </div>
 
-            <!-- 账号退出区 -->
+            <!-- 账号退出区 (克制红色区分) -->
             <div class="py-1">
               <button @click="logout(); menuOpen = false" 
-                      class="w-full flex items-center space-x-2.5 px-3.5 py-2 text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left">
-                <svg class="w-4 h-4 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                      class="w-full flex items-center space-x-2.5 px-3.5 py-2 text-xs sm:text-sm text-red-600/85 dark:text-red-400/85 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50/80 dark:hover:bg-red-950/30 transition text-left">
+                <svg class="w-4 h-4 text-red-500/80 dark:text-red-400/80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                 <span>退出登录</span>
               </button>
             </div>
