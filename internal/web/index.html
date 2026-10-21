@@ -1004,7 +1004,7 @@
           <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100">时间分配</h3>
           <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5" x-text="'针对：' + staggerTargetName + '（共 ' + staggerTargetFeeds.length + ' 个源）'"></p>
         </div>
-        <button @click="modals.stagger = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
+        <button @click="modals.stagger = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1" title="关闭">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
       </div>
@@ -1087,7 +1087,7 @@
           <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100">文件夹设置</h3>
           <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5" x-text="'当前文件夹：' + (categoryForm.current_name || '未分类')"></p>
         </div>
-        <button @click="modals.category = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
+        <button @click="modals.category = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1" title="关闭">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
       </div>
@@ -1130,7 +1130,7 @@
           </div>
           <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">管理已连接本系统的客户端授权凭证与活跃设备</p>
         </div>
-        <button @click="modals.tokens = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg transition">
+        <button @click="modals.tokens = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg transition" title="关闭">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
       </div>
@@ -1196,14 +1196,11 @@
       </div>
 
       <!-- 底部安全与防膨胀说明 -->
-      <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 -mx-5 -mb-5 sm:-mx-6 sm:-mb-6 p-4 sm:px-6 rounded-b-2xl sm:rounded-b-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+      <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 -mx-5 -mb-5 sm:-mx-6 sm:-mb-6 p-4 sm:px-6 rounded-b-2xl sm:rounded-b-xl text-xs text-slate-500 dark:text-slate-400">
         <div class="flex items-start space-x-1.5 leading-relaxed text-[11px]">
           <span class="text-slate-700 dark:text-slate-300 font-bold shrink-0">🛡️ 安全策略:</span>
           <span>系统采用 LRU 配额策略（同客户端最多保留 5 个会话）；超期 90 天未活跃的 Token 会被后台自动清理。</span>
         </div>
-        <button @click="modals.tokens = false" class="px-4 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-medium rounded-md transition shrink-0 self-end sm:self-auto">
-          关闭
-        </button>
       </div>
     </div>
   </div>
@@ -1317,7 +1314,7 @@
 
         <div class="flex items-center space-x-2 sm:space-x-3 shrink-0 self-end md:self-start mt-1 md:mt-0">
           <span class="text-[11px] sm:text-xs font-semibold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300" x-text="'共 ' + dbArticlesTotal + ' 条'"></span>
-          <button @click="modals.db = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg p-1.5 transition">
+          <button @click="modals.db = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg p-1.5 transition" title="关闭">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
           </button>
         </div>
@@ -1416,7 +1413,7 @@
               </template>
               <tr x-show="dbArticles.length === 0 && !loading.db">
                 <td colspan="12" class="px-6 py-12 text-center text-slate-400 dark:text-slate-500 font-sans text-sm">
-                  📭 articles 表中暂无属于此 feed_id 的记录，可点击关闭后勾选源并点击「抓取」写入数据
+                  📭 articles 表中暂无属于此 feed_id 的记录，可关闭弹窗后勾选源并点击「抓取」写入数据
                 </td>
               </tr>
               <tr x-show="loading.db">
@@ -1476,15 +1473,6 @@
         </div>
       </div>
 
-      <!-- 弹窗底栏 -->
-      <div class="px-4 sm:px-6 py-2.5 sm:py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90 flex justify-between items-center text-xs text-slate-500 dark:text-slate-400 font-sans">
-        <div class="font-mono text-slate-500 dark:text-slate-400 truncate mr-2">
-          <code>articles 表数据浏览</code>
-        </div>
-        <button @click="modals.db = false" class="px-4 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-medium rounded-md transition shrink-0">
-          关闭
-        </button>
-      </div>
     </div>
   </div>
 
@@ -1503,7 +1491,7 @@
           </div>
           <h3 class="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 mt-0.5 truncate" x-text="detailArticle ? detailArticle.title : ''"></h3>
         </div>
-        <button @click="modals.content = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg p-1.5 transition shrink-0">
+        <button @click="modals.content = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg p-1.5 transition shrink-0" title="关闭">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
       </div>
@@ -1525,12 +1513,6 @@
                   placeholder="无正文内容"></textarea>
       </div>
 
-      <div class="px-4 sm:px-6 py-2.5 sm:py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex justify-between items-center text-xs text-slate-500 dark:text-slate-400">
-        <div class="truncate mr-2">数据库存储的原始数据</div>
-        <button @click="modals.content = false" class="px-4 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-medium rounded-md text-xs transition shrink-0">
-          关闭
-        </button>
-      </div>
     </div>
   </div>
 
