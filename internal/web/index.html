@@ -355,7 +355,7 @@
       <!-- 分类与订阅源侧边栏 (宽屏常驻 / 移动端窄屏垂直居中悬浮卡片弹窗，响应式一体化) -->
       <aside x-show="modals.timelineTree"
              @keydown.escape.window="modals.timelineTree = false"
-             @click.self="modals.timelineTree = false"
+             @click="closeModalOnBackdrop($event, 'timelineTree')"
              class="fixed inset-0 z-50 overflow-y-auto bg-neutral-950/50 dark:bg-black/75 backdrop-blur-xs flex items-center justify-center p-3.5 sm:p-4 lg:z-auto lg:p-0 lg:bg-transparent lg:dark:bg-transparent lg:backdrop-blur-none lg:!block lg:w-72 xl:w-80 lg:shrink-0 lg:sticky lg:top-[97px] lg:will-change-transform lg:transform-gpu lg:overflow-visible">
         <div class="bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 rounded-2xl shadow-2xl lg:shadow-none w-full max-w-md lg:max-w-none max-h-[78dvh] sm:max-h-[82dvh] lg:max-h-[calc(100vh-144px)] flex flex-col p-3.5 overflow-hidden my-auto lg:my-0">
           <!-- 标题栏与展开/折叠全部切换 (移动端带 ✕ 关闭按钮) -->
@@ -922,7 +922,7 @@
   <!-- 添加新订阅弹窗 (全平台垂直居中，避免贴底被 iOS Safari 胶囊底栏遮挡) -->
   <div x-show="modals.add" 
        @keydown.escape.window="closeAddModal()" 
-       @click.self="closeAddModal()"
+       @click="closeModalOnBackdrop($event, 'add')"
        class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
     <div class="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-xl shadow-2xl max-w-lg w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 overflow-visible my-auto">
       <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100 mb-4">添加新订阅 (支持 RSSHub)</h3>
@@ -1002,7 +1002,7 @@
   <!-- 错峰时间分配弹窗 -->
   <div x-show="modals.stagger" 
        @keydown.escape.window="modals.stagger = false" 
-       @click.self="modals.stagger = false"
+       @click="closeModalOnBackdrop($event, 'stagger')"
        class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
     <div class="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-xl shadow-2xl max-w-lg w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 max-h-[90vh] overflow-y-auto my-auto">
       <div class="flex items-center justify-between mb-4">
@@ -1085,7 +1085,7 @@
   <!-- 文件夹设置弹窗 (设置标题与排序) -->
   <div x-show="modals.category" 
        @keydown.escape.window="modals.category = false" 
-       @click.self="modals.category = false"
+       @click="closeModalOnBackdrop($event, 'category')"
        class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
     <div class="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-xl shadow-2xl max-w-md w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 max-h-[90vh] overflow-y-auto my-auto">
       <div class="flex items-center justify-between mb-4">
@@ -1124,7 +1124,7 @@
   <!-- 设备与 Token 会话管理弹窗 -->
   <div x-show="modals.tokens" 
        @keydown.escape.window="modals.tokens = false" 
-       @click.self="modals.tokens = false"
+       @click="closeModalOnBackdrop($event, 'tokens')"
        class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
     <div class="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-xl shadow-2xl max-w-2xl w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 max-h-[90vh] flex flex-col my-auto">
       <!-- 弹窗顶栏 -->
@@ -1217,7 +1217,7 @@
   <!-- 数据库文章内容查看弹窗 (展示 articles 表所有表头与字段) -->
   <div x-show="modals.db" 
        @keydown.escape.window="modals.db = false" 
-       @click.self="modals.db = false"
+       @click="closeModalOnBackdrop($event, 'db')"
        class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4">
     <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-7xl w-full h-[90vh] sm:max-h-[92vh] flex flex-col border border-slate-200 dark:border-slate-800 overflow-hidden my-auto">
       <!-- 弹窗顶栏 (源配置与统计) -->
@@ -1497,7 +1497,7 @@
   <!-- 正文 (content) 原始 HTML 源码弹窗 (最高层级) -->
   <div x-show="modals.content" 
        @keydown.escape.window="modals.content = false" 
-       @click.self="modals.content = false"
+       @click="closeModalOnBackdrop($event, 'content')"
        style="z-index: 9999;"
        class="fixed inset-0 overflow-y-auto bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4">
     <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-4xl w-full h-[90vh] sm:max-h-[88vh] flex flex-col border border-slate-200 dark:border-slate-800 overflow-hidden my-auto">
@@ -1555,7 +1555,7 @@
          x-transition:leave="transition ease-in duration-150"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
-         @click="closeReader()"
+         @click="closeModalOnBackdrop($event, 'reader')"
          class="hidden sm:block fixed inset-0 bg-neutral-950/45 dark:bg-black/65 backdrop-blur-xs transition-opacity">
     </div>
 

@@ -62,6 +62,8 @@
         staggerForm: { start_time: '08:00', interval_minutes: 30, jitter: '30m', days: [0, 1, 2, 3, 4, 5, 6] },
         categoryForm: { current_name: '', name: '', sort_order: 0 },
         modalForm: { title: '', feed_url: '', category_name: '' },
+        lastMouseDownTarget: null,
+        lastMouseUpTarget: null,
 
         init() {
           if ('scrollRestoration' in history) {
@@ -82,6 +84,12 @@
               this.closeReader();
             }
           });
+          // 记录全局鼠标按下/松开与触摸目标，用于精确鉴别遮罩层点击，防止选中文本拖拽至弹窗外释放时导致弹窗误关闭
+          window.addEventListener('mousedown', (e) => { this.lastMouseDownTarget = e.target; }, true);
+          window.addEventListener('mouseup', (e) => { this.lastMouseUpTarget = e.target; }, true);
+          window.addEventListener('touchstart', (e) => { this.lastMouseDownTarget = e.target; }, { passive: true, capture: true });
+          window.addEventListener('touchend', (e) => { this.lastMouseUpTarget = e.target; }, { passive: true, capture: true });
+
           // 监听浏览器原生返回手势与返回键 (iOS Safari 边缘左滑或底栏后退)
           window.addEventListener('popstate', () => {
             if (this.modals.reader) {
@@ -99,6 +107,25 @@
 
         removeToast(id) {
           this.toasts = this.toasts.filter(t => t.id !== id);
+        },
+
+        // 遮罩点击防护：仅当按下与松开的目标均为当前遮罩层自身时才关闭，防止框选文本滑出弹窗释放导致误关闭
+        closeModalOnBackdrop(e, target) {
+          if (e.target === e.currentTarget && 
+              this.lastMouseDownTarget === e.currentTarget && 
+              this.lastMouseUpTarget === e.currentTarget) {
+            if (typeof target === 'function') {
+              target();
+            } else if (typeof target === 'string') {
+              if (target === 'add') {
+                this.closeAddModal();
+              } else if (target === 'reader') {
+                this.closeReader();
+              } else if (this.modals[target] !== undefined) {
+                this.modals[target] = false;
+              }
+            }
+          }
         },
 
         // 统一轻量 API 请求客户端
