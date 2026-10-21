@@ -27,7 +27,7 @@ func NewFetcher(database *db.DB, timeoutSeconds int) *Fetcher {
 	}
 	timeout := time.Duration(timeoutSeconds) * time.Second
 
-	// 针对 RSSHub 和常规 Feed 优化 HTTP Client 配置
+	// 针对常规 Feed 优化 HTTP Client 配置
 	tr := &http.Transport{
 		TLSClientConfig:       &tls.Config{InsecureSkipVerify: false},
 		MaxIdleConns:          50,
@@ -47,7 +47,7 @@ func NewFetcher(database *db.DB, timeoutSeconds int) *Fetcher {
 		db:         database,
 		httpClient: client,
 		fp:         fp,
-		userAgent:  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Reader/1.0 RSSHub-Friendly",
+		userAgent:  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Reader/1.0",
 	}
 }
 
