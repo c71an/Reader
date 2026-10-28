@@ -1162,12 +1162,14 @@
               if (!cleanedAttrs.includes('muted')) cleanedAttrs += ' muted';
               if (!cleanedAttrs.includes('preload')) cleanedAttrs += ' preload="metadata"';
               if (!cleanedAttrs.includes('playsinline')) cleanedAttrs += ' playsinline webkit-playsinline';
-              cleanedAttrs += ' onended="this.currentTime = 0;"';
+              cleanedAttrs += ' onended="this.currentTime = 0; window.updateVideoCountdown && window.updateVideoCountdown(this);"';
+              cleanedAttrs += ' onloadedmetadata="window.updateVideoCountdown && window.updateVideoCountdown(this)"';
+              cleanedAttrs += ' ontimeupdate="window.updateVideoCountdown && window.updateVideoCountdown(this)"';
 
               const maskId = 'mute-cutout-' + Math.random().toString(36).slice(2, 8);
 
               return `<div class="relative reader-video-container my-4 rounded-xl overflow-hidden select-none cursor-pointer group bg-black"
-                           onclick="const v = this.querySelector('video'); if (v) { if (v.ended) v.currentTime = 0; v.paused ? v.play() : v.pause(); }">
+                           onclick="const v = this.querySelector('video'); if (v) { if (v.ended) v.currentTime = 0; v.paused ? v.play() : v.pause(); window.updateVideoCountdown && window.updateVideoCountdown(v); }">
                 <video ${cleanedAttrs.trim()} class="w-full h-auto block rounded-xl">${inner}</video>
                 <!-- 左下角：复刻 9GAG 风格实心圆形声音控制按钮 (紧凑精致、默认静音) -->
                 <button type="button" 
@@ -1189,6 +1191,8 @@
                     <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
                   </svg>
                 </button>
+                <!-- 右下角：时间倒计时胶囊 (与左下静音按钮色调风格统一对齐) -->
+                <div class="video-countdown hidden absolute bottom-2.5 right-2.5 sm:bottom-3 sm:right-3 h-8 sm:h-9 px-3 sm:px-3.5 rounded-full bg-black/75 backdrop-blur-sm text-white text-xs sm:text-[13px] font-semibold tabular-nums tracking-wider flex items-center justify-center shadow-md pointer-events-none select-none transition-opacity duration-200">0:00</div>
               </div>`;
             }
           });
@@ -1364,6 +1368,9 @@
                 bodyEl.scrollTop = 0;
               }
             }
+            document.querySelectorAll('.reader-video-container video').forEach(v => {
+              if (window.updateVideoCountdown) window.updateVideoCountdown(v);
+            });
           });
 
           // 推进浏览器历史栈（支持原生返回手势与返回键）
@@ -1539,3 +1546,30 @@
         }
       };
     }
+
+window.updateVideoCountdown = function(v) {
+  if (!v || !v.parentElement) return;
+  const badge = v.parentElement.querySelector('.video-countdown');
+  if (!badge) return;
+  if (!v.duration || isNaN(v.duration) || !isFinite(v.duration) || v.duration <= 0) {
+    badge.classList.add('hidden');
+    return;
+  }
+  const total = Math.round(v.duration);
+  const remaining = Math.max(0, Math.ceil(total - v.currentTime));
+  const m = Math.floor(remaining / 60);
+  const s = remaining % 60;
+  badge.textContent = (m >= 60)
+    ? `${Math.floor(m / 60)}:${(m % 60).toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+    : `${m}:${s.toString().padStart(2, '0')}`;
+  badge.classList.remove('hidden');
+};
+
+// 全局捕获阶段监听视频事件，确保倒计时胶囊实时无缝响应
+['loadedmetadata', 'timeupdate', 'durationchange', 'play', 'ended', 'seeking', 'seeked'].forEach(evt => {
+  document.addEventListener(evt, (e) => {
+    if (e.target && e.target.tagName === 'VIDEO') {
+      window.updateVideoCountdown(e.target);
+    }
+  }, true);
+});
