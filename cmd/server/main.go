@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"strings"
 	"time"
 
 	"reader/internal/api/admin"
@@ -98,7 +99,15 @@ func main() {
 	subFS, err := fs.Sub(web.DistFS, ".")
 	if err == nil {
 		fileServer := http.FileServer(http.FS(subFS))
-		r.Handle("/*", fileServer)
+		r.Handle("/*", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			path := req.URL.Path
+			if path == "" || path == "/" || strings.HasSuffix(path, ".html") {
+				w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+				w.Header().Set("Pragma", "no-cache")
+				w.Header().Set("Expires", "0")
+			}
+			fileServer.ServeHTTP(w, req)
+		}))
 	}
 
 	server := &http.Server{
