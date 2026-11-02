@@ -1,9 +1,14 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="referrer" content="no-referrer">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <!-- iOS 状态栏与主题颜色匹配 -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#171717" media="(prefers-color-scheme: dark)">
   <title>Reader - RSS 阅读与管理</title>
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
@@ -78,6 +83,9 @@
       touch-action: manipulation;
     }
     /* 适配 iOS Safari / Chrome 动态底部地址栏与安全区域 (Safe Area Inset) */
+    .pt-safe {
+      padding-top: env(safe-area-inset-top, 0px) !important;
+    }
     .pb-safe {
       padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 2.5rem) !important;
     }
@@ -259,7 +267,7 @@
   </div>
 
   <!-- 顶部全局吸顶导航栏 -->
-  <header x-show="isLoggedIn" :class="modals.reader ? 'hidden sm:block' : ''" class="bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800 sticky top-0 z-30 shadow-2xs">
+  <header x-show="isLoggedIn" :class="modals.reader ? 'hidden sm:block' : ''" class="bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800 sticky top-0 z-30 shadow-2xs pt-safe">
     <div class="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
       <div class="flex items-center space-x-3 cursor-pointer select-none" @click="setTab('timeline')">
         <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-neutral-900 dark:bg-white flex items-center justify-center text-white dark:text-neutral-900 font-bold text-base sm:text-lg shadow-sm">
@@ -1546,7 +1554,7 @@
          class="w-full min-h-screen sm:min-h-0 sm:relative sm:w-full sm:h-auto sm:max-h-[calc(100vh-1.25rem)] sm:max-w-3xl bg-white dark:bg-neutral-900 sm:rounded-2xl sm:border border-neutral-200/80 dark:border-neutral-800 sm:shadow-2xl flex flex-col sm:overflow-hidden z-10 select-none">
 
       <!-- 卡片吸顶操作导航栏 (紧凑高度，在手机端 sticky 吸顶) -->
-      <div class="sticky sm:shrink-0 top-0 h-11 sm:h-12 px-3.5 sm:px-6 flex items-center justify-between border-b border-neutral-200/80 dark:border-neutral-800/80 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md z-20">
+      <div class="sticky sm:shrink-0 top-0 pt-safe sm:pt-0 h-11 sm:h-12 box-content px-3.5 sm:px-6 flex items-center justify-between border-b border-neutral-200/80 dark:border-neutral-800/80 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md z-20">
         <!-- 左侧返回按钮与订阅源信息 -->
         <div class="flex items-center space-x-2 truncate pr-2">
           <button @click="closeReader()" 
