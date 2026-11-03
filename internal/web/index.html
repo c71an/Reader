@@ -372,7 +372,7 @@
           <div class="flex items-center justify-between px-2 pb-2 border-b border-neutral-100 dark:border-neutral-800/80 shrink-0">
             <div class="flex items-center space-x-2">
               <span class="font-bold text-sm text-neutral-900 dark:text-white">分类与订阅源</span>
-              <span class="text-xs text-neutral-400 dark:text-neutral-500" x-text="computedData.totalFeeds + ' 个源'"></span>
+              <span class="text-xs px-2 py-0.5 rounded-full font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 shrink-0" x-text="computedData.totalFeeds"></span>
             </div>
             <div class="flex items-center space-x-1.5">
               <button @click="toggleAllTimelineCategories()"
@@ -522,10 +522,9 @@
           <!-- 右侧操作栏 (全标已读) -->
           <div class="flex items-center shrink-0 ml-1">
             <button @click="markAllTimelineRead()"
-                    class="px-2 sm:px-2.5 py-1 text-xs text-neutral-600 dark:text-neutral-300 hover:text-black dark:hover:text-white bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg transition flex items-center space-x-1 shadow-2xs shrink-0"
+                    class="p-1.5 text-neutral-600 dark:text-neutral-300 hover:text-black dark:hover:text-white bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg transition flex items-center justify-center shadow-2xs shrink-0"
                     title="全部标记为已读">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-              <span class="hidden sm:inline">全标已读</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
             </button>
           </div>
         </div>
