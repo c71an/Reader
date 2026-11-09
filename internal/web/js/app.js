@@ -1234,13 +1234,23 @@
           this.loadTimeline(true);
         },
 
-        setTimelineFeed(feed) {
+        setTimelineFeed(feedOrItem) {
+          if (!feedOrItem) return;
+          const feedId = feedOrItem.feed_id !== undefined ? feedOrItem.feed_id : feedOrItem.id;
+          if (!feedId) return;
+          const feed = this.feeds.find(f => f.id === feedId) || feedOrItem;
           this.modals.timelineTree = false;
-          this.timelineSelectedCategory = feed.category_name || '未分类';
+          this.timelineSelectedCategory = feed.category_name || feedOrItem.category_name || '未分类';
           this.timelineCollapsedCategories[this.timelineSelectedCategory] = false;
-          if (this.timelineSelectedFeedId === feed.id) return;
-          this.timelineSelectedFeedId = feed.id;
+          if (this.currentTab !== 'timeline') {
+            this.currentTab = 'timeline';
+          }
+          if (this.modals.reader) {
+            this.closeReader(true, false);
+          }
+          this.timelineSelectedFeedId = feedId;
           this.loadTimeline(true);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         },
 
         toggleTimelineCategory(catName) {
@@ -1397,7 +1407,7 @@
           }
         },
 
-        closeReader(triggerHistoryBack = true) {
+        closeReader(triggerHistoryBack = true, restoreScroll = true) {
           if (this.readerClosing) return;
           this.readerClosing = true;
 
@@ -1420,27 +1430,29 @@
           }
 
           // 原位保持与对齐：
-          this.$nextTick(() => {
-            if (isMobile) {
-              // 手机端：立即且纯粹地将 window 还原到进入前的绝对滚动位置，绝无多余重绘跳动
-              window.scrollTo({ top: savedScrollPos, behavior: 'instant' });
-            } else {
-              // 桌面端：底层始终未被隐藏，若在详情页中用 J/K 切换了文章，平滑确保当前文章卡片在可视区域内
-              if (lastArticleId) {
-                const card = document.getElementById('article-card-' + lastArticleId);
-                if (card) {
-                  const rect = card.getBoundingClientRect();
-                  if (rect.top < 60 || rect.bottom > window.innerHeight) {
-                    card.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+          if (restoreScroll) {
+            this.$nextTick(() => {
+              if (isMobile) {
+                // 手机端：立即且纯粹地将 window 还原到进入前的绝对滚动位置，绝无多余重绘跳动
+                window.scrollTo({ top: savedScrollPos, behavior: 'instant' });
+              } else {
+                // 桌面端：底层始终未被隐藏，若在详情页中用 J/K 切换了文章，平滑确保当前文章卡片在可视区域内
+                if (lastArticleId) {
+                  const card = document.getElementById('article-card-' + lastArticleId);
+                  if (card) {
+                    const rect = card.getBoundingClientRect();
+                    if (rect.top < 60 || rect.bottom > window.innerHeight) {
+                      card.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+                    }
+                  }
+                } else if (this.timelineScrollPos !== undefined) {
+                  if (Math.abs((window.scrollY || 0) - this.timelineScrollPos) > 5) {
+                    window.scrollTo({ top: this.timelineScrollPos, behavior: 'instant' });
                   }
                 }
-              } else if (this.timelineScrollPos !== undefined) {
-                if (Math.abs((window.scrollY || 0) - this.timelineScrollPos) > 5) {
-                  window.scrollTo({ top: this.timelineScrollPos, behavior: 'instant' });
-                }
               }
-            }
-          });
+            });
+          }
 
           // 清理状态：手机端直接复位无延迟；桌面端等待 200ms 淡出动画结束再清空
           if (isMobile) {

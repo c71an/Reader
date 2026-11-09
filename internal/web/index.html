@@ -555,7 +555,7 @@
                   <!-- 顶信息：Feed 名称 + 发布时刻 -->
                   <div class="flex items-center justify-between text-xs sm:text-sm text-neutral-400 dark:text-neutral-500 mb-1.5">
                     <div class="flex items-center space-x-1.5 truncate pr-2 min-w-0">
-                      <span class="font-medium text-neutral-600 dark:text-neutral-300 truncate" x-text="item.feed_title"></span>
+                      <span @click.stop="setTimelineFeed(item)" class="font-medium text-neutral-600 dark:text-neutral-300 truncate cursor-pointer hover:underline hover:text-black dark:hover:text-white transition-colors" :title="'切换到 ' + item.feed_title" x-text="item.feed_title"></span>
                       <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="item.is_read ? 'hidden' : 'bg-black dark:bg-white'"></span>
                     </div>
                     <div class="flex items-center space-x-2 shrink-0">
@@ -1583,7 +1583,7 @@
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
           </button>
           <div class="truncate">
-            <span class="text-xs sm:text-sm font-semibold text-neutral-800 dark:text-neutral-200 truncate" x-text="readerArticle ? readerArticle.feed_title : ''"></span>
+            <span class="text-xs sm:text-sm font-semibold text-neutral-800 dark:text-neutral-200 truncate cursor-pointer hover:underline" @click="setTimelineFeed(readerArticle)" :title="'切换到 ' + (readerArticle ? readerArticle.feed_title : '')" x-text="readerArticle ? readerArticle.feed_title : ''"></span>
           </div>
         </div>
 
@@ -1617,7 +1617,7 @@
 
         <!-- 元信息 -->
         <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-neutral-400 dark:text-neutral-500 mb-6 pb-4 border-b border-neutral-100 dark:border-neutral-800/80">
-          <span class="font-medium text-neutral-700 dark:text-neutral-300" x-text="readerArticle ? readerArticle.feed_title : ''"></span>
+          <span class="font-medium text-neutral-700 dark:text-neutral-300 cursor-pointer hover:underline hover:text-black dark:hover:text-white transition-colors" @click="setTimelineFeed(readerArticle)" :title="'切换到 ' + (readerArticle ? readerArticle.feed_title : '')" x-text="readerArticle ? readerArticle.feed_title : ''"></span>
           <span x-show="readerArticle && readerArticle.author" x-text="'作者: ' + readerArticle.author"></span>
           <span x-text="readerArticle ? formatReadableTime(readerArticle.published_at) : ''"></span>
         </div>
