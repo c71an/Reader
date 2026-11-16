@@ -1613,7 +1613,15 @@
       <!-- 正文内容区：桌面端内部独立滚动，手机端为原生 Window 滚动流 -->
       <div id="reader-card-body" class="flex-1 sm:overflow-y-auto sm:no-scrollbar sm:overscroll-contain px-4 sm:px-8 py-4 sm:py-5 select-text">
         <!-- 标题 -->
-        <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-neutral-900 dark:text-white leading-tight mb-3 select-text" x-text="readerArticle ? readerArticle.title : ''"></h1>
+        <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-neutral-900 dark:text-white leading-tight mb-3 select-text">
+          <a :href="readerArticle ? readerArticle.url : '#'" 
+             target="_blank" 
+             rel="noopener noreferrer"
+             @click="if (!readerArticle || !readerArticle.url) $event.preventDefault()"
+             class="hover:underline cursor-pointer"
+             :title="readerArticle && readerArticle.url ? '在原网打开' : ''"
+             x-text="readerArticle ? readerArticle.title : ''"></a>
+        </h1>
 
         <!-- 元信息 -->
         <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-neutral-400 dark:text-neutral-500 mb-6 pb-4 border-b border-neutral-100 dark:border-neutral-800/80">
