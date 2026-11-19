@@ -189,6 +189,7 @@
             this.feeds = await this.api('/api/admin/feeds');
             const validIds = new Set(this.feeds.map(f => f.id));
             this.selectedFeedIds = this.selectedFeedIds.filter(id => validIds.has(id));
+            this.syncTimelineSelection();
           } catch (e) {
             this.toast('加载订阅源失败: ' + e.message, 'error');
           }
@@ -200,18 +201,23 @@
           let pausedCount = 0;
           let unreadTotal = 0;
           const groupsMap = {};
+          const timelineGroupsMap = {};
+          let timelineTotalFeeds = 0;
 
           for (const f of this.feeds) {
+            const isPaused = f.schedule_type === 'paused';
             if (f.schedule_type === 'cron') dailyFixedCount++;
-            else if (f.schedule_type === 'paused') pausedCount++;
+            else if (isPaused) pausedCount++;
             unreadTotal += (f.unread_count || 0);
 
             const catName = f.category_name || '未分类';
+            const sortOrder = f.category_name ? (f.category_sort_order ?? 0) : 999999;
+
             if (!groupsMap[catName]) {
               groupsMap[catName] = {
                 name: catName,
                 count: 0,
-                sortOrder: f.category_name ? (f.category_sort_order ?? 0) : 999999,
+                sortOrder: sortOrder,
                 feeds: [],
                 unreadTotal: 0
               };
@@ -219,13 +225,33 @@
             groupsMap[catName].count++;
             groupsMap[catName].feeds.push(f);
             groupsMap[catName].unreadTotal += (f.unread_count || 0);
+
+            // 分类与源列表：排除已暂停的订阅源
+            if (!isPaused) {
+              timelineTotalFeeds++;
+              if (!timelineGroupsMap[catName]) {
+                timelineGroupsMap[catName] = {
+                  name: catName,
+                  count: 0,
+                  sortOrder: sortOrder,
+                  feeds: [],
+                  unreadTotal: 0
+                };
+              }
+              timelineGroupsMap[catName].count++;
+              timelineGroupsMap[catName].feeds.push(f);
+              timelineGroupsMap[catName].unreadTotal += (f.unread_count || 0);
+            }
           }
 
-          const sortedGroups = Object.values(groupsMap).sort((a, b) => {
+          const sortFn = (a, b) => {
             if (a.name === '未分类') return 1;
             if (b.name === '未分类') return -1;
             return a.sortOrder !== b.sortOrder ? a.sortOrder - b.sortOrder : a.name.localeCompare(b.name);
-          });
+          };
+
+          const sortedGroups = Object.values(groupsMap).sort(sortFn);
+          const sortedTimelineGroups = Object.values(timelineGroupsMap).sort(sortFn);
 
           const categoryList = sortedGroups.map(g => ({
             name: g.name,
@@ -233,6 +259,15 @@
             unreadTotal: g.unreadTotal,
             feeds: g.feeds
           }));
+
+          // 仅包含有效（非暂停）订阅源的分类列表，若分类下所有源都隐藏（无有效源）则不包含该分类
+          const timelineCategoryList = sortedTimelineGroups.map(g => ({
+            name: g.name,
+            count: g.count,
+            unreadTotal: g.unreadTotal,
+            feeds: g.feeds
+          }));
+
           const filteredGroups = sortedGroups
             .filter(g => this.selectedCategory === 'all' || this.selectedCategory === g.name)
             .map(g => ({
@@ -244,10 +279,12 @@
 
           return {
             totalFeeds: this.feeds.length,
+            timelineTotalFeeds,
             dailyFixedCount,
             pausedCount,
             unreadTotal,
             categoryList,
+            timelineCategoryList,
             filteredGroups
           };
         },
@@ -320,6 +357,7 @@
                 f.schedule_type = action === 'pause' ? 'paused' : 'cron';
               }
             });
+            this.syncTimelineSelection();
             this.toast(action === 'pause' ? '已暂停所选订阅' : '已恢复所选订阅', 'success');
           }
 
@@ -335,6 +373,7 @@
             } else if (action === 'delete') {
               this.feeds = this.feeds.filter(f => !targetIds.has(f.id));
               this.selectedFeedIds = [];
+              this.syncTimelineSelection();
               this.toast('已成功删除选中的订阅源', 'success');
             }
           } catch (e) {
@@ -343,6 +382,7 @@
               this.feeds.forEach(f => {
                 if (backupMap.has(f.id)) f.schedule_type = backupMap.get(f.id);
               });
+              this.syncTimelineSelection();
             }
             this.toast('操作失败: ' + e.message, 'error');
           } finally {
@@ -515,6 +555,7 @@
           if (!val) {
             if (oldType === 'paused') return;
             feed.schedule_type = 'paused';
+            this.syncTimelineSelection();
             try {
               await this.api(`/api/admin/feeds/${feed.id}`, {
                 method: 'PUT',
@@ -524,6 +565,7 @@
             } catch (e) {
               feed.schedule_type = oldType;
               feed.schedule_value = oldValue;
+              this.syncTimelineSelection();
               this.toast('暂停失败: ' + e.message, 'error');
               await this.loadFeeds();
             }
@@ -535,6 +577,7 @@
 
           feed.schedule_type = 'cron';
           feed.schedule_value = val;
+          this.syncTimelineSelection();
 
           try {
             await this.api(`/api/admin/feeds/${feed.id}`, {
@@ -1262,15 +1305,36 @@
         },
 
         areAllTimelineCategoriesCollapsed() {
-          const list = this.computedData.categoryList;
-          return list.length > 0 && list.every(c => this.timelineCollapsedCategories[c.name]);
+          const list = this.computedData.timelineCategoryList;
+          return list && list.length > 0 && list.every(c => this.timelineCollapsedCategories[c.name]);
         },
 
         toggleAllTimelineCategories() {
           const collapse = !this.areAllTimelineCategoriesCollapsed();
-          this.computedData.categoryList.forEach(c => {
+          (this.computedData.timelineCategoryList || []).forEach(c => {
             this.timelineCollapsedCategories[c.name] = collapse;
           });
+        },
+
+        syncTimelineSelection() {
+          let needReload = false;
+          if (this.timelineSelectedFeedId) {
+            const feed = this.feeds.find(f => f.id === this.timelineSelectedFeedId);
+            if (!feed || feed.schedule_type === 'paused') {
+              this.timelineSelectedFeedId = null;
+              needReload = true;
+            }
+          }
+          if (this.timelineSelectedCategory && this.timelineSelectedCategory !== 'all') {
+            const exists = (this.computedData.timelineCategoryList || []).some(c => c.name === this.timelineSelectedCategory);
+            if (!exists) {
+              this.timelineSelectedCategory = 'all';
+              needReload = true;
+            }
+          }
+          if (needReload && this.currentTab === 'timeline') {
+            this.loadTimeline(true);
+          }
         },
 
         async loadTimeline(reset = false) {

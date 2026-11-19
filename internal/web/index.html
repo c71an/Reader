@@ -385,7 +385,7 @@
                 <!-- 源数量徽标 -->
                 <span class="text-xs px-2 py-0.5 rounded-full shrink-0"
                       :class="timelineSelectedCategory === 'all' && !timelineSelectedFeedId ? 'bg-neutral-800 dark:bg-neutral-200 text-white dark:text-black' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400'"
-                      x-text="computedData.totalFeeds"></span>
+                      x-text="computedData.timelineTotalFeeds"></span>
 
                 <!-- 批量折叠/展开全部箭头 (点击仅切换折叠状态，不改变当前选中的订阅源) -->
                 <button @click.stop="toggleAllTimelineCategories()"
@@ -412,8 +412,8 @@
             <!-- 分隔线 -->
             <div class="border-b border-neutral-100 dark:border-neutral-800/80 my-1 mx-1"></div>
 
-            <!-- 各分类项及其子订阅列表 -->
-            <template x-for="cat in computedData.categoryList" :key="cat.name">
+            <!-- 各分类项及其子订阅列表 (仅展示有非暂停订阅源的分类文件夹，隐藏已暂停的源) -->
+            <template x-for="cat in computedData.timelineCategoryList" :key="cat.name">
               <div class="space-y-1">
                 <!-- 分类条目 (左侧主体选择该分类 + 右侧展开箭头) -->
                 <div class="group flex items-center justify-between rounded-xl transition"
@@ -468,6 +468,11 @@
                 </div>
               </div>
             </template>
+
+            <!-- 空状态：无有效订阅源或所有订阅源均已暂停 -->
+            <div x-show="computedData.timelineCategoryList.length === 0" class="py-8 text-center text-xs text-neutral-400 dark:text-neutral-500 select-none">
+              暂无可展示的订阅源
+            </div>
           </div>
         </div>
       </aside>
