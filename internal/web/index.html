@@ -390,6 +390,7 @@
                 <!-- 批量折叠/展开全部箭头 (点击仅切换折叠状态，不改变当前选中的订阅源) -->
                 <button @click.stop="toggleAllTimelineCategories()"
                         class="p-1.5 rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition"
+                        :class="computedData.timelineCategoryList.length === 0 ? 'opacity-30 pointer-events-none' : ''"
                         :title="areAllTimelineCategoriesCollapsed() ? '展开全部' : '折叠全部'">
                   <svg class="w-3.5 h-3.5 transform transition-transform duration-150"
                        :class="areAllTimelineCategoriesCollapsed() ? '' : 'rotate-90'"
@@ -471,7 +472,7 @@
 
             <!-- 空状态：无有效订阅源或所有订阅源均已暂停 -->
             <div x-show="computedData.timelineCategoryList.length === 0" class="py-8 text-center text-xs text-neutral-400 dark:text-neutral-500 select-none">
-              暂无可展示的订阅源
+              <span x-text="computedData.totalFeeds === 0 ? '暂无订阅源' : '所有订阅源均已暂停'"></span>
             </div>
           </div>
         </div>
