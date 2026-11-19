@@ -719,11 +719,17 @@ func (h *AdminHandler) GetTimeline(w http.ResponseWriter, r *http.Request) {
 		streamID = "user/-/state/com.google/reading-list"
 	}
 
+	excludePaused := true
+	if r.URL.Query().Get("include_paused") == "true" {
+		excludePaused = false
+	}
+
 	filter := db.StreamQueryFilter{
-		UserID:       user.ID,
-		StreamID:     streamID,
-		Limit:        limit,
-		Continuation: continuation,
+		UserID:        user.ID,
+		StreamID:      streamID,
+		Limit:         limit,
+		Continuation:  continuation,
+		ExcludePaused: excludePaused,
 	}
 
 	if r.URL.Query().Get("unread_only") == "true" {

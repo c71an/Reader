@@ -346,7 +346,20 @@
                 f.schedule_type = action === 'pause' ? 'paused' : 'cron';
               }
             });
+            if (action === 'pause') {
+              this.timelineItems = this.timelineItems.filter(it => !targetIds.has(it.feed_id));
+              if (this.readerArticle && targetIds.has(this.readerArticle.feed_id)) {
+                this.closeReader(true, false);
+              }
+            }
             this.syncTimelineSelection();
+            if (action === 'resume') {
+              if (this.currentTab === 'timeline') {
+                this.loadTimeline(true);
+              } else {
+                this.timelineNeedsReload = true;
+              }
+            }
             this.toast(action === 'pause' ? '已暂停所选订阅' : '已恢复所选订阅', 'success');
           }
 
@@ -544,6 +557,10 @@
           if (!val) {
             if (oldType === 'paused') return;
             feed.schedule_type = 'paused';
+            this.timelineItems = this.timelineItems.filter(it => it.feed_id !== feed.id);
+            if (this.readerArticle && this.readerArticle.feed_id === feed.id) {
+              this.closeReader(true, false);
+            }
             this.syncTimelineSelection();
             try {
               await this.api(`/api/admin/feeds/${feed.id}`, {
@@ -567,6 +584,13 @@
           feed.schedule_type = 'cron';
           feed.schedule_value = val;
           this.syncTimelineSelection();
+          if (oldType === 'paused') {
+            if (this.currentTab === 'timeline') {
+              this.loadTimeline(true);
+            } else {
+              this.timelineNeedsReload = true;
+            }
+          }
 
           try {
             await this.api(`/api/admin/feeds/${feed.id}`, {
@@ -926,8 +950,13 @@
         // ==================== 时间线流核心逻辑 ====================
 
         get timelineGroups() {
+          const pausedFeedIds = new Set(
+            (this.feeds || []).filter(f => f.schedule_type === 'paused').map(f => f.id)
+          );
+          const visibleItems = (this.timelineItems || []).filter(item => !pausedFeedIds.has(item.feed_id));
+
           const dateMap = new Map();
-          for (const item of this.timelineItems) {
+          for (const item of visibleItems) {
             const dateHeader = this.formatDateHeader(item.published_at);
             if (!dateMap.has(dateHeader)) {
               dateMap.set(dateHeader, {
@@ -1372,7 +1401,12 @@
             }
 
             const data = await this.api(`/api/admin/timeline?${params.toString()}`);
-            const newItems = (data.items || []).map(it => this.processTimelineItem(it));
+            const pausedFeedIds = new Set(
+              (this.feeds || []).filter(f => f.schedule_type === 'paused').map(f => f.id)
+            );
+            const newItems = (data.items || [])
+              .filter(it => !pausedFeedIds.has(it.feed_id))
+              .map(it => this.processTimelineItem(it));
 
             if (reset) {
               this.timelineItems = newItems;

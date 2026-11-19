@@ -141,6 +141,90 @@ func TestPaginationContinuation(t *testing.T) {
 	}
 }
 
+func TestStreamExcludePaused(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test_stream_paused.db")
+
+	database, err := InitDB(dbPath, "admin", "admin123")
+	if err != nil {
+		t.Fatalf("InitDB failed: %v", err)
+	}
+	defer database.Close()
+
+	user, err := database.GetUserByUsername("admin")
+	if err != nil {
+		t.Fatalf("GetUserByUsername failed: %v", err)
+	}
+
+	activeFeed := &Feed{
+		Title:        "Active Feed",
+		FeedURL:      "https://active.example.com/rss",
+		ScheduleType: "cron",
+	}
+	if err := database.CreateFeed(activeFeed); err != nil {
+		t.Fatalf("Create activeFeed failed: %v", err)
+	}
+
+	pausedFeed := &Feed{
+		Title:        "Paused Feed",
+		FeedURL:      "https://paused.example.com/rss",
+		ScheduleType: "paused",
+	}
+	if err := database.CreateFeed(pausedFeed); err != nil {
+		t.Fatalf("Create pausedFeed failed: %v", err)
+	}
+
+	now := time.Now()
+	articles := []*Article{
+		{
+			FeedID:      activeFeed.ID,
+			GUID:        "active-1",
+			Title:       "Active Article",
+			URL:         "https://active.example.com/1",
+			PublishedAt: now,
+		},
+		{
+			FeedID:      pausedFeed.ID,
+			GUID:        "paused-1",
+			Title:       "Paused Article",
+			URL:         "https://paused.example.com/1",
+			PublishedAt: now,
+		},
+	}
+	if _, err := database.SaveArticles(articles); err != nil {
+		t.Fatalf("SaveArticles failed: %v", err)
+	}
+
+	// 1. ExcludePaused = true: should only return activeFeed's article
+	items, err := database.GetStreamItems(StreamQueryFilter{
+		UserID:        user.ID,
+		StreamID:      "user/-/state/com.google/reading-list",
+		ExcludePaused: true,
+	})
+	if err != nil {
+		t.Fatalf("GetStreamItems with ExcludePaused failed: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("Expected 1 item, got %d", len(items))
+	}
+	if items[0].Title != "Active Article" {
+		t.Errorf("Expected Active Article, got %s", items[0].Title)
+	}
+
+	// 2. ExcludePaused = false: should return both articles
+	allItems, err := database.GetStreamItems(StreamQueryFilter{
+		UserID:        user.ID,
+		StreamID:      "user/-/state/com.google/reading-list",
+		ExcludePaused: false,
+	})
+	if err != nil {
+		t.Fatalf("GetStreamItems with ExcludePaused=false failed: %v", err)
+	}
+	if len(allItems) != 2 {
+		t.Fatalf("Expected 2 items, got %d", len(allItems))
+	}
+}
+
 func TestTrimFeedArticles(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test_trim.db")

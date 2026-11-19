@@ -18,6 +18,7 @@ type StreamQueryFilter struct {
 	Limit         int
 	Continuation  string // 复合游标字符串，格式 "{timestamp}_{id}" 或纯数字 id
 	OrderOldest   bool
+	ExcludePaused bool // 排除已暂停订阅源的文章
 }
 
 type StreamItem struct {
@@ -53,6 +54,11 @@ func normalizeTimestamp(ts int64) time.Time {
 func (d *DB) buildStreamFilterWhere(filter StreamQueryFilter) ([]string, []interface{}) {
 	whereClauses := []string{"1=1"}
 	args := []interface{}{filter.UserID}
+
+	// 0. ExcludePaused (排除已暂停订阅源的文章)
+	if filter.ExcludePaused {
+		whereClauses = append(whereClauses, "(f.schedule_type IS NULL OR f.schedule_type != 'paused')")
+	}
 
 	// 1. ExcludeTarget (排除已读或特定源)
 	if filter.ExcludeTarget != "" {
@@ -315,7 +321,7 @@ func (d *DB) MarkFeedAllRead(userID, feedID int64, beforeTimestamp int64) error 
 	return err
 }
 
-// 标记指定分类下的所有文章为已读
+// 标记指定分类下的所有文章为已读 (仅限未暂停的有效源)
 func (d *DB) MarkCategoryAllRead(userID, categoryID int64, beforeTimestamp int64) error {
 	beforeTime := normalizeTimestamp(beforeTimestamp)
 
@@ -324,7 +330,7 @@ func (d *DB) MarkCategoryAllRead(userID, categoryID int64, beforeTimestamp int64
 		SELECT ?, a.id, 1, CURRENT_TIMESTAMP
 		FROM articles a
 		JOIN feeds f ON a.feed_id = f.id
-		WHERE f.category_id = ? AND a.published_at <= ?
+		WHERE f.category_id = ? AND (f.schedule_type IS NULL OR f.schedule_type != 'paused') AND a.published_at <= ?
 		ON CONFLICT(user_id, article_id) DO UPDATE SET
 			is_read = 1,
 			read_at = CURRENT_TIMESTAMP
@@ -332,15 +338,16 @@ func (d *DB) MarkCategoryAllRead(userID, categoryID int64, beforeTimestamp int64
 	return err
 }
 
-// 标记全部文章为已读
+// 标记全部文章为已读 (仅限未暂停的有效源)
 func (d *DB) MarkAllArticlesRead(userID int64, beforeTimestamp int64) error {
 	beforeTime := normalizeTimestamp(beforeTimestamp)
 
 	_, err := d.Exec(`
 		INSERT INTO article_states (user_id, article_id, is_read, read_at)
-		SELECT ?, id, 1, CURRENT_TIMESTAMP
-		FROM articles
-		WHERE published_at <= ?
+		SELECT ?, a.id, 1, CURRENT_TIMESTAMP
+		FROM articles a
+		JOIN feeds f ON a.feed_id = f.id
+		WHERE (f.schedule_type IS NULL OR f.schedule_type != 'paused') AND a.published_at <= ?
 		ON CONFLICT(user_id, article_id) DO UPDATE SET
 			is_read = 1,
 			read_at = CURRENT_TIMESTAMP

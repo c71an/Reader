@@ -603,13 +603,13 @@
       </div>
 
       <!-- 空列表状态 (无咖啡图标，仅在时间流判定就绪且确实无文章时展示，杜绝启动闪现) -->
-      <div x-show="timelineReady && timelineItems.length === 0 && !timelineLoading" class="py-16 text-center text-neutral-400 dark:text-neutral-500">
+      <div x-show="timelineReady && timelineGroups.length === 0 && !timelineLoading" class="py-16 text-center text-neutral-400 dark:text-neutral-500">
         <div class="text-sm font-medium text-neutral-600 dark:text-neutral-300">暂无文章</div>
       </div>
 
       <!-- 滚动加载哨兵 Sentinel (纯静默加载模式) -->
       <div id="timelineSentinel" class="py-6 text-center text-xs text-neutral-400 dark:text-neutral-500">
-        <div x-show="!timelineLoading && !timelineHasMore && timelineItems.length > 0">
+        <div x-show="!timelineLoading && !timelineHasMore && timelineGroups.length > 0">
           全部文章已加载
         </div>
         <!-- 物理底部占位块：预留适量呼吸间距，兼顾移动端手势条与桌面端紧凑排版 -->
