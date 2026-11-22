@@ -65,6 +65,7 @@
         modalForm: { title: '', feed_url: '', category_name: '' },
         lastMouseDownTarget: null,
         lastMouseUpTarget: null,
+        lastFocusedElement: null,
 
         init() {
           if ('scrollRestoration' in history) {
@@ -97,6 +98,32 @@
               this.closeReader(false);
             }
           });
+
+          // 统一管理弹窗焦点移入与关闭后的焦点归还
+          ['add', 'stagger', 'category', 'tokens', 'db', 'content', 'reader', 'timelineTree'].forEach((key) => {
+            this.$watch(`modals.${key}`, (isOpen) => {
+              if (isOpen) {
+                if (!this.lastFocusedElement && document.activeElement instanceof HTMLElement) {
+                  this.lastFocusedElement = document.activeElement;
+                }
+                this.$nextTick(() => {
+                  const elId = key === 'reader' ? 'reader-modal-overlay' : `modal-${key}`;
+                  const el = document.getElementById(elId);
+                  if (el) el.focus({ preventScroll: true });
+                });
+              } else if (!this.hasActiveTopModal() && !this.modals.timelineTree) {
+                const target = this.lastFocusedElement;
+                this.lastFocusedElement = null;
+                if (target && target.isConnected && typeof target.focus === 'function') {
+                  this.$nextTick(() => target.focus({ preventScroll: true }));
+                }
+              }
+            });
+          });
+        },
+
+        hasActiveTopModal() {
+          return !!(this.modals.add || this.modals.stagger || this.modals.category || this.modals.tokens || this.modals.db || this.modals.content || this.modals.reader);
         },
 
         // 全局 Toast 提示通知
@@ -1262,7 +1289,7 @@
           html = html.replace(/<table\b([\s\S]*?)<\/table>/gi, (match) => {
             let cleaned = match.replace(/\s+width=([""'])[\d.]+(%|px|pt)?\1/gi, '')
                                .replace(/(?:min-|max-)?width:\s*[\d.]+(px|pt|cm|in|em|rem|%);?/gi, '');
-            return `<div class="reader-table-wrapper">${cleaned}</div>`;
+            return `<div class="reader-table-wrapper" tabindex="0" role="region" aria-label="文章表格内容">${cleaned}</div>`;
           });
 
           return html;
