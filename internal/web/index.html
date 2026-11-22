@@ -627,7 +627,7 @@
                              alt=""
                              loading="lazy" 
                              referrerpolicy="no-referrer" 
-                             class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                             class="w-full h-full object-cover"
                              :class="item._thumbnail && item._thumbnail.toLowerCase().includes('.png') ? 'dark:bg-white' : ''"
                              @error="item._thumbnail = ''; $event.target.closest('.relative')?.remove()">
                       </div>
