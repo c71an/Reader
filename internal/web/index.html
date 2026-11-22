@@ -1632,7 +1632,7 @@
 
         <!-- 元信息 -->
         <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-neutral-400 dark:text-neutral-500 mb-6 pb-4 border-b border-neutral-100 dark:border-neutral-800/80">
-          <span x-show="readerArticle && readerArticle.author" x-text="'作者: ' + readerArticle.author"></span>
+          <span x-show="readerArticle && readerArticle.author" x-text="readerArticle ? readerArticle.author : ''"></span>
           <span x-text="readerArticle ? formatReadableTime(readerArticle.published_at) : ''"></span>
         </div>
 
