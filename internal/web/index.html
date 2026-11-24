@@ -594,7 +594,7 @@
               <template x-for="item in group.items" :key="item.id">
                 <div :id="'article-card-' + item.id"
                      @click="openReader(item)"
-                     class="group p-3.5 sm:p-4 rounded-xl bg-white dark:bg-neutral-900 transition cursor-pointer border border-neutral-200/80 dark:border-neutral-800 shadow-2xs hover:shadow-xs active:bg-neutral-100/70 dark:active:bg-neutral-800/50">
+                     class="group p-3.5 sm:p-4 rounded-xl bg-white dark:bg-neutral-900 [@media(hover:hover)]:hover:bg-neutral-50/80 dark:[@media(hover:hover)]:hover:bg-neutral-800/40 transition cursor-pointer border border-neutral-200/80 dark:border-neutral-800 shadow-2xs hover:shadow-xs active:bg-neutral-100/70 dark:active:bg-neutral-800/70">
                   
                   <!-- 顶信息：Feed 名称 + 发布时刻 -->
                   <div class="flex items-center justify-between text-xs sm:text-sm text-neutral-400 dark:text-neutral-500 mb-1.5">
