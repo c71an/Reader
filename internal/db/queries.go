@@ -12,7 +12,7 @@ func (d *DB) CreateFeed(feed *Feed) error {
 	if feed.MaxArticles != nil {
 		maxArticles = *feed.MaxArticles
 	}
-	res, err := d.Exec(`
+	res, err := d.conn.Exec(`
 		INSERT INTO feeds (title, feed_url, site_url, category_id, schedule_type, schedule_value, max_articles)
 		VALUES (?, ?, ?, ?, ?, ?, ?)
 	`, feed.Title, feed.FeedURL, feed.SiteURL, feed.CategoryID, feed.ScheduleType, feed.ScheduleValue, maxArticles)
@@ -28,7 +28,7 @@ func (d *DB) UpdateFeed(feed *Feed) error {
 	if feed.MaxArticles != nil {
 		maxArticles = *feed.MaxArticles
 	}
-	_, err := d.Exec(`
+	_, err := d.conn.Exec(`
 		UPDATE feeds SET title = ?, feed_url = ?, site_url = ?, category_id = ?, schedule_type = ?, schedule_value = ?, max_articles = ?
 		WHERE id = ?
 	`, feed.Title, feed.FeedURL, feed.SiteURL, feed.CategoryID, feed.ScheduleType, feed.ScheduleValue, maxArticles, feed.ID)
@@ -36,7 +36,7 @@ func (d *DB) UpdateFeed(feed *Feed) error {
 }
 
 func (d *DB) DeleteFeed(feedID int64) error {
-	tx, err := d.Begin()
+	tx, err := d.conn.Begin()
 	if err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ func (d *DB) TrimFeedArticles(feedID int64, maxArticles int) (int64, error) {
 	if maxArticles < 0 {
 		return 0, nil
 	}
-	tx, err := d.Begin()
+	tx, err := d.conn.Begin()
 	if err != nil {
 		return 0, err
 	}
@@ -147,7 +147,7 @@ func scanFeed(s scanner) (*Feed, error) {
 }
 
 func (d *DB) GetFeedByID(feedID int64) (*Feed, error) {
-	row := d.QueryRow(`
+	row := d.conn.QueryRow(`
 		SELECT `+feedSelectColumns+`
 		FROM feeds f
 		LEFT JOIN categories c ON f.category_id = c.id
@@ -157,7 +157,7 @@ func (d *DB) GetFeedByID(feedID int64) (*Feed, error) {
 }
 
 func (d *DB) GetFeedByURL(feedURL string) (*Feed, error) {
-	row := d.QueryRow(`
+	row := d.conn.QueryRow(`
 		SELECT `+feedSelectColumns+`
 		FROM feeds f
 		LEFT JOIN categories c ON f.category_id = c.id
@@ -167,7 +167,7 @@ func (d *DB) GetFeedByURL(feedURL string) (*Feed, error) {
 }
 
 func (d *DB) GetAllFeeds() ([]*Feed, error) {
-	rows, err := d.Query(`
+	rows, err := d.conn.Query(`
 		SELECT f.id, f.title, f.feed_url, f.site_url, f.category_id, COALESCE(c.name, ''), COALESCE(c.sort_order, 0),
 		       f.schedule_type, f.schedule_value, f.max_articles, f.last_fetched_at, f.last_error, f.etag, f.last_modified, f.created_at,
 		       (SELECT COUNT(*) FROM articles a 
@@ -212,7 +212,7 @@ func (d *DB) GetAllFeeds() ([]*Feed, error) {
 
 // GetAllFeedsBasic 返回订阅源基础列表，不执行昂贵的未读计数相关子查询 (专供后台调度引擎与导出使用)
 func (d *DB) GetAllFeedsBasic() ([]*Feed, error) {
-	rows, err := d.Query(`
+	rows, err := d.conn.Query(`
 		SELECT f.id, f.title, f.feed_url, f.site_url, f.category_id, COALESCE(c.name, ''), COALESCE(c.sort_order, 0),
 		       f.schedule_type, f.schedule_value, f.max_articles, f.last_fetched_at, f.last_error, f.etag, f.last_modified, f.created_at,
 		       0 as unread_count
@@ -254,7 +254,7 @@ func (d *DB) GetAllFeedsBasic() ([]*Feed, error) {
 }
 
 func (d *DB) UpdateFeedFetchStatus(feedID int64, lastFetched time.Time, lastError, etag, lastModified string) error {
-	_, err := d.Exec(`
+	_, err := d.conn.Exec(`
 		UPDATE feeds SET last_fetched_at = ?, last_error = ?, etag = ?, last_modified = ?
 		WHERE id = ?
 	`, lastFetched, lastError, etag, lastModified, feedID)
@@ -263,7 +263,7 @@ func (d *DB) UpdateFeedFetchStatus(feedID int64, lastFetched time.Time, lastErro
 
 // 分类管理
 func (d *DB) GetAllCategories() ([]Category, error) {
-	rows, err := d.Query("SELECT id, name, sort_order, created_at FROM categories ORDER BY sort_order ASC, name ASC")
+	rows, err := d.conn.Query("SELECT id, name, sort_order, created_at FROM categories ORDER BY sort_order ASC, name ASC")
 	if err != nil {
 		return nil, err
 	}
@@ -285,14 +285,14 @@ func (d *DB) GetOrCreateCategory(name string) (*Category, error) {
 		return nil, nil
 	}
 	var c Category
-	err := d.QueryRow("SELECT id, name, sort_order, created_at FROM categories WHERE name = ?", name).Scan(&c.ID, &c.Name, &c.SortOrder, &c.CreatedAt)
+	err := d.conn.QueryRow("SELECT id, name, sort_order, created_at FROM categories WHERE name = ?", name).Scan(&c.ID, &c.Name, &c.SortOrder, &c.CreatedAt)
 	if err == nil {
 		return &c, nil
 	}
-	res, err := d.Exec("INSERT INTO categories (name) VALUES (?)", name)
+	res, err := d.conn.Exec("INSERT INTO categories (name) VALUES (?)", name)
 	if err != nil {
 		// 并发可能冲突，重试查询
-		err = d.QueryRow("SELECT id, name, sort_order, created_at FROM categories WHERE name = ?", name).Scan(&c.ID, &c.Name, &c.SortOrder, &c.CreatedAt)
+		err = d.conn.QueryRow("SELECT id, name, sort_order, created_at FROM categories WHERE name = ?", name).Scan(&c.ID, &c.Name, &c.SortOrder, &c.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -310,7 +310,7 @@ func (d *DB) GetCategoryByName(name string) (*Category, error) {
 		return nil, nil
 	}
 	var c Category
-	err := d.QueryRow("SELECT id, name, sort_order, created_at FROM categories WHERE name = ?", name).
+	err := d.conn.QueryRow("SELECT id, name, sort_order, created_at FROM categories WHERE name = ?", name).
 		Scan(&c.ID, &c.Name, &c.SortOrder, &c.CreatedAt)
 	if err != nil {
 		return nil, err
@@ -328,12 +328,12 @@ func (d *DB) DeleteCategoryByName(name string) error {
 		return nil
 	}
 	var catID int64
-	err := d.QueryRow("SELECT id FROM categories WHERE name = ?", name).Scan(&catID)
+	err := d.conn.QueryRow("SELECT id FROM categories WHERE name = ?", name).Scan(&catID)
 	if err != nil {
 		return nil
 	}
-	_, _ = d.Exec("UPDATE feeds SET category_id = NULL WHERE category_id = ?", catID)
-	_, err = d.Exec("DELETE FROM categories WHERE id = ?", catID)
+	_, _ = d.conn.Exec("UPDATE feeds SET category_id = NULL WHERE category_id = ?", catID)
+	_, err = d.conn.Exec("DELETE FROM categories WHERE id = ?", catID)
 	return err
 }
 
@@ -351,37 +351,37 @@ func (d *DB) UpdateCategoryByName(currentName, newName string, sortOrder int) er
 		if err != nil {
 			return err
 		}
-		_, _ = d.Exec("UPDATE categories SET sort_order = ? WHERE id = ?", sortOrder, cat.ID)
-		_, err = d.Exec("UPDATE feeds SET category_id = ? WHERE category_id IS NULL", cat.ID)
+		_, _ = d.conn.Exec("UPDATE categories SET sort_order = ? WHERE id = ?", sortOrder, cat.ID)
+		_, err = d.conn.Exec("UPDATE feeds SET category_id = ? WHERE category_id IS NULL", cat.ID)
 		return err
 	}
 
 	var cat Category
-	err := d.QueryRow("SELECT id, name, sort_order, created_at FROM categories WHERE name = ?", currentName).
+	err := d.conn.QueryRow("SELECT id, name, sort_order, created_at FROM categories WHERE name = ?", currentName).
 		Scan(&cat.ID, &cat.Name, &cat.SortOrder, &cat.CreatedAt)
 	if err != nil {
 		return err
 	}
 
 	if newName == currentName {
-		_, err = d.Exec("UPDATE categories SET sort_order = ? WHERE id = ?", sortOrder, cat.ID)
+		_, err = d.conn.Exec("UPDATE categories SET sort_order = ? WHERE id = ?", sortOrder, cat.ID)
 		return err
 	}
 
 	var targetCat Category
-	errTarget := d.QueryRow("SELECT id, name, sort_order, created_at FROM categories WHERE name = ?", newName).
+	errTarget := d.conn.QueryRow("SELECT id, name, sort_order, created_at FROM categories WHERE name = ?", newName).
 		Scan(&targetCat.ID, &targetCat.Name, &targetCat.SortOrder, &targetCat.CreatedAt)
 	if errTarget == nil {
-		_, err = d.Exec("UPDATE feeds SET category_id = ? WHERE category_id = ?", targetCat.ID, cat.ID)
+		_, err = d.conn.Exec("UPDATE feeds SET category_id = ? WHERE category_id = ?", targetCat.ID, cat.ID)
 		if err != nil {
 			return err
 		}
-		_, _ = d.Exec("UPDATE categories SET sort_order = ? WHERE id = ?", sortOrder, targetCat.ID)
-		_, _ = d.Exec("DELETE FROM categories WHERE id = ?", cat.ID)
+		_, _ = d.conn.Exec("UPDATE categories SET sort_order = ? WHERE id = ?", sortOrder, targetCat.ID)
+		_, _ = d.conn.Exec("DELETE FROM categories WHERE id = ?", cat.ID)
 		return nil
 	}
 
-	_, err = d.Exec("UPDATE categories SET name = ?, sort_order = ? WHERE id = ?", newName, sortOrder, cat.ID)
+	_, err = d.conn.Exec("UPDATE categories SET name = ?, sort_order = ? WHERE id = ?", newName, sortOrder, cat.ID)
 	return err
 }
 
@@ -390,7 +390,7 @@ func (d *DB) SaveArticles(articles []*Article) (int, error) {
 	if len(articles) == 0 {
 		return 0, nil
 	}
-	tx, err := d.Begin()
+	tx, err := d.conn.Begin()
 	if err != nil {
 		return 0, err
 	}
@@ -430,12 +430,12 @@ func (d *DB) GetFeedArticles(feedID int64, userID int64, limit, offset int) ([]*
 	}
 
 	var total int
-	err := d.QueryRow("SELECT COUNT(*) FROM articles WHERE feed_id = ?", feedID).Scan(&total)
+	err := d.conn.QueryRow("SELECT COUNT(*) FROM articles WHERE feed_id = ?", feedID).Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	rows, err := d.Query(`
+	rows, err := d.conn.Query(`
 		SELECT a.id, a.feed_id, f.title, a.guid, a.title, a.url, a.content, a.author, a.published_at, a.created_at,
 		       COALESCE(s.is_read, 0) as is_read, COALESCE(s.is_starred, 0) as is_starred
 		FROM articles a
@@ -468,7 +468,7 @@ func (d *DB) GetFeedArticles(feedID int64, userID int64, limit, offset int) ([]*
 // 用户认证
 func (d *DB) GetUserByUsername(username string) (*User, error) {
 	var u User
-	err := d.QueryRow("SELECT id, username, password_hash, auth_token, created_at FROM users WHERE username = ?", username).
+	err := d.conn.QueryRow("SELECT id, username, password_hash, auth_token, created_at FROM users WHERE username = ?", username).
 		Scan(&u.ID, &u.Username, &u.PasswordHash, &u.AuthToken, &u.CreatedAt)
 	if err != nil {
 		return nil, err
@@ -489,7 +489,7 @@ func (d *DB) GetUserByToken(token string) (*User, error) {
 
 	var u User
 	// 会话凭据以 user_tokens 多设备会话表为唯一标准 (同时匹配包含用户名或不含用户名的 token)
-	err := d.QueryRow(`
+	err := d.conn.QueryRow(`
 		SELECT u.id, u.username, u.password_hash, u.auth_token, u.created_at
 		FROM users u
 		JOIN user_tokens t ON u.id = t.user_id
@@ -508,14 +508,14 @@ func (d *DB) AddUserToken(userID int64, token, clientType string) error {
 		return nil
 	}
 
-	_, err := d.Exec("INSERT OR IGNORE INTO user_tokens (user_id, token, client_type) VALUES (?, ?, ?)", userID, token, clientType)
+	_, err := d.conn.Exec("INSERT OR IGNORE INTO user_tokens (user_id, token, client_type) VALUES (?, ?, ?)", userID, token, clientType)
 	if err != nil {
 		return err
 	}
 
 	// 1. LRU 配额控制：每个用户同类客户端最多保留最近 5 个有效 Token，自动淘汰老旧会话
 	maxActive := 5
-	_, _ = d.Exec(`
+	_, _ = d.conn.Exec(`
 		DELETE FROM user_tokens
 		WHERE user_id = ? AND client_type = ? AND id NOT IN (
 			SELECT id FROM user_tokens
@@ -525,7 +525,7 @@ func (d *DB) AddUserToken(userID int64, token, clientType string) error {
 	`, userID, clientType, userID, clientType, maxActive)
 
 	// 2. 超期自动淘汰：清理创建超过 90 天的死 Token
-	_, _ = d.Exec(`DELETE FROM user_tokens WHERE created_at < datetime('now', '-90 days')`)
+	_, _ = d.conn.Exec(`DELETE FROM user_tokens WHERE created_at < datetime('now', '-90 days')`)
 
 	return nil
 }
@@ -538,7 +538,7 @@ type UserTokenInfo struct {
 }
 
 func (d *DB) GetUserTokens(userID int64, currentToken string) ([]UserTokenInfo, error) {
-	rows, err := d.Query(`
+	rows, err := d.conn.Query(`
 		SELECT id, client_type, created_at, token
 		FROM user_tokens
 		WHERE user_id = ?
@@ -571,7 +571,7 @@ func (d *DB) RevokeOtherUserTokens(userID int64, currentToken string) error {
 		tokenWithoutUser = currentToken[idx+1:]
 	}
 
-	_, err := d.Exec(`
+	_, err := d.conn.Exec(`
 		DELETE FROM user_tokens
 		WHERE user_id = ? AND token != ? AND token != ?
 	`, userID, currentToken, tokenWithoutUser)
@@ -581,33 +581,33 @@ func (d *DB) RevokeOtherUserTokens(userID int64, currentToken string) error {
 
 	// 同步将 users 表中的旧 auth_token 重置为当前保留的 token，杜绝残留死 token
 	if tokenWithoutUser != "" {
-		_, _ = d.Exec(`UPDATE users SET auth_token = ? WHERE id = ?`, tokenWithoutUser, userID)
+		_, _ = d.conn.Exec(`UPDATE users SET auth_token = ? WHERE id = ?`, tokenWithoutUser, userID)
 	}
 	return nil
 }
 
 func (d *DB) DeleteUserTokenByID(userID, tokenID int64) error {
 	var tok string
-	_ = d.QueryRow("SELECT token FROM user_tokens WHERE user_id = ? AND id = ?", userID, tokenID).Scan(&tok)
+	_ = d.conn.QueryRow("SELECT token FROM user_tokens WHERE user_id = ? AND id = ?", userID, tokenID).Scan(&tok)
 
-	_, err := d.Exec("DELETE FROM user_tokens WHERE user_id = ? AND id = ?", userID, tokenID)
+	_, err := d.conn.Exec("DELETE FROM user_tokens WHERE user_id = ? AND id = ?", userID, tokenID)
 	if err != nil {
 		return err
 	}
 
 	if tok != "" {
-		_, _ = d.Exec("UPDATE users SET auth_token = '' WHERE id = ? AND (auth_token = ? OR auth_token LIKE ?)",
+		_, _ = d.conn.Exec("UPDATE users SET auth_token = '' WHERE id = ? AND (auth_token = ? OR auth_token LIKE ?)",
 			userID, tok, "%/"+tok)
 	}
 	return nil
 }
 
 func (d *DB) DeleteUserToken(token string) error {
-	_, err := d.Exec("DELETE FROM user_tokens WHERE token = ?", token)
+	_, err := d.conn.Exec("DELETE FROM user_tokens WHERE token = ?", token)
 	return err
 }
 
 func (d *DB) UpdateUserToken(userID int64, token string) error {
-	_, err := d.Exec("UPDATE users SET auth_token = ? WHERE id = ?", token, userID)
+	_, err := d.conn.Exec("UPDATE users SET auth_token = ? WHERE id = ?", token, userID)
 	return err
 }

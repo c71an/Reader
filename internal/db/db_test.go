@@ -19,7 +19,7 @@ func TestForeignKeysCascade(t *testing.T) {
 
 	// Check if foreign keys are enabled
 	var fkEnabled int
-	if err := database.QueryRow("PRAGMA foreign_keys").Scan(&fkEnabled); err != nil {
+	if err := database.conn.QueryRow("PRAGMA foreign_keys").Scan(&fkEnabled); err != nil {
 		t.Fatalf("Query PRAGMA foreign_keys failed: %v", err)
 	}
 	t.Logf("PRAGMA foreign_keys = %d", fkEnabled)
@@ -58,7 +58,7 @@ func TestForeignKeysCascade(t *testing.T) {
 
 	// Check if articles are deleted
 	var count int
-	if err := database.QueryRow("SELECT COUNT(*) FROM articles WHERE feed_id = ?", feedID).Scan(&count); err != nil {
+	if err := database.conn.QueryRow("SELECT COUNT(*) FROM articles WHERE feed_id = ?", feedID).Scan(&count); err != nil {
 		t.Fatalf("Query articles count failed: %v", err)
 	}
 
@@ -263,7 +263,7 @@ func TestTrimFeedArticles(t *testing.T) {
 
 	// 此时数据库应有 10 篇文章
 	var count int
-	_ = database.QueryRow("SELECT COUNT(*) FROM articles WHERE feed_id = ?", feed.ID).Scan(&count)
+	_ = database.conn.QueryRow("SELECT COUNT(*) FROM articles WHERE feed_id = ?", feed.ID).Scan(&count)
 	if count != 10 {
 		t.Fatalf("Expected 10 articles, got %d", count)
 	}
@@ -278,7 +278,7 @@ func TestTrimFeedArticles(t *testing.T) {
 	}
 
 	// 验证剩余 5 篇文章必须是 6, 7, 8, 9, 10
-	rows, err := database.Query("SELECT title FROM articles WHERE feed_id = ? ORDER BY published_at ASC", feed.ID)
+	rows, err := database.conn.Query("SELECT title FROM articles WHERE feed_id = ? ORDER BY published_at ASC", feed.ID)
 	if err != nil {
 		t.Fatalf("Query remaining articles failed: %v", err)
 	}
@@ -319,7 +319,7 @@ func TestTrimFeedArticles(t *testing.T) {
 		t.Errorf("Expected 5 deleted articles when maxArticles=0, got %d", deletedZero)
 	}
 
-	_ = database.QueryRow("SELECT COUNT(*) FROM articles WHERE feed_id = ?", feed.ID).Scan(&count)
+	_ = database.conn.QueryRow("SELECT COUNT(*) FROM articles WHERE feed_id = ?", feed.ID).Scan(&count)
 	if count != 0 {
 		t.Errorf("Expected 0 remaining articles when maxArticles=0, got %d", count)
 	}

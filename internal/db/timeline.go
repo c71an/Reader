@@ -157,7 +157,7 @@ func (d *DB) buildStreamFilterWhere(filter StreamQueryFilter) ([]string, []inter
 		} else if id, err := strconv.ParseInt(filter.Continuation, 10, 64); err == nil && id > 0 {
 			contID = id
 			var pubAt time.Time
-			if err := d.QueryRow("SELECT published_at FROM articles WHERE id = ?", id).Scan(&pubAt); err == nil {
+			if err := d.conn.QueryRow("SELECT published_at FROM articles WHERE id = ?", id).Scan(&pubAt); err == nil {
 				contPubTime = pubAt.UTC()
 			}
 		}
@@ -209,7 +209,7 @@ func (d *DB) GetStreamItems(filter StreamQueryFilter) ([]*StreamItem, error) {
 		LIMIT %d
 	`, strings.Join(whereClauses, " AND "), orderDir, orderDir, filter.Limit)
 
-	rows, err := d.Query(query, args...)
+	rows, err := d.conn.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +243,7 @@ func (d *DB) SetArticlesRead(userID int64, articleIDs []int64, isRead bool) erro
 		readAt = &now
 	}
 
-	tx, err := d.Begin()
+	tx, err := d.conn.Begin()
 	if err != nil {
 		return err
 	}
@@ -279,7 +279,7 @@ func (d *DB) SetArticlesStarred(userID int64, articleIDs []int64, isStarred bool
 		starredInt = 1
 	}
 
-	tx, err := d.Begin()
+	tx, err := d.conn.Begin()
 	if err != nil {
 		return err
 	}
@@ -309,7 +309,7 @@ func (d *DB) SetArticlesStarred(userID int64, articleIDs []int64, isStarred bool
 func (d *DB) MarkFeedAllRead(userID, feedID int64, beforeTimestamp int64) error {
 	beforeTime := normalizeTimestamp(beforeTimestamp)
 
-	_, err := d.Exec(`
+	_, err := d.conn.Exec(`
 		INSERT INTO article_states (user_id, article_id, is_read, read_at)
 		SELECT ?, id, 1, CURRENT_TIMESTAMP
 		FROM articles
@@ -325,7 +325,7 @@ func (d *DB) MarkFeedAllRead(userID, feedID int64, beforeTimestamp int64) error 
 func (d *DB) MarkCategoryAllRead(userID, categoryID int64, beforeTimestamp int64) error {
 	beforeTime := normalizeTimestamp(beforeTimestamp)
 
-	_, err := d.Exec(`
+	_, err := d.conn.Exec(`
 		INSERT INTO article_states (user_id, article_id, is_read, read_at)
 		SELECT ?, a.id, 1, CURRENT_TIMESTAMP
 		FROM articles a
@@ -342,7 +342,7 @@ func (d *DB) MarkCategoryAllRead(userID, categoryID int64, beforeTimestamp int64
 func (d *DB) MarkAllArticlesRead(userID int64, beforeTimestamp int64) error {
 	beforeTime := normalizeTimestamp(beforeTimestamp)
 
-	_, err := d.Exec(`
+	_, err := d.conn.Exec(`
 		INSERT INTO article_states (user_id, article_id, is_read, read_at)
 		SELECT ?, a.id, 1, CURRENT_TIMESTAMP
 		FROM articles a

@@ -14,14 +14,22 @@ import (
 	"github.com/mmcdole/gofeed"
 )
 
+// FeedStore 定义抓取器所需的最小持久化契约
+type FeedStore interface {
+	UpdateFeedFetchStatus(feedID int64, lastFetched time.Time, lastError, etag, lastModified string) error
+	UpdateFeed(feed *db.Feed) error
+	SaveArticles(articles []*db.Article) (int, error)
+	TrimFeedArticles(feedID int64, maxArticles int) (int64, error)
+}
+
 type Fetcher struct {
-	db         *db.DB
+	db         FeedStore
 	httpClient *http.Client
 	fp         *gofeed.Parser
 	userAgent  string
 }
 
-func NewFetcher(database *db.DB, timeoutSeconds int) *Fetcher {
+func NewFetcher(store FeedStore, timeoutSeconds int) *Fetcher {
 	if timeoutSeconds <= 0 {
 		timeoutSeconds = 45
 	}
@@ -44,7 +52,7 @@ func NewFetcher(database *db.DB, timeoutSeconds int) *Fetcher {
 	fp.Client = client
 
 	return &Fetcher{
-		db:         database,
+		db:         store,
 		httpClient: client,
 		fp:         fp,
 		userAgent:  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Reader/1.0",

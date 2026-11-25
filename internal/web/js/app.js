@@ -51,7 +51,13 @@
         detailArticle: null,
         copySuccess: false,
         toasts: [],
-        dbCurrentFeed: {},
+        dbCurrentFeedId: null,
+        get dbCurrentFeed() {
+          return this.feeds.find(f => f.id === this.dbCurrentFeedId) || {};
+        },
+        get totalUnreadCount() {
+          return this.feeds.reduce((sum, f) => sum + (f.unread_count || 0), 0);
+        },
         dbEditForm: { title: '', feed_url: '', category_name: '' },
         dbArticles: [],
         dbArticlesTotal: 0,
@@ -182,8 +188,7 @@
             this.isLoggedIn = true;
             await this.loadFeeds();
             // 智能流转：有未读时优先展示【未读】，无未读时自动展示【全部】
-            const totalUnread = this.feeds.reduce((sum, f) => sum + (f.unread_count || 0), 0);
-            this.timelineFilter = totalUnread > 0 ? 'unread' : 'all';
+            this.timelineFilter = this.totalUnreadCount > 0 ? 'unread' : 'all';
             this.initTimelineObserver();
             await this.loadTimeline(true);
           } catch (_) {
@@ -355,6 +360,38 @@
           return this.feeds.filter(f => this.selectedFeedIds.includes(f.id));
         },
 
+        // 单一数据源状态同步辅助方法
+        adjustFeedUnread(feedId, delta) {
+          if (!feedId || !delta) return;
+          const feed = this.feeds.find(f => f.id === feedId);
+          if (feed && feed.unread_count !== undefined) {
+            feed.unread_count = Math.max(0, feed.unread_count + delta);
+          }
+        },
+
+        syncArticlesReadState(articleIds, isRead) {
+          const idSet = articleIds instanceof Set ? articleIds : new Set(articleIds);
+          if (idSet.size === 0) return;
+          this.dbArticles.forEach(a => {
+            if (idSet.has(a.id)) a.is_read = isRead;
+          });
+          this.timelineItems.forEach(it => {
+            if (idSet.has(it.id)) it.is_read = isRead;
+          });
+          if (this.readerArticle && idSet.has(this.readerArticle.id)) {
+            this.readerArticle.is_read = isRead;
+          }
+        },
+
+        pruneTimelineByFeeds(feedIds) {
+          const idSet = feedIds instanceof Set ? feedIds : new Set(feedIds);
+          if (idSet.size === 0) return;
+          this.timelineItems = this.timelineItems.filter(it => !idSet.has(it.feed_id));
+          if (this.readerArticle && idSet.has(this.readerArticle.feed_id)) {
+            this.closeReader(true, false);
+          }
+        },
+
         // 3. 执行效率与交互响应优化 (Optimistic UI 乐观立即更新，减少无谓全量刷盘)
         async runBatchAction(action) {
           if (this.selectedFeedIds.length === 0) return;
@@ -374,10 +411,7 @@
               }
             });
             if (action === 'pause') {
-              this.timelineItems = this.timelineItems.filter(it => !targetIds.has(it.feed_id));
-              if (this.readerArticle && targetIds.has(this.readerArticle.feed_id)) {
-                this.closeReader(true, false);
-              }
+              this.pruneTimelineByFeeds(targetIds);
             }
             this.syncTimelineSelection();
             if (action === 'resume') {
@@ -401,6 +435,7 @@
               await this.loadFeeds(); // 仅抓取产出新数据时拉取最新状态
             } else if (action === 'delete') {
               this.feeds = this.feeds.filter(f => !targetIds.has(f.id));
+              this.pruneTimelineByFeeds(targetIds);
               this.selectedFeedIds = [];
               this.syncTimelineSelection();
               this.toast('已成功删除选中的订阅源', 'success');
@@ -584,10 +619,7 @@
           if (!val) {
             if (oldType === 'paused') return;
             feed.schedule_type = 'paused';
-            this.timelineItems = this.timelineItems.filter(it => it.feed_id !== feed.id);
-            if (this.readerArticle && this.readerArticle.feed_id === feed.id) {
-              this.closeReader(true, false);
-            }
+            this.pruneTimelineByFeeds([feed.id]);
             this.syncTimelineSelection();
             try {
               await this.api(`/api/admin/feeds/${feed.id}`, {
@@ -654,7 +686,7 @@
 
         // 文章与订阅源信息查看/编辑 (合并窗口)
         async openDbView(feed) {
-          this.dbCurrentFeed = feed;
+          this.dbCurrentFeedId = feed.id;
           this.dbEditForm = {
             title: feed.title || '',
             feed_url: feed.feed_url || '',
@@ -720,7 +752,8 @@
         },
 
         async saveFeedSettingsInDbView() {
-          if (!this.dbCurrentFeed) return;
+          const currentFeed = this.dbCurrentFeed;
+          if (!currentFeed || !currentFeed.id) return;
           if (!this.dbEditForm.feed_url) return this.toast('源地址不能为空', 'warning');
           let maxArticles = null;
           if (this.dbEditForm.max_articles !== null && this.dbEditForm.max_articles !== undefined && this.dbEditForm.max_articles !== '') {
@@ -728,7 +761,7 @@
             maxArticles = isNaN(p) || p < 0 ? 0 : p;
           }
           try {
-            await this.api(`/api/admin/feeds/${this.dbCurrentFeed.id}`, {
+            await this.api(`/api/admin/feeds/${currentFeed.id}`, {
               method: 'PUT',
               body: {
                 title: this.dbEditForm.title,
@@ -737,15 +770,11 @@
                 max_articles: maxArticles
               }
             });
-            this.dbCurrentFeed.title = this.dbEditForm.title;
-            this.dbCurrentFeed.feed_url = this.dbEditForm.feed_url;
-            this.dbCurrentFeed.category_name = this.dbEditForm.category_name;
-            this.dbCurrentFeed.max_articles = maxArticles;
             this.dbEditForm.max_articles = maxArticles;
             this.toast('订阅源配置已保存', 'success');
             await this.loadFeeds();
             // 重新刷新当前弹窗中的数据库文章列表与总数
-            const data = await this.api(`/api/admin/feeds/${this.dbCurrentFeed.id}/articles?limit=100`);
+            const data = await this.api(`/api/admin/feeds/${currentFeed.id}/articles?limit=100`);
             this.dbArticles = data.articles || [];
             this.dbArticlesTotal = data.total || 0;
           } catch (e) {
@@ -766,28 +795,19 @@
           if (this.selectedArticleIds.length === 0) return;
           const targetIds = [...this.selectedArticleIds];
           const idSet = new Set(targetIds);
+          const feedId = this.dbCurrentFeedId;
 
-          // 乐观更新本地 articles 状态
-          const prevStates = new Map();
+          // 乐观更新本地状态并计算未读数增量
+          const changedIds = [];
           let deltaUnread = 0;
           this.dbArticles.forEach(a => {
-            if (idSet.has(a.id)) {
-              prevStates.set(a.id, a.is_read);
-              if (a.is_read !== isRead) {
-                deltaUnread += isRead ? -1 : 1;
-              }
-              a.is_read = isRead;
+            if (idSet.has(a.id) && a.is_read !== isRead) {
+              changedIds.push(a.id);
+              deltaUnread += isRead ? -1 : 1;
             }
           });
-
-          // 乐观同步当前 feed 和 feeds 列表的未读数，避免全量重新请求
-          if (this.dbCurrentFeed && this.dbCurrentFeed.unread_count !== undefined) {
-            this.dbCurrentFeed.unread_count = Math.max(0, this.dbCurrentFeed.unread_count + deltaUnread);
-          }
-          const feedInList = this.feeds.find(f => f.id === this.dbCurrentFeed.id);
-          if (feedInList && feedInList.unread_count !== undefined) {
-            feedInList.unread_count = Math.max(0, feedInList.unread_count + deltaUnread);
-          }
+          this.syncArticlesReadState(changedIds, isRead);
+          this.adjustFeedUnread(feedId, deltaUnread);
 
           this.selectedArticleIds = [];
           this.toast(isRead ? `已设为已读 (${targetIds.length} 篇)` : `已设为未读 (${targetIds.length} 篇)`, 'success');
@@ -800,15 +820,8 @@
             });
           } catch (e) {
             // 出错时回滚
-            this.dbArticles.forEach(a => {
-              if (prevStates.has(a.id)) a.is_read = prevStates.get(a.id);
-            });
-            if (this.dbCurrentFeed && this.dbCurrentFeed.unread_count !== undefined) {
-              this.dbCurrentFeed.unread_count = Math.max(0, this.dbCurrentFeed.unread_count - deltaUnread);
-            }
-            if (feedInList && feedInList.unread_count !== undefined) {
-              feedInList.unread_count = Math.max(0, feedInList.unread_count - deltaUnread);
-            }
+            this.syncArticlesReadState(changedIds, !isRead);
+            this.adjustFeedUnread(feedId, -deltaUnread);
             this.toast('更新已读状态失败: ' + e.message, 'error');
           } finally {
             this.loading.dbAction = false;
@@ -817,18 +830,12 @@
 
         async toggleSingleArticleRead(art) {
           const nextState = !art.is_read;
-          const prevState = art.is_read;
           const delta = nextState ? -1 : 1;
+          const feedId = this.dbCurrentFeedId;
 
           // 乐观更新
-          art.is_read = nextState;
-          if (this.dbCurrentFeed && this.dbCurrentFeed.unread_count !== undefined) {
-            this.dbCurrentFeed.unread_count = Math.max(0, this.dbCurrentFeed.unread_count + delta);
-          }
-          const feedInList = this.feeds.find(f => f.id === this.dbCurrentFeed.id);
-          if (feedInList && feedInList.unread_count !== undefined) {
-            feedInList.unread_count = Math.max(0, feedInList.unread_count + delta);
-          }
+          this.syncArticlesReadState([art.id], nextState);
+          this.adjustFeedUnread(feedId, delta);
 
           try {
             await this.api('/api/admin/articles/batch-read', {
@@ -837,13 +844,8 @@
             });
           } catch (e) {
             // 回滚
-            art.is_read = prevState;
-            if (this.dbCurrentFeed && this.dbCurrentFeed.unread_count !== undefined) {
-              this.dbCurrentFeed.unread_count = Math.max(0, this.dbCurrentFeed.unread_count - delta);
-            }
-            if (feedInList && feedInList.unread_count !== undefined) {
-              feedInList.unread_count = Math.max(0, feedInList.unread_count - delta);
-            }
+            this.syncArticlesReadState([art.id], !nextState);
+            this.adjustFeedUnread(feedId, -delta);
             this.toast('切换已读状态失败: ' + e.message, 'error');
           }
         },
@@ -1515,15 +1517,12 @@
 
           // 自动标记已读
           if (!article.is_read) {
-            article.is_read = true;
+            this.syncArticlesReadState([article.id], true);
+            this.adjustFeedUnread(article.feed_id, -1);
             this.api('/api/admin/articles/batch-read', {
               method: 'POST',
               body: { article_ids: [article.id], is_read: true }
             }).catch(() => {});
-
-            // 同步订阅源未读统计
-            const f = this.feeds.find(feed => feed.id === article.feed_id);
-            if (f && f.unread_count > 0) f.unread_count--;
           }
         },
 
@@ -1588,8 +1587,7 @@
           }
 
           // 若当前处于未读模式且所有文章均已读完，退出阅读器时自动流转为【全部】
-          const totalUnread = this.feeds.reduce((sum, f) => sum + (f.unread_count || 0), 0);
-          if (this.timelineFilter === 'unread' && totalUnread === 0) {
+          if (this.timelineFilter === 'unread' && this.totalUnreadCount === 0) {
             this.timelineFilter = 'all';
             this.loadTimeline(true);
           }
@@ -1631,20 +1629,21 @@
 
         async toggleReaderArticleRead() {
           if (!this.readerArticle) return;
+          const articleId = this.readerArticle.id;
+          const feedId = this.readerArticle.feed_id;
           const nextRead = !this.readerArticle.is_read;
-          this.readerArticle.is_read = nextRead;
+          const delta = nextRead ? -1 : 1;
+          this.syncArticlesReadState([articleId], nextRead);
+          this.adjustFeedUnread(feedId, delta);
           try {
             await this.api('/api/admin/articles/batch-read', {
               method: 'POST',
-              body: { article_ids: [this.readerArticle.id], is_read: nextRead }
+              body: { article_ids: [articleId], is_read: nextRead }
             });
-            const f = this.feeds.find(feed => feed.id === this.readerArticle.feed_id);
-            if (f && f.unread_count !== undefined) {
-              f.unread_count = Math.max(0, f.unread_count + (nextRead ? -1 : 1));
-            }
             this.toast(nextRead ? '已设为已读' : '已恢复为未读', 'success');
           } catch (e) {
-            this.readerArticle.is_read = !nextRead;
+            this.syncArticlesReadState([articleId], !nextRead);
+            this.adjustFeedUnread(feedId, -delta);
             this.toast('操作失败: ' + e.message, 'error');
           }
         },
@@ -1667,8 +1666,7 @@
             this.timelineItems.forEach(it => { it.is_read = true; });
             await this.loadFeeds();
             this.toast('已全部标记为已读', 'success');
-            const totalUnread = this.feeds.reduce((sum, f) => sum + (f.unread_count || 0), 0);
-            if (this.timelineFilter === 'unread' && totalUnread === 0) {
+            if (this.timelineFilter === 'unread' && this.totalUnreadCount === 0) {
               this.timelineFilter = 'all';
             }
             this.loadTimeline(true);

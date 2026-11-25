@@ -134,3 +134,33 @@ func TestCheckCron(t *testing.T) {
 		t.Errorf("expected Sunday newsletter trigger")
 	}
 }
+
+func TestBuildStaggeredSchedules(t *testing.T) {
+	got, err := BuildStaggeredSchedules(3, "23:50", 20, "1-5", "15m")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := []string{"50 23 1-5 ~15m", "10 0 1-5 ~15m", "30 0 1-5 ~15m"}
+	if len(got) != len(want) {
+		t.Fatalf("len(got) = %d, want %d", len(got), len(want))
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("got[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+
+	// 空周表达式默认 "*"，负步长归零
+	gotDefault, err := BuildStaggeredSchedules(2, "08:00", -5, "", "")
+	if err != nil {
+		t.Fatalf("unexpected error for defaults: %v", err)
+	}
+	if gotDefault[0] != "0 8 *" || gotDefault[1] != "0 8 *" {
+		t.Errorf("unexpected default schedules: %v", gotDefault)
+	}
+
+	// 非法星期表达式应报错
+	if _, err := BuildStaggeredSchedules(2, "08:00", 10, "invalid", ""); err == nil {
+		t.Fatal("expected error for invalid week expression, got nil")
+	}
+}

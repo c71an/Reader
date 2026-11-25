@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand/v2"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -12,16 +13,26 @@ import (
 	"github.com/robfig/cron/v3"
 
 	"reader/internal/db"
-	"reader/internal/fetcher"
 )
 
 var threeFieldCronParser = cron.NewParser(
 	cron.Minute | cron.Hour | cron.Dow | cron.Descriptor,
 )
 
+// FeedStore 定义调度器所需的最小持久化契约
+type FeedStore interface {
+	GetAllFeedsBasic() ([]*db.Feed, error)
+	GetFeedByID(feedID int64) (*db.Feed, error)
+}
+
+// FeedFetcher 定义调度器触发抓取的最小契约
+type FeedFetcher interface {
+	FetchFeed(ctx context.Context, feed *db.Feed) (int, error)
+}
+
 type Scheduler struct {
-	db           *db.DB
-	fetcher      *fetcher.Fetcher
+	db           FeedStore
+	fetcher      FeedFetcher
 	fetchTimeout time.Duration
 	stopChan     chan struct{}
 	mu           sync.Mutex
@@ -29,12 +40,12 @@ type Scheduler struct {
 	lastFired    map[int64]time.Time
 }
 
-func NewScheduler(database *db.DB, f *fetcher.Fetcher, timeoutSeconds int) *Scheduler {
+func NewScheduler(store FeedStore, f FeedFetcher, timeoutSeconds int) *Scheduler {
 	if timeoutSeconds <= 0 {
 		timeoutSeconds = 45
 	}
 	return &Scheduler{
-		db:           database,
+		db:           store,
 		fetcher:      f,
 		fetchTimeout: time.Duration(timeoutSeconds+15) * time.Second,
 		stopChan:     make(chan struct{}),
@@ -259,5 +270,50 @@ func ParseScheduleWithJitter(val string) (cronExpr string, maxJitter time.Durati
 	}
 
 	return cronExpr, maxJitter, nil
+}
+
+// BuildStaggeredSchedules 根据起始时刻、递增步长、星期表达式和浮动窗口生成错峰 3 段式 Cron 列表
+func BuildStaggeredSchedules(count int, startTime string, intervalMinutes int, week, jitter string) ([]string, error) {
+	if count <= 0 {
+		return nil, nil
+	}
+
+	startHour, startMin := 8, 0
+	if startTime != "" {
+		parts := strings.Split(startTime, ":")
+		if len(parts) == 2 {
+			if hVal, err := strconv.Atoi(strings.TrimSpace(parts[0])); err == nil {
+				startHour = hVal
+			}
+			if mVal, err := strconv.Atoi(strings.TrimSpace(parts[1])); err == nil {
+				startMin = mVal
+			}
+		}
+	}
+
+	weekExpr := strings.TrimSpace(week)
+	if weekExpr == "" {
+		weekExpr = "*"
+	}
+	if intervalMinutes < 0 {
+		intervalMinutes = 0
+	}
+	jitter = strings.TrimSpace(jitter)
+
+	schedules := make([]string, 0, count)
+	for i := 0; i < count; i++ {
+		totalMin := (startHour*60 + startMin + i*intervalMinutes) % 1440
+		targetHour := totalMin / 60
+		targetMin := totalMin % 60
+		cronStr := fmt.Sprintf("%d %d %s", targetMin, targetHour, weekExpr)
+		if jitter != "" {
+			cronStr += " ~" + jitter
+		}
+		if _, _, err := ParseScheduleWithJitter(cronStr); err != nil {
+			return nil, err
+		}
+		schedules = append(schedules, cronStr)
+	}
+	return schedules, nil
 }
 

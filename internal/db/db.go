@@ -12,7 +12,14 @@ import (
 )
 
 type DB struct {
-	*sql.DB
+	conn *sql.DB
+}
+
+func (d *DB) Close() error {
+	if d == nil || d.conn == nil {
+		return nil
+	}
+	return d.conn.Close()
 }
 
 type User struct {
@@ -82,7 +89,7 @@ func InitDB(dbPath, defaultUser, defaultPass string) (*DB, error) {
 	database.SetMaxIdleConns(10)
 	database.SetConnMaxLifetime(time.Hour)
 
-	d := &DB{database}
+	d := &DB{conn: database}
 	if err := d.initSchema(); err != nil {
 		return nil, fmt.Errorf("init schema failed: %w", err)
 	}
@@ -170,23 +177,23 @@ func (d *DB) initSchema() error {
 	CREATE INDEX IF NOT EXISTS idx_user_tokens_token ON user_tokens(token);
 	CREATE INDEX IF NOT EXISTS idx_user_tokens_user ON user_tokens(user_id);
 	`
-	_, err := d.Exec(schema)
+	_, err := d.conn.Exec(schema)
 	if err != nil {
 		return err
 	}
 	var tokenCount int
-	_ = d.QueryRow("SELECT COUNT(*) FROM user_tokens").Scan(&tokenCount)
+	_ = d.conn.QueryRow("SELECT COUNT(*) FROM user_tokens").Scan(&tokenCount)
 	if tokenCount == 0 {
-		_, _ = d.Exec("INSERT OR IGNORE INTO user_tokens (user_id, token, client_type) SELECT id, auth_token, 'legacy' FROM users WHERE auth_token != '';")
+		_, _ = d.conn.Exec("INSERT OR IGNORE INTO user_tokens (user_id, token, client_type) SELECT id, auth_token, 'legacy' FROM users WHERE auth_token != '';")
 	}
 
 	// 数据库升级迁移: 确保 feeds 表包含 max_articles 字段（默认 -1 代表保留全部）
-	_, _ = d.Exec("ALTER TABLE feeds ADD COLUMN max_articles INTEGER DEFAULT -1;")
+	_, _ = d.conn.Exec("ALTER TABLE feeds ADD COLUMN max_articles INTEGER DEFAULT -1;")
 	// 修正历史默认值：将曾作为默认值的 0 或 NULL 统一更新为 -1（即空值/保留全部）
-	_, _ = d.Exec("UPDATE feeds SET max_articles = -1 WHERE max_articles IS NULL OR max_articles = 0;")
+	_, _ = d.conn.Exec("UPDATE feeds SET max_articles = -1 WHERE max_articles IS NULL OR max_articles = 0;")
 
 	// 自动清理历史上因未开启外键约束而遗留在数据库中的孤儿文章与孤儿状态
-	_, _ = d.Exec(`
+	_, _ = d.conn.Exec(`
 		DELETE FROM article_states WHERE article_id NOT IN (SELECT id FROM articles);
 		DELETE FROM articles WHERE feed_id NOT IN (SELECT id FROM feeds);
 	`)
@@ -200,19 +207,19 @@ func (d *DB) ensureDefaultUser(username, password string) error {
 	}
 
 	var count int
-	err = d.QueryRow("SELECT COUNT(*) FROM users WHERE username = ?", username).Scan(&count)
+	err = d.conn.QueryRow("SELECT COUNT(*) FROM users WHERE username = ?", username).Scan(&count)
 	if err != nil {
 		return err
 	}
 
 	if count == 0 {
 		authToken := fmt.Sprintf("reader_token_%d", time.Now().UnixNano())
-		_, err = d.Exec("INSERT INTO users (username, password_hash, auth_token) VALUES (?, ?, ?)", username, string(hash), authToken)
+		_, err = d.conn.Exec("INSERT INTO users (username, password_hash, auth_token) VALUES (?, ?, ?)", username, string(hash), authToken)
 		return err
 	}
 
 	// 用户已存在：将密码同步更新为环境变量中设置的最新的密码
-	_, err = d.Exec("UPDATE users SET password_hash = ? WHERE username = ?", string(hash), username)
+	_, err = d.conn.Exec("UPDATE users SET password_hash = ? WHERE username = ?", string(hash), username)
 	return err
 }
 
