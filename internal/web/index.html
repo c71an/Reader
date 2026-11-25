@@ -1667,22 +1667,8 @@
           </div>
         </div>
 
-        <!-- 右侧操作栏 (未读切换 / 原文直达 / 桌面关闭) -->
+        <!-- 右侧操作栏 (桌面关闭) -->
         <div class="flex items-center space-x-1 sm:space-x-1.5 shrink-0">
-          <!-- 标记已读/未读 -->
-          <button @click="toggleReaderArticleRead()" 
-                  :aria-label="readerArticle && readerArticle.is_read ? '设为未读' : '设为已读'"
-                  class="touch-target p-1.5 text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition" 
-                  :title="readerArticle && readerArticle.is_read ? '设为未读' : '设为已读'">
-            <svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          </button>
-          <!-- 打开原文 -->
-          <a :href="readerArticle ? readerArticle.url : '#'" target="_blank" rel="noopener noreferrer" 
-             aria-label="在原网打开"
-             class="touch-target p-1.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition" 
-             title="在原网打开">
-            <svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-          </a>
           <!-- 桌面端关闭叉号按钮 -->
           <button @click="closeReader()" 
                   aria-label="关闭阅读器"
